@@ -247,7 +247,24 @@ end
 
 function Nearby:_SetFrameHeightSafe(h)
   if not self.frame then return end
-  -- Never gate on InCombatLockdown for Nearby; attempt immediately with a pcall guard.
+  if InCombatLockdown and InCombatLockdown() then
+    self._pendingHeight = h
+    if not self._heightRetryTicker and C_Timer and C_Timer.NewTicker then
+      self._heightRetryTicker = C_Timer.NewTicker(1, function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        if self._heightRetryTicker then
+          self._heightRetryTicker:Cancel()
+          self._heightRetryTicker = nil
+        end
+        if self._pendingHeight and self.frame then
+          local height = self._pendingHeight
+          self._pendingHeight = nil
+          pcall(function() self.frame:SetHeight(height) end)
+        end
+      end)
+    end
+    return
+  end
   pcall(function() self.frame:SetHeight(h) end)
 end
 
