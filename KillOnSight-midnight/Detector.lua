@@ -230,7 +230,7 @@ function Detector:OnNameplateRemoved(unit)
 
   -- Only notify if we haven't already marked them as stealthed.
   pcall(function()
-    CheckStealthTransition(guid, name, true, "NameplateRemoved")
+    CheckStealthTransition(unit, name, nil, nil, guid, true)
   end)
 end
 function Detector:PopMostRecentEngagement()
