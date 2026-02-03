@@ -174,12 +174,6 @@ function Stats:OnEvent(event, ...)
     return
   end
 
-  if event == "PLAYER_KILLING_BLOW" then
-    local name = ...
-    TouchOutcome("win", name)
-    return
-  end
-
   if event == "PLAYER_DEAD" then
     TouchOutcome("loss", nil, 60)
     return
