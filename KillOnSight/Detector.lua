@@ -50,6 +50,7 @@ local function ShouldNotify(key)
   if not DB then return false end
   local t = DB:GetProfile().throttleSeconds or 12
   local now = Now()
+  CleanupNotifyCache(now)
   if lastNotifyAt[key] and (now - lastNotifyAt[key]) < t then
     return false
   end
@@ -113,7 +114,7 @@ if UnitIsPlayer(unit) and UnitCanAttack("player", unit) then
   if guild and guild ~= "" and DB.UpdateLastAttackerGuild then
     DB:UpdateLastAttackerGuild(name, guild)
     local Core = GetCore()
-    if Core and Core.ScheduleGUIRefresh then
+    if Core and Core._ScheduleGUIRefresh then
       Core:_ScheduleGUIRefresh()
     end
   end
@@ -147,7 +148,7 @@ end
     local updated = DB:UpdateLastAttackerGuildByGUID(guid, guild)
     if updated then
       local Core = GetCore()
-      if Core and Core.ScheduleGUIRefresh then
+      if Core and Core._ScheduleGUIRefresh then
         Core:_ScheduleGUIRefresh()
       end
     end
