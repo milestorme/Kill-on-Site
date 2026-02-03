@@ -1,5 +1,11 @@
 # KillOnSight – Changelog
 
+## 3.1.1
+### Fixed
+- Restored stealth inference on nameplate removal by passing the correct unit token and GUID.
+- Prevented protected layout calls in combat by deferring Nearby minimal-mode layout changes until combat ends.
+- Allowed KoS portrait rings in battlegrounds while still suppressing them in arenas.
+
 ## 3.1.0
 ### Fixed
 - Removed a global `EasyMenu` shim that conflicted with other addons.

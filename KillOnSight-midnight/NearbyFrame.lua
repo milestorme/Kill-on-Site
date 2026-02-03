@@ -300,6 +300,24 @@ function Nearby:ApplyMinimalMode()
   if not DB then return end
   local prof = DB:GetProfile()
 
+  if InCombatLockdown and InCombatLockdown() then
+    self._pendingMinimal = true
+    if not self._combatRetryTicker and C_Timer and C_Timer.NewTicker then
+      self._combatRetryTicker = C_Timer.NewTicker(1, function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        if self._combatRetryTicker then
+          self._combatRetryTicker:Cancel()
+          self._combatRetryTicker = nil
+        end
+        if self._pendingMinimal then
+          self._pendingMinimal = nil
+          if self.ApplyMinimalMode then pcall(function() self:ApplyMinimalMode() end) end
+        end
+      end)
+    end
+    return
+  end
+
   local minimal = prof.nearbyMinimal == true
   -- backdrop
   if self.frame.SetBackdrop then
