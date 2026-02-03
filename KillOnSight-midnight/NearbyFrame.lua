@@ -156,6 +156,31 @@ local function NormalizeName(name)
   return name
 end
 
+local function ExtractRealm(name)
+  if not name or name == "" then return nil end
+  name = tostring(name)
+  local realm = name:match("%-(.+)$")
+  if realm and realm ~= "" then
+    return realm
+  end
+  return nil
+end
+
+local function BuildTargetName(entry)
+  if not entry then return "" end
+  local name = entry.fullName or entry.name or ""
+  name = tostring(name)
+  name = name:gsub("|c%x%x%x%x%x%x%x%x", "")
+             :gsub("|r", "")
+             :gsub("|T.-|t", "")
+             :gsub("^%s+", "")
+             :gsub("%s+$", "")
+  if entry.realm and entry.realm ~= "" and not name:find("%-") then
+    name = name .. "-" .. entry.realm
+  end
+  return name
+end
+
 local function ClassColorHex(classFile)
   if classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] then
     local c = RAID_CLASS_COLORS[classFile]
@@ -712,11 +737,17 @@ local function UpdateScroll(self)
     if e then      -- Secure targeting (Classic): cannot update macro attributes in combat.
       if row.SetAttribute then
         if not (InCombatLockdown and InCombatLockdown()) then
-          local tname = e.fullName or e.name or ""
+          local tname = BuildTargetName(e)
           pcall(function()
             row:SetAttribute("type1", "macro")
-            row:SetAttribute("macrotext1", "/targetexact " .. tname)
-            row:SetAttribute("macrotext",  "/targetexact " .. tname)
+            if tname ~= "" then
+              local macro = "/targetexact \"" .. tname .. "\""
+              row:SetAttribute("macrotext1", macro)
+              row:SetAttribute("macrotext",  macro)
+            else
+              row:SetAttribute("macrotext1", "/targetexact nil")
+              row:SetAttribute("macrotext",  "/targetexact nil")
+            end
           end)
         end
       end
@@ -899,13 +930,15 @@ function Nearby:Create()
 
       local tname = e.fullName or e.name or ""
       if tname == "" then return end
-      tname = tostring(tname):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+      tname = BuildTargetName(e)
+      if tname == "" then return end
 
       -- Set both for broad compatibility.
       pcall(function()
         selfBtn:SetAttribute("type1", "macro")
-        selfBtn:SetAttribute("macrotext1", "/targetexact " .. tname)
-        selfBtn:SetAttribute("macrotext",  "/targetexact " .. tname)
+        local macro = "/targetexact \"" .. tname .. "\""
+        selfBtn:SetAttribute("macrotext1", macro)
+        selfBtn:SetAttribute("macrotext",  macro)
       end)
     end)
 
@@ -947,6 +980,7 @@ function Nearby:Create()
       GameTooltip:AddLine(e.name)
       if e.level then GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1,1,1) end
       if e.guild and e.guild ~= "" then GameTooltip:AddLine(e.guild, 0.8,0.8,0.8) end
+      if e.realm and e.realm ~= "" then GameTooltip:AddLine("Realm: " .. e.realm, 0.8,0.8,0.8) end
       if e.zone and e.zone ~= "" then GameTooltip:AddLine(e.zone, 0.8,0.8,0.8) end
       if e.kosType == L.KOS then
         GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
@@ -1184,6 +1218,7 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid)
   self.nameToKey[lowerName] = key
 
   e.fullName = rawName or e.fullName
+  e.realm = ExtractRealm(rawName) or e.realm
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
   -- Hidden is a *state* (stealth/prowl/shadowmeld detection). Do not store it as kosType,
