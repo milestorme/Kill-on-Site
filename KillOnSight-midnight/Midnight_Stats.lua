@@ -108,19 +108,32 @@ end
 
 -- Pull the most recent engaged enemy from the Detector queue.
 -- (Detector maintains this on Retail because we avoid CLEU.)
-local function PopMostRecentEngagement()
+local function PopMostRecentEngagement(maxAge)
   local Detector = _G.KillOnSight_Detector
   if Detector and Detector.PopMostRecentEngagement then
-    return Detector:PopMostRecentEngagement()
+    return Detector:PopMostRecentEngagement(maxAge)
   end
   return nil
 end
 
-local function TouchOutcome(kind)
+local function PopEngagementForName(name)
+  local Detector = _G.KillOnSight_Detector
+  if Detector and Detector.PopEngagementForName then
+    return Detector:PopEngagementForName(name)
+  end
+  return nil
+end
+
+local function TouchOutcome(kind, nameHint, maxAge)
   local DB = GetDB()
   if not DB then return end
 
-  local name, classFile, guild, guid = PopMostRecentEngagement()
+  local name, classFile, guild, guid
+  if nameHint and nameHint ~= "" then
+    name, classFile, guild, guid = PopEngagementForName(nameHint)
+  else
+    name, classFile, guild, guid = PopMostRecentEngagement(maxAge)
+  end
   if not name or name == "" then return end
 
   -- Hard safety: never create stats records for non-player GUIDs.
@@ -155,14 +168,14 @@ local function TouchOutcome(kind)
   ScheduleGUIRefresh()
 end
 
-function Stats:OnEvent(event)
+function Stats:OnEvent(event, ...)
   if event == "PLAYER_PVP_KILLS_CHANGED" then
     TouchOutcome("win")
     return
   end
 
   if event == "PLAYER_DEAD" then
-    TouchOutcome("loss")
+    TouchOutcome("loss", nil, 60)
     return
   end
 end
