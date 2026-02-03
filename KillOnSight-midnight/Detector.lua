@@ -262,13 +262,14 @@ function Detector:OnNameplateRemoved(unit)
     CheckStealthTransition(unit, name, nil, nil, guid, true)
   end)
 end
-function Detector:PopMostRecentEngagement()
+function Detector:PopMostRecentEngagement(maxAge)
   if not IS_RETAIL or not GetTime then return nil end
   local now = GetTime()
+  local window = maxAge or ENGAGE_WINDOW
   local bestKey, bestT, bestEntry = nil, 0, nil
   for k, e in pairs(recentEngagements) do
     local t = (type(e) == "table") and e.t or e
-    if t and (now - t) <= ENGAGE_WINDOW and t > bestT then
+    if t and (now - t) <= window and t > bestT then
       bestKey, bestT, bestEntry = k, t, e
     end
   end
