@@ -282,9 +282,21 @@ local function RunRetail()
   -- Update loop
   -- ------------------------------------------------------------
 
+  local function IsArenaInstance()
+    if not IsInInstance then return false end
+    local ok, inInstance, instType = pcall(IsInInstance)
+    if not ok then return false end
+    return (inInstance and instType == "arena") and true or false
+  end
+
   local function Update()
     local Core = _G.KillOnSight_Core
-    if Core and Core._bgDisabled then return end
+    if Core and Core._bgDisabled and IsArenaInstance() then
+      ApplyOverlay("none")
+      RestoreTargetFrameArt()
+      return
+    end
+
     if not UnitExists("target") then
       ApplyOverlay("none")
       RestoreTargetFrameArt()
