@@ -168,7 +168,7 @@ local function TouchOutcome(kind, nameHint, maxAge)
   ScheduleGUIRefresh()
 end
 
-function Stats:OnEvent(event)
+function Stats:OnEvent(event, ...)
   if event == "PLAYER_PVP_KILLS_CHANGED" then
     TouchOutcome("win")
     return
