@@ -887,7 +887,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
 
   -- Retail-only: best-effort PvP outcome tracking without CLEU.
   -- Delegated to Midnight_Stats.lua so Core stays focused on event routing.
-  if IS_RETAIL and (event == "PLAYER_PVP_KILLS_CHANGED" or event == "PLAYER_DEAD") then
+  if IS_RETAIL and (event == "PLAYER_PVP_KILLS_CHANGED" or event == "PLAYER_KILLING_BLOW" or event == "PLAYER_DEAD") then
     local Stats = GetMidnightStats()
     if Stats and Stats.OnEvent then
       Stats:OnEvent(event, ...)
@@ -936,6 +936,7 @@ Core:RegisterEvent("PLAYER_ENTERING_WORLD")
 Core:RegisterEvent("PLAYER_TARGET_CHANGED")
 Core:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 if IS_RETAIL then Core:RegisterEvent("PLAYER_PVP_KILLS_CHANGED") end
+if IS_RETAIL then Core:RegisterEvent("PLAYER_KILLING_BLOW") end
 if IS_RETAIL then Core:RegisterEvent("PLAYER_DEAD") end
 Core:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 

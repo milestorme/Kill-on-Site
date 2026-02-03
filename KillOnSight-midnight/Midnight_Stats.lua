@@ -116,11 +116,24 @@ local function PopMostRecentEngagement()
   return nil
 end
 
-local function TouchOutcome(kind)
+local function PopEngagementForName(name)
+  local Detector = _G.KillOnSight_Detector
+  if Detector and Detector.PopEngagementForName then
+    return Detector:PopEngagementForName(name)
+  end
+  return nil
+end
+
+local function TouchOutcome(kind, nameHint)
   local DB = GetDB()
   if not DB then return end
 
-  local name, classFile, guild, guid = PopMostRecentEngagement()
+  local name, classFile, guild, guid
+  if nameHint and nameHint ~= "" then
+    name, classFile, guild, guid = PopEngagementForName(nameHint)
+  else
+    name, classFile, guild, guid = PopMostRecentEngagement()
+  end
   if not name or name == "" then return end
 
   -- Hard safety: never create stats records for non-player GUIDs.
@@ -158,6 +171,12 @@ end
 function Stats:OnEvent(event)
   if event == "PLAYER_PVP_KILLS_CHANGED" then
     TouchOutcome("win")
+    return
+  end
+
+  if event == "PLAYER_KILLING_BLOW" then
+    local name = ...
+    TouchOutcome("win", name)
     return
   end
 

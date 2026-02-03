@@ -281,6 +281,20 @@ function Detector:PopMostRecentEngagement()
   end
 end
 
+function Detector:PopEngagementForName(name)
+  if not IS_RETAIL then return nil end
+  if not name or name == "" then return nil end
+  local clean = name:match("^[^-]+") or name
+  local okLower, key = pcall(string.lower, clean)
+  if not okLower or not key then return nil end
+
+  local e = recentEngagements[key]
+  if not e or type(e) ~= "table" then return nil end
+
+  recentEngagements[key] = nil
+  return (e.name or clean), e.classFile, e.guild, e.guid
+end
+
 -- Clear the Retail engagement queue (used for best-effort win/loss attribution).
 -- Called by Midnight_Stats on Reset Stats so old engagements can't repopulate.
 function Detector:ResetEngagementQueue()
