@@ -794,7 +794,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)
         row:SetAttribute("type1", nil)
@@ -813,7 +813,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("type1", nil)
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)

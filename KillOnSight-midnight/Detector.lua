@@ -55,8 +55,8 @@ local function UnitHasStealthAura(unit)
     return false
   end
 
-  -- Fallback: scan buffs.
-  if UnitAura then
+  -- Fallback: scan buffs (Classic-era only). Retail UnitAura can surface protected values.
+  if not IS_RETAIL and UnitAura then
     for i = 1, 40 do
       local name, _, _, _, _, _, _, _, _, spellId = UnitAura(unit, i, "HELPFUL")
       if not name then break end

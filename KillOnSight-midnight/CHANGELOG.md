@@ -1,5 +1,13 @@
 # KillOnSight – Changelog
 
+## 3.1.6
+### Fixed
+- Retail: avoid UnitAura fallback in stealth checks to prevent AuraUtil secret-value errors.
+
+## 3.1.5
+### Fixed
+- Nearby: avoid protected SetAttribute calls while clearing rows during combat.
+
 ## 3.1.4
 ### Fixed
 - Nearby: pull full UnitFullName realm data so tooltips show realms when available.
