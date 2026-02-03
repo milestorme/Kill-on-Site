@@ -61,6 +61,7 @@ local function TouchEncounter(guid, name, classFile, guild)
     e.nameLower = e.nameLower or key
     e.name = e.name or cn
   end
+end
 
 -- Debounced GUI refresh (safe to call from anywhere)
 local _guiRefreshQueued = false
@@ -75,7 +76,6 @@ local function _ScheduleGUIRefresh()
       pcall(KillOnSight.RefreshGUI)
     end
   end)
-end
 end
 
 local function ResolveEncounter(guid)
