@@ -10,7 +10,7 @@ local Sync = {}
 local SYNC_COOLDOWN = 60
 local nextSyncAllowedAt = 0
 local PREFIX = "KOS2"
-local ADDON_VER = "3.1.0"
+local ADDON_VER = "3.1.1"
 
 -- Safety limits: if a peer is too far behind (or diff is huge), send a compact snapshot instead.
 local MAX_DIFF_CHANGES = 600
