@@ -190,6 +190,21 @@ end
 -- Retail: track recent hostile engagements for BG win attribution (best-effort, no CLEU).
 local recentEngagements = {}
 local ENGAGE_WINDOW = 20 -- seconds
+local function TrackEngagement(name, classFile, guild, guid)
+  if not IS_RETAIL or not GetTime then return end
+  if not name or name == "" then return end
+
+  local okLower, key = pcall(string.lower, name)
+  if not okLower or not key then return end
+
+  recentEngagements[key] = {
+    t = GetTime(),
+    name = name,
+    classFile = classFile,
+    guild = guild,
+    guid = guid,
+  }
+end
 
 local Detector = {}
 
