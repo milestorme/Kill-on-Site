@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.1.4
+### Fixed
+- Nearby: pull full UnitFullName realm data so tooltips show realms when available.
+
 ## 3.1.3
 ### Fixed
 - Nearby: avoid protected EnableMouse calls in combat to prevent action-blocked errors.
