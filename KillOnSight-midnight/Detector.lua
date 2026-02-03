@@ -248,9 +248,6 @@ function Detector:OnNameplateRemoved(unit)
   local okMatch, isPlayer = pcall(function() return type(guid) == "string" and guid:match("^Player%-") ~= nil end)
   if not okMatch or not isPlayer then return end
 
-  -- Mark not visible for inference purposes.
-  visibleStateByGUID[guid] = false
-
   local okLower, k = pcall(string.lower, name)
   if not okLower or not k then return end
 
@@ -265,13 +262,14 @@ function Detector:OnNameplateRemoved(unit)
     CheckStealthTransition(unit, name, nil, nil, guid, true)
   end)
 end
-function Detector:PopMostRecentEngagement()
+function Detector:PopMostRecentEngagement(maxAge)
   if not IS_RETAIL or not GetTime then return nil end
   local now = GetTime()
+  local window = maxAge or ENGAGE_WINDOW
   local bestKey, bestT, bestEntry = nil, 0, nil
   for k, e in pairs(recentEngagements) do
     local t = (type(e) == "table") and e.t or e
-    if t and (now - t) <= ENGAGE_WINDOW and t > bestT then
+    if t and (now - t) <= window and t > bestT then
       bestKey, bestT, bestEntry = k, t, e
     end
   end
@@ -282,6 +280,20 @@ function Detector:PopMostRecentEngagement()
     end
     return bestKey
   end
+end
+
+function Detector:PopEngagementForName(name)
+  if not IS_RETAIL then return nil end
+  if not name or name == "" then return nil end
+  local clean = name:match("^[^-]+") or name
+  local okLower, key = pcall(string.lower, clean)
+  if not okLower or not key then return nil end
+
+  local e = recentEngagements[key]
+  if not e or type(e) ~= "table" then return nil end
+
+  recentEngagements[key] = nil
+  return (e.name or clean), e.classFile, e.guild, e.guid
 end
 
 -- Clear the Retail engagement queue (used for best-effort win/loss attribution).
