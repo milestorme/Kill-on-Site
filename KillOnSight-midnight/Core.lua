@@ -930,34 +930,39 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 end)
 
-Core:RegisterEvent("ADDON_LOADED")
-Core:RegisterEvent("CHAT_MSG_ADDON")
-Core:RegisterEvent("PLAYER_ENTERING_WORLD")
-Core:RegisterEvent("PLAYER_TARGET_CHANGED")
-Core:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
-if IS_RETAIL then Core:RegisterEvent("PLAYER_PVP_KILLS_CHANGED") end
-if IS_RETAIL then Core:RegisterEvent("PLAYER_DEAD") end
-Core:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+local function SafeRegisterEvent(event)
+  if not Core or not Core.RegisterEvent then return end
+  pcall(Core.RegisterEvent, Core, event)
+end
 
-Core:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+SafeRegisterEvent("ADDON_LOADED")
+SafeRegisterEvent("CHAT_MSG_ADDON")
+SafeRegisterEvent("PLAYER_ENTERING_WORLD")
+SafeRegisterEvent("PLAYER_TARGET_CHANGED")
+SafeRegisterEvent("UPDATE_MOUSEOVER_UNIT")
+if IS_RETAIL then SafeRegisterEvent("PLAYER_PVP_KILLS_CHANGED") end
+if IS_RETAIL then SafeRegisterEvent("PLAYER_DEAD") end
+SafeRegisterEvent("NAME_PLATE_UNIT_ADDED")
+
+SafeRegisterEvent("NAME_PLATE_UNIT_REMOVED")
 
 -- Retail 12.x: avoid CLEU (can cause repeated forbidden/blocked actions).
 -- Classic-era clients: keep CLEU for full attacker/combat attribution.
 if not IS_RETAIL then
-  Core:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+  SafeRegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 end
 
 -- Unit-scoped alternatives (Retail-friendly)
-Core:RegisterEvent("UNIT_AURA")
-Core:RegisterEvent("UNIT_SPELLCAST_START")
-Core:RegisterEvent("UNIT_SPELLCAST_STOP")
-Core:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-Core:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
-Core:RegisterEvent("UNIT_SPELLCAST_FAILED")
+SafeRegisterEvent("UNIT_AURA")
+SafeRegisterEvent("UNIT_SPELLCAST_START")
+SafeRegisterEvent("UNIT_SPELLCAST_STOP")
+SafeRegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+SafeRegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+SafeRegisterEvent("UNIT_SPELLCAST_FAILED")
 -- Retail: helps reduce laggy Nearby additions when a hostile player nameplate briefly resolves as not-attackable.
 -- These unit events often fire shortly after NAME_PLATE_UNIT_ADDED.
-Core:RegisterEvent("UNIT_FLAGS")
-Core:RegisterEvent("UNIT_FACTION")
+SafeRegisterEvent("UNIT_FLAGS")
+SafeRegisterEvent("UNIT_FACTION")
 
 -- Export for other modules.
 _G.KillOnSight_Core = Core
