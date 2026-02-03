@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.1.7
+### Fixed
+- Retail: ensure open-world win/loss stats credit when tracking targets or mouseover enemies.
+
 ## 3.1.6
 ### Fixed
 - Retail: avoid UnitAura fallback in stealth checks to prevent AuraUtil secret-value errors.

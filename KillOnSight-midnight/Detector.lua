@@ -443,9 +443,14 @@ function Detector:CheckUnit(unit, forceNearby)
       end
     end
 
-    -- Engagement tracking for Retail BG win attribution (best-effort)
-    if IS_RETAIL and (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow()) then
-      TrackEngagement(name, classFile, guild, guid)
+    -- Engagement tracking for Retail win attribution (best-effort).
+    -- Include target/mouseover so open-world wins/losses credit even when the enemy
+    -- never targets you (common for ranged kills or quick skirmishes).
+    if IS_RETAIL then
+      local isDirectUnit = (unit == "target" or unit == "mouseover")
+      if (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or isDirectUnit) then
+        TrackEngagement(name, classFile, guild, guid)
+      end
     end
   end
 
