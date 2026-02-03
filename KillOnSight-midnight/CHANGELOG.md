@@ -4,7 +4,9 @@
 ### Fixed
 - Restored stealth inference on nameplate removal by passing the correct unit token and GUID.
 - Prevented protected layout calls in combat by deferring Nearby minimal-mode layout changes until combat ends.
-- Allowed KoS portrait rings in battlegrounds while still suppressing them in arenas.
+- Prevented protected SetHeight calls in combat by deferring Nearby frame height updates until combat ends.
+- Restored Retail engagement tracking queuing for battleground win attribution.
+- Allowed KoS portrait rings in battlegrounds and arenas (no suppression for KoS/Guild targets).
 
 ## 3.1.0
 ### Fixed
