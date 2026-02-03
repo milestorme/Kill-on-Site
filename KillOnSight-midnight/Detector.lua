@@ -248,9 +248,6 @@ function Detector:OnNameplateRemoved(unit)
   local okMatch, isPlayer = pcall(function() return type(guid) == "string" and guid:match("^Player%-") ~= nil end)
   if not okMatch or not isPlayer then return end
 
-  -- Mark not visible for inference purposes.
-  visibleStateByGUID[guid] = false
-
   local okLower, k = pcall(string.lower, name)
   if not okLower or not k then return end
 

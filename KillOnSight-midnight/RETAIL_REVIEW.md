@@ -4,21 +4,17 @@
 Review of the `KillOnSight-midnight` retail-focused implementation with a focus on detection logic and event handling.
 
 ## Summary
-Overall the retail-specific path shows careful handling of protected APIs and a strong effort to keep detection working without CLEU. The nameplate-driven detection pipeline and stealth inference are thoughtful. The main concern is a parameter mismatch in the stealth fallback path that likely prevents stealth notifications from triggering when a nameplate disappears.
+Overall the retail-specific path shows careful handling of protected APIs and a strong effort to keep detection working without CLEU. The nameplate-driven detection pipeline and stealth inference are thoughtful. The main concern is a preemptive visibility state update in the nameplate removal path that prevents the stealth fallback from ever detecting a visible → hidden transition.
 
 ## Findings
-### 1) Stealth inference on nameplate removal passes the wrong parameters (bug)
-**Impact:** The stealth fallback logic can silently fail because `CheckStealthTransition` is called with a GUID string in place of a unit token and missing expected parameters. This means `UnitHasStealthAura` / `UnitIsVisible` are invoked on a GUID instead of a unit, so the transition check can never succeed.
+### 1) Stealth inference on nameplate removal pre-sets visibility state (bug)
+**Impact:** The stealth fallback logic can silently fail because the nameplate removal handler sets the visibility state to `false` before calling `CheckStealthTransition`. That means the fallback path never sees a `visiblePrev == true` → `visibleNow == false` transition, so it does not promote the hidden notification.
 
 **Evidence:**
-- `CheckStealthTransition` expects `(unit, name, classFile, guild, guid, highConfidence)` and uses the `unit` token for `UnitHasStealthAura`/`UnitIsVisible`.【F:Detector.lua†L86-L133】
-- `OnNameplateRemoved` calls `CheckStealthTransition(guid, name, true, "NameplateRemoved")`, which passes the GUID as the unit token and does not pass the expected `guid`/`highConfidence` parameters.【F:Detector.lua†L196-L234】
+- `CheckStealthTransition` requires a `visiblePrev == true` and `visibleNow == false` transition to infer hidden state when `highConfidence` is set.【F:Detector.lua†L104-L134】
+- `OnNameplateRemoved` sets `visibleStateByGUID[guid] = false` before calling `CheckStealthTransition`, so `visiblePrev` is already `false` by the time the check runs.【F:Detector.lua†L216-L233】
 
-**Recommendation:** Change the call to pass the unit token and GUID explicitly, e.g.:
-```lua
-CheckStealthTransition(unit, name, nil, nil, guid, true)
-```
-If class/guild values are available for nameplates, supply them as well.
+**Recommendation:** Defer the visibility update until after the transition check, or remove the preemptive `visibleStateByGUID[guid] = false` so the previous visibility state can be compared. If needed, move that assignment into `CheckStealthTransition` after the inference logic runs.
 
 ## Strengths
 - Clear separation of retail vs classic behavior and defensive handling of protected APIs. (Core retail instance checks, nameplate-driven detection, and safe pcall usage.)【F:Core.lua†L1-L121】【F:Detector.lua†L75-L133】
