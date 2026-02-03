@@ -670,7 +670,28 @@ local function ShowMenuFor(self, e)
     { text = CLOSE, notCheckable = true },
   }
 
-  EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+  if EasyMenu then
+    EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+    return
+  end
+
+  if not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and UIDropDownMenu_CreateInfo and ToggleDropDownMenu) then
+    return
+  end
+
+  UIDropDownMenu_Initialize(self.menu, function(_, level)
+    if level ~= 1 then return end
+    for _, item in ipairs(menu) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = item.text
+      info.isTitle = item.isTitle
+      info.notCheckable = item.notCheckable
+      info.disabled = item.disabled
+      info.func = item.func
+      UIDropDownMenu_AddButton(info, level)
+    end
+  end, "MENU")
+  ToggleDropDownMenu(1, nil, self.menu, "cursor", 0, 0)
 end
 
 
