@@ -247,7 +247,24 @@ end
 
 function Nearby:_SetFrameHeightSafe(h)
   if not self.frame then return end
-  -- Never gate on InCombatLockdown for Nearby; attempt immediately with a pcall guard.
+  if InCombatLockdown and InCombatLockdown() then
+    self._pendingHeight = h
+    if not self._heightRetryTicker and C_Timer and C_Timer.NewTicker then
+      self._heightRetryTicker = C_Timer.NewTicker(1, function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        if self._heightRetryTicker then
+          self._heightRetryTicker:Cancel()
+          self._heightRetryTicker = nil
+        end
+        if self._pendingHeight and self.frame then
+          local height = self._pendingHeight
+          self._pendingHeight = nil
+          pcall(function() self.frame:SetHeight(height) end)
+        end
+      end)
+    end
+    return
+  end
   pcall(function() self.frame:SetHeight(h) end)
 end
 
@@ -299,6 +316,24 @@ function Nearby:ApplyMinimalMode()
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
+
+  if InCombatLockdown and InCombatLockdown() then
+    self._pendingMinimal = true
+    if not self._combatRetryTicker and C_Timer and C_Timer.NewTicker then
+      self._combatRetryTicker = C_Timer.NewTicker(1, function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        if self._combatRetryTicker then
+          self._combatRetryTicker:Cancel()
+          self._combatRetryTicker = nil
+        end
+        if self._pendingMinimal then
+          self._pendingMinimal = nil
+          if self.ApplyMinimalMode then pcall(function() self:ApplyMinimalMode() end) end
+        end
+      end)
+    end
+    return
+  end
 
   local minimal = prof.nearbyMinimal == true
   -- backdrop
@@ -635,7 +670,28 @@ local function ShowMenuFor(self, e)
     { text = CLOSE, notCheckable = true },
   }
 
-  EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+  if EasyMenu then
+    EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+    return
+  end
+
+  if not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and UIDropDownMenu_CreateInfo and ToggleDropDownMenu) then
+    return
+  end
+
+  UIDropDownMenu_Initialize(self.menu, function(_, level)
+    if level ~= 1 then return end
+    for _, item in ipairs(menu) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = item.text
+      info.isTitle = item.isTitle
+      info.notCheckable = item.notCheckable
+      info.disabled = item.disabled
+      info.func = item.func
+      UIDropDownMenu_AddButton(info, level)
+    end
+  end, "MENU")
+  ToggleDropDownMenu(1, nil, self.menu, "cursor", 0, 0)
 end
 
 
