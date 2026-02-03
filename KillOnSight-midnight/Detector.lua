@@ -152,6 +152,23 @@ local function GetUnitNameSafe(unit)
   return name
 end
 
+local function GetUnitFullNameSafe(unit)
+  if not unit or unit == "" then return nil, nil end
+  if not UnitFullName then return nil, nil end
+  local ok, n, r = pcall(UnitFullName, unit)
+  if not ok then return nil, nil end
+  local okN, name = pcall(tostring, n)
+  if not okN or type(name) ~= "string" or name == "" then return nil, nil end
+  local realm = nil
+  if r ~= nil then
+    local okR, realmStr = pcall(tostring, r)
+    if okR and type(realmStr) == "string" and realmStr ~= "" then
+      realm = realmStr
+    end
+  end
+  return name, realm
+end
+
 -- Retail-safe: avoid UnitTarget() (can be nil/tainted in some clients); use unit token instead.
 local function UnitTargetsPlayer(unit)
   if not unit or unit == "" then return false end
@@ -417,7 +434,12 @@ function Detector:CheckUnit(unit, forceNearby)
 
       local Nearby = GetNearby()
       if Nearby and Nearby.Seen then
-        Nearby:Seen(name, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid)
+        local nearbyName = name
+        local fullName, realm = GetUnitFullNameSafe(unit)
+        if fullName and realm and realm ~= "" then
+          nearbyName = fullName .. "-" .. realm
+        end
+        Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid)
       end
     end
 
