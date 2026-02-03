@@ -1,5 +1,10 @@
 # KillOnSight – Changelog
 
+## 3.1.2
+### Fixed
+- Restored the debounced GUI refresh helper so modules can trigger UI updates safely.
+- Ensured notify throttling cache entries are pruned periodically to avoid unbounded growth.
+
 ## 3.1.1
 ### Fixed
 - Removed a global `EasyMenu` shim that conflicted with other addons.
