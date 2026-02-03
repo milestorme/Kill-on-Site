@@ -628,7 +628,14 @@ local function ShowMenuFor(self, e)
     { text = CLOSE, notCheckable = true },
   }
 
-  EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+  UIDropDownMenu_Initialize(self.menu, function(_, level)
+    for _, item in ipairs(menu) do
+      local info = UIDropDownMenu_CreateInfo()
+      for k, v in pairs(item) do info[k] = v end
+      UIDropDownMenu_AddButton(info, level)
+    end
+  end, "MENU")
+  ToggleDropDownMenu(1, nil, self.menu, "cursor", 0, 0)
 end
 
 

@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.1.3
+### Fixed
+- Nearby list context menu now uses Blizzard dropdown initialization to avoid missing `EasyMenu` at runtime.
+
 ## 3.1.2
 ### Fixed
 - Restored the debounced GUI refresh helper so modules can trigger UI updates safely.

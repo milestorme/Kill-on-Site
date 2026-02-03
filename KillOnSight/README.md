@@ -1,6 +1,6 @@
 # Kill on Sight (KoS)
 
-**Version:** 3.0.6  
+**Version:** 3.1.3  
 **Author:** Milestorme
 
 Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list, alerts, and optional stealth detection support across multiple game versions.
@@ -80,4 +80,3 @@ Included locales (major languages):
 - enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
 
 If a translation is missing for a key, the addon falls back to showing the key name (so gaps are obvious).
-
