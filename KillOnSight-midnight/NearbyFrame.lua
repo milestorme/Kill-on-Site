@@ -661,10 +661,7 @@ local function ShowMenuFor(self, e)
       end
     },
     { text = L.UI_CLEAR_NEARBY, notCheckable = true, func = function()
-        wipe(self.entries)
-        wipe(self.alerted)
-        self:MarkSortedDirty()
-        self:ScheduleRefresh(true)
+        self:ClearAll({ keepShown = true })
       end
     },
     { text = CLOSE, notCheckable = true },
@@ -1033,6 +1030,10 @@ function Nearby:ClearAll(opts)
   self.strongAlerted = {}
   self.announceAlerted = {}
   self.orderCounter = 0
+  if self._sortedList then
+    wipe(self._sortedList)
+  end
+  self._sortedDirty = true
   -- Hide immediately in sanctuary mode unless caller requests otherwise.
   if self.frame and not opts.keepShown then
     SafeSetShown(self.frame, false)

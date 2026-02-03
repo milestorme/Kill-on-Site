@@ -8,6 +8,7 @@
 - Restored Retail engagement tracking queuing for battleground win attribution.
 - Allowed KoS portrait rings in battlegrounds and arenas (no suppression for KoS/Guild targets).
 - Avoided Nearby menu errors by falling back when EasyMenu is unavailable.
+- Fixed Nearby "Clear list" to fully reset cached entries.
 
 ## 3.1.0
 ### Fixed
