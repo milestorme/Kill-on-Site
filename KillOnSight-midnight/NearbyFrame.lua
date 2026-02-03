@@ -118,6 +118,7 @@ local function Now() return GetTime() end
 
 local function SafeEnableMouse(obj, enabled)
   if not obj or not obj.EnableMouse then return end
+  if InCombatLockdown and InCombatLockdown() then return end
   -- Never gate on InCombatLockdown for Nearby; attempt immediately with a pcall guard.
   local ok = pcall(function() obj:EnableMouse(enabled and true or false) end)
   if ok then return end
@@ -152,6 +153,31 @@ local function NormalizeName(name)
     name = Ambiguate(name, "short")
   else
     name = name:gsub("%-.+$", "")
+  end
+  return name
+end
+
+local function ExtractRealm(name)
+  if not name or name == "" then return nil end
+  name = tostring(name)
+  local realm = name:match("%-(.+)$")
+  if realm and realm ~= "" then
+    return realm
+  end
+  return nil
+end
+
+local function BuildTargetName(entry)
+  if not entry then return "" end
+  local name = entry.fullName or entry.name or ""
+  name = tostring(name)
+  name = name:gsub("|c%x%x%x%x%x%x%x%x", "")
+             :gsub("|r", "")
+             :gsub("|T.-|t", "")
+             :gsub("^%s+", "")
+             :gsub("%s+$", "")
+  if entry.realm and entry.realm ~= "" and not name:find("%-") then
+    name = name .. "-" .. entry.realm
   end
   return name
 end
@@ -712,11 +738,17 @@ local function UpdateScroll(self)
     if e then      -- Secure targeting (Classic): cannot update macro attributes in combat.
       if row.SetAttribute then
         if not (InCombatLockdown and InCombatLockdown()) then
-          local tname = e.fullName or e.name or ""
+          local tname = BuildTargetName(e)
           pcall(function()
             row:SetAttribute("type1", "macro")
-            row:SetAttribute("macrotext1", "/targetexact " .. tname)
-            row:SetAttribute("macrotext",  "/targetexact " .. tname)
+            if tname ~= "" then
+              local macro = "/targetexact " .. tname
+              row:SetAttribute("macrotext1", macro)
+              row:SetAttribute("macrotext",  macro)
+            else
+              row:SetAttribute("macrotext1", "/targetexact nil")
+              row:SetAttribute("macrotext",  "/targetexact nil")
+            end
           end)
         end
       end
@@ -762,7 +794,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)
         row:SetAttribute("type1", nil)
@@ -781,7 +813,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("type1", nil)
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)
@@ -897,15 +929,15 @@ function Nearby:Create()
         return
       end
 
-      local tname = e.fullName or e.name or ""
+      local tname = BuildTargetName(e)
       if tname == "" then return end
-      tname = tostring(tname):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
 
       -- Set both for broad compatibility.
       pcall(function()
         selfBtn:SetAttribute("type1", "macro")
-        selfBtn:SetAttribute("macrotext1", "/targetexact " .. tname)
-        selfBtn:SetAttribute("macrotext",  "/targetexact " .. tname)
+        local macro = "/targetexact " .. tname
+        selfBtn:SetAttribute("macrotext1", macro)
+        selfBtn:SetAttribute("macrotext",  macro)
       end)
     end)
 
@@ -947,6 +979,7 @@ function Nearby:Create()
       GameTooltip:AddLine(e.name)
       if e.level then GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1,1,1) end
       if e.guild and e.guild ~= "" then GameTooltip:AddLine(e.guild, 0.8,0.8,0.8) end
+      if e.realm and e.realm ~= "" then GameTooltip:AddLine("Realm: " .. e.realm, 0.8,0.8,0.8) end
       if e.zone and e.zone ~= "" then GameTooltip:AddLine(e.zone, 0.8,0.8,0.8) end
       if e.kosType == L.KOS then
         GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
@@ -1184,6 +1217,7 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid)
   self.nameToKey[lowerName] = key
 
   e.fullName = rawName or e.fullName
+  e.realm = ExtractRealm(rawName) or e.realm
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
   -- Hidden is a *state* (stealth/prowl/shadowmeld detection). Do not store it as kosType,
