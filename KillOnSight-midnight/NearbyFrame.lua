@@ -741,7 +741,7 @@ local function UpdateScroll(self)
           pcall(function()
             row:SetAttribute("type1", "macro")
             if tname ~= "" then
-              local macro = "/targetexact \"" .. tname .. "\""
+              local macro = "/targetexact " .. tname
               row:SetAttribute("macrotext1", macro)
               row:SetAttribute("macrotext",  macro)
             else
@@ -928,15 +928,13 @@ function Nearby:Create()
         return
       end
 
-      local tname = e.fullName or e.name or ""
-      if tname == "" then return end
-      tname = BuildTargetName(e)
+      local tname = BuildTargetName(e)
       if tname == "" then return end
 
       -- Set both for broad compatibility.
       pcall(function()
         selfBtn:SetAttribute("type1", "macro")
-        local macro = "/targetexact \"" .. tname .. "\""
+        local macro = "/targetexact " .. tname
         selfBtn:SetAttribute("macrotext1", macro)
         selfBtn:SetAttribute("macrotext",  macro)
       end)
