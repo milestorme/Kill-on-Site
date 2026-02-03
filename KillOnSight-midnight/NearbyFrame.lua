@@ -118,6 +118,7 @@ local function Now() return GetTime() end
 
 local function SafeEnableMouse(obj, enabled)
   if not obj or not obj.EnableMouse then return end
+  if InCombatLockdown and InCombatLockdown() then return end
   -- Never gate on InCombatLockdown for Nearby; attempt immediately with a pcall guard.
   local ok = pcall(function() obj:EnableMouse(enabled and true or false) end)
   if ok then return end
