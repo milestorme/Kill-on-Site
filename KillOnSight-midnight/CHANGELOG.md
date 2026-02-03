@@ -1,5 +1,13 @@
 # KillOnSight – Changelog
 
+## 3.1.3
+### Fixed
+- Nearby: avoid protected EnableMouse calls in combat to prevent action-blocked errors.
+
+## 3.1.2
+### Fixed
+- Nearby: show realm name in the tooltip and keep click-to-target working for cross-realm players.
+
 ## 3.1.1
 ### Fixed
 - Restored stealth inference on nameplate removal by passing the correct unit token and GUID.
