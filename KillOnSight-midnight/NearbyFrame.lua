@@ -57,6 +57,15 @@ local Nearby = {
   rows = {},
   entries = {},   -- [key]=entry where key is Player GUID when known, else lowerName
   guidToKey = {}, -- [guid]=key
+  name = nil,
+
+  -- Retail-only: spec detection via Inspect
+  _inspectQueue = nil,        -- array of { guid=..., unit=... }
+  _inspectQueued = nil,       -- [guid]=true
+  _inspectPending = nil,      -- { guid=..., unit=... }
+  _lastInspectAt = 0,
+  _inspectEventFrame = nil,
+
   nameToKey = {}, -- [lowerName]=key
   alerted = {},   -- [lowerName] = true if alerted this presence
   -- KoS/Guild announcement gates: only once per presence while the player remains in Nearby.
@@ -1151,11 +1160,44 @@ function Nearby:Create()
       local e = selfBtn.entry
       if not e then return end
       GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+
+      -- Name
       GameTooltip:AddLine(e.name)
-      if e.level then GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1,1,1) end
-      if e.guild and e.guild ~= "" then GameTooltip:AddLine(e.guild, 0.8,0.8,0.8) end
-      if e.realm and e.realm ~= "" then GameTooltip:AddLine("Realm: " .. e.realm, 0.8,0.8,0.8) end
-      if e.zone and e.zone ~= "" then GameTooltip:AddLine(e.zone, 0.8,0.8,0.8) end
+
+      -- Level
+      if e.level then
+        GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1, 1, 1)
+      end
+
+      -- Class (colored)
+      if e.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class] then
+        local c = RAID_CLASS_COLORS[e.class]
+        local className =
+          (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[e.class]) or
+          (LOCALIZED_CLASS_NAMES_FEMALE and LOCALIZED_CLASS_NAMES_FEMALE[e.class]) or
+          e.class
+        GameTooltip:AddLine(className, c.r, c.g, c.b)
+      end
+
+      -- Spec (Retail inspect; present when known)
+      if e.spec and e.spec ~= "" then
+        GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
+      end
+
+      -- Guild
+      if e.guild and e.guild ~= "" then
+        GameTooltip:AddLine(e.guild, 0.8, 0.8, 0.8)
+      end
+
+      -- Realm
+      if e.realm and e.realm ~= "" then
+        GameTooltip:AddLine("Realm: " .. e.realm, 0.8, 0.8, 0.8)
+      end
+
+      -- Zone
+      if e.zone and e.zone ~= "" then
+        GameTooltip:AddLine(e.zone, 0.8, 0.8, 0.8)
+      end
       if e.kosType == L.KOS then
         GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
       elseif e.kosType == L.GUILD_KOS then
@@ -1208,6 +1250,17 @@ function Nearby:Create()
       Nearby:HandleSanctuaryChange()
     end)
     self._zoneEventFrame = zf
+  end
+
+
+  -- Retail-only: listen for Inspect results to learn enemy specs.
+  if IS_RETAIL and not self._inspectEventFrame then
+    local inf = CreateFrame("Frame")
+    inf:RegisterEvent("INSPECT_READY")
+    inf:SetScript("OnEvent", function(_, _, guid)
+      Nearby:_OnInspectReady(guid)
+    end)
+    self._inspectEventFrame = inf
   end
 
   local DB = GetDB()
@@ -1297,7 +1350,91 @@ function Nearby:OnListChanged(kind, keyLower)
   end
 end
 
-function Nearby:Seen(name, classFile, guild, kosType, level, guid)
+
+-- ===== Retail Inspect-based spec detection =====
+function Nearby:_EnsureInspect()
+  if self._inspectQueue then return end
+  self._inspectQueue = {}
+  self._inspectQueued = {}
+  self._inspectPending = nil
+  self._lastInspectAt = 0
+end
+
+function Nearby:_EnqueueInspect(guid, unit)
+  if not guid or not unit or unit == "" then return end
+  self:_EnsureInspect()
+
+  if self._inspectQueued[guid] or (self._inspectPending and self._inspectPending.guid == guid) then
+    return
+  end
+
+  table.insert(self._inspectQueue, { guid = guid, unit = unit })
+  self._inspectQueued[guid] = true
+  self:_ProcessInspectQueue()
+end
+
+function Nearby:_ProcessInspectQueue()
+  if not IS_RETAIL then return end
+  self:_EnsureInspect()
+  if self._inspectPending then return end
+
+  -- Basic throttle to avoid hitting inspect rate limits.
+  -- Use GetTime() when available so we can do sub-second throttling (time() is integer seconds).
+  local now = (GetTime and GetTime()) or time()
+  if self._lastInspectAt and (now - self._lastInspectAt) < 0.25 then return end
+  if InCombatLockdown and InCombatLockdown() then return end
+
+  while #self._inspectQueue > 0 do
+    local item = table.remove(self._inspectQueue, 1)
+    local guid, unit = item.guid, item.unit
+    self._inspectQueued[guid] = nil
+
+    if UnitExists and UnitExists(unit) and UnitGUID and UnitGUID(unit) == guid and CanInspect and CanInspect(unit) then
+      if NotifyInspect then
+        NotifyInspect(unit)
+        self._inspectPending = { guid = guid, unit = unit }
+        self._lastInspectAt = now
+        return
+      end
+    end
+    -- invalid/out of range; keep looping
+  end
+end
+
+function Nearby:_OnInspectReady(eventGuid)
+  if not IS_RETAIL then return end
+  if not self._inspectPending or not eventGuid then return end
+  if self._inspectPending.guid ~= eventGuid then return end
+
+  local unit = self._inspectPending.unit
+  local specName = nil
+
+  if unit and UnitExists and UnitExists(unit) and GetInspectSpecialization then
+    local specID = GetInspectSpecialization(unit)
+    if specID and specID > 0 and GetSpecializationInfoByID then
+      local _, name = GetSpecializationInfoByID(specID)
+      specName = name
+    end
+  end
+
+  -- Store on entry (if still present)
+  local key = self.guidToKey and self.guidToKey[eventGuid]
+  local entry = key and self.entries and self.entries[key]
+  if entry and specName and specName ~= "" then
+    entry.spec = specName
+    entry.lastSeen = entry.lastSeen or time()
+    self:ScheduleRefresh(true)
+  end
+
+  if ClearInspectPlayer then pcall(ClearInspectPlayer) end
+  self._inspectPending = nil
+
+  -- Continue queue
+  self:_ProcessInspectQueue()
+end
+-- =============================================
+
+function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   if not name or name == "" then return end
   if not self.frame then self:Create() end
 
@@ -1398,6 +1535,27 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid)
   e.realm = ExtractRealm(rawName) or e.realm
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
+  -- Retail-only: try to learn specialization (stored for tooltip).
+  -- Blizzard tooltips often show spec instantly because the inspect data is already cached.
+  -- So: first try reading cached spec immediately; only then queue a NotifyInspect() request.
+  if IS_RETAIL and unit and playerGuid and (not e.spec or e.spec == "") then
+    if UnitGUID and UnitGUID(unit) == playerGuid and UnitExists and UnitExists(unit) then
+      local specName
+      if GetInspectSpecialization and GetSpecializationInfoByID then
+        local specID = GetInspectSpecialization(unit)
+        if specID and specID > 0 then
+          local _, name = GetSpecializationInfoByID(specID)
+          specName = name
+        end
+      end
+      if specName and specName ~= "" then
+        e.spec = specName
+      else
+        self:_EnqueueInspect(playerGuid, unit)
+      end
+    end
+  end
+
   -- Hidden is a *state* (stealth/prowl/shadowmeld detection). Do not store it as kosType,
   -- otherwise later list-type updates (KoS/Guild) can erase it and the UI can't show both.
   if kosType == L.HIDDEN then

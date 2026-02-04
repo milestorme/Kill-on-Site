@@ -10,7 +10,7 @@ local Sync = {}
 local SYNC_COOLDOWN = 60
 local nextSyncAllowedAt = 0
 local PREFIX = "KOS2"
-local ADDON_VER = "3.1.8"
+local ADDON_VER = "3.1.9"
 
 -- Safety limits: if a peer is too far behind (or diff is huge), send a compact snapshot instead.
 local MAX_DIFF_CHANGES = 600
@@ -34,20 +34,13 @@ end
 
 local function Escape(s)
   s = s or ""
-  s = s:gsub("%%", "%%25")
-  s = s:gsub("|", "%%7C")
-  s = s:gsub("\r", "%%0D")
-  s = s:gsub("\n", "%%0A")
-  s = s:gsub("/", "%%2F")
+  s = s:gsub("|", "/")
+  s = s:gsub("\n"," ")
   return s
 end
 local function Unescape(s)
   s = s or ""
-  s = s:gsub("%%0D", "\r")
-  s = s:gsub("%%0A", "\n")
-  s = s:gsub("%%2F", "/")
-  s = s:gsub("%%7C", "|")
-  s = s:gsub("%%25", "%%")
+  s = s:gsub("/", "|")
   return s
 end
 

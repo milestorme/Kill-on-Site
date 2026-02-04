@@ -1,5 +1,11 @@
 # KillOnSight – Changelog
 
+## 3.1.9
+### Added
+- Nearby tooltip now shows class (colored) and specialization (Retail via Inspect).
+- Retail: automatic specialization detection for Nearby entries using INSPECT_READY.
+
+
 ## 3.1.8
 ### Added
 - Added Nearby Name Font dropdown to the Options panel.

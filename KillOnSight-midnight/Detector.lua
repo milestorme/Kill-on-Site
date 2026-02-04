@@ -123,7 +123,7 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
       if (not prof) or prof.stealthDetectAddToNearby ~= false then
         local Nearby = GetNearby()
         if Nearby and Nearby.Seen then
-          Nearby:Seen(name, classFile, guild, (L and L.HIDDEN) or "Hidden", nil, guid)
+          Nearby:Seen(name, classFile, guild, (L and L.HIDDEN) or "Hidden", nil, guid, unit)
         end
       end
 
@@ -451,7 +451,7 @@ function Detector:CheckUnit(unit, forceNearby)
         if fullName and realm and realm ~= "" then
           nearbyName = fullName .. "-" .. realm
         end
-        Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid)
+        Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid, unit)
       end
     end
 
