@@ -172,3 +172,4 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Заметки"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Список рядом ограничен, потому что вражеские индикаторы имен ВЫКЛЮЧЕНЫ. Включите вражеские индикаторы имен (Интерфейс > Имена) для полного обнаружения. Переключается клавишей V."
+L.TT_SPEC_LOADING = "Осмотр…"

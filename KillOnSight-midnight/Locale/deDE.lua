@@ -175,3 +175,4 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Notizen"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "In der Nähe ist eingeschränkt, weil gegnerische Namensplaketten AUS sind. Aktiviere gegnerische Namensplaketten (Interface > Namen) für volle Erkennung. Umschalten mit der Taste V."
+L.TT_SPEC_LOADING = "Untersuche…"

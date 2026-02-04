@@ -1,5 +1,16 @@
 # KillOnSight – Changelog
 
+
+## 3.2.0
+### Added
+- Nameplate scanning added for specialization inspect detection.
+- Localized "Inspecting..." tooltip loading text.
+
+### Fixed
+- Combat lockdown ADDON_ACTION_BLOCKED issues with Nearby frame.
+- Tooltip locale key showing instead of translated text.
+- Lua syntax error in NearbyFrame.lua from nameplate inspect logic.
+
 ## 3.1.9
 ### Added
 - Nearby tooltip now shows class (colored) and specialization (Retail via Inspect).

@@ -161,3 +161,4 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Notes"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby is limited because Enemy Nameplates are OFF. Enable Enemy Nameplates (Interface > Names) for full detection. You can toggle them with the V key."
+L.TT_SPEC_LOADING = "Inspecting..."

@@ -172,3 +172,4 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Notas"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "O modo Próximos é limitado porque as Placas de Nome inimigas estão DESLIGADAS. Ative as Placas de Nome inimigas (Interface > Nomes) para detecção completa. Você pode alternar com a tecla V."
+L.TT_SPEC_LOADING = "Inspecionando…"

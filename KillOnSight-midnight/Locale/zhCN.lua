@@ -172,3 +172,4 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "备注"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近检测受限，因为敌方姓名版已关闭。请在“界面 > 名称”中启用敌方姓名版以获得完整检测。可按 V 键切换。"
+L.TT_SPEC_LOADING = "检查中…"

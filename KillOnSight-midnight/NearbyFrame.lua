@@ -272,6 +272,62 @@ local INACTIVE_TTL = 30 -- seconds: keep dimmed before removing
 
 local SafeSetShown
 
+function Nearby:_ShowEntryTooltip(selfBtn, e)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
+
+  -- Name
+  GameTooltip:AddLine(e.name)
+
+  -- Level
+  if e.level then
+    GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1, 1, 1)
+  end
+
+  -- Class (colored)
+  if e.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class] then
+    local c = RAID_CLASS_COLORS[e.class]
+    local className =
+      (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[e.class]) or
+      (LOCALIZED_CLASS_NAMES_FEMALE and LOCALIZED_CLASS_NAMES_FEMALE[e.class]) or
+      e.class
+    GameTooltip:AddLine(className, c.r, c.g, c.b)
+  end
+
+  -- Spec (Retail inspect; present when known)
+  if e.spec and e.spec ~= "" then
+    GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
+  elseif IS_RETAIL and e.guid then
+    -- If we have a GUID but no spec yet, show a placeholder; tooltip will refresh when INSPECT_READY fires.
+    GameTooltip:AddLine(L.TT_SPEC_LOADING or "Inspecting...", 0.7, 0.7, 0.7)
+  end
+
+  -- Guild
+  if e.guild and e.guild ~= "" then
+    GameTooltip:AddLine(e.guild, 0.8, 0.8, 0.8)
+  end
+
+  -- Realm
+  if e.realm and e.realm ~= "" then
+    GameTooltip:AddLine("Realm: " .. e.realm, 0.8, 0.8, 0.8)
+  end
+
+  -- Zone
+  if e.zone and e.zone ~= "" then
+    GameTooltip:AddLine(e.zone, 0.8, 0.8, 0.8)
+  end
+
+  if e.kosType == L.KOS then
+    GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
+  elseif e.kosType == L.GUILD_KOS then
+    GameTooltip:AddLine(L.TT_GUILD_KOS, 1,0.8,0.2)
+  elseif (e.isHidden == true) or (e.kosType == L.HIDDEN) then
+    GameTooltip:AddLine("[" .. (L.HIDDEN or "Hidden") .. "]", 0.7,0.7,0.7)
+  end
+
+  GameTooltip:Show()
+end
+
 -- Layout refresh helper (Retail/BG safe): attempt immediately; never wait for PLAYER_REGEN_ENABLED.
 function Nearby:QueueLayout()
   self._pendingLayout = nil
@@ -1159,57 +1215,46 @@ function Nearby:Create()
       selfBtn.bg:Show()
       local e = selfBtn.entry
       if not e then return end
-      GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
 
-      -- Name
-      GameTooltip:AddLine(e.name)
+      -- Track which entry is currently shown so we can live-refresh when inspect data arrives.
+      self._tooltipOwner = selfBtn
+      self._tooltipGuid = e.guid
 
-      -- Level
-      if e.level then
-        GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1, 1, 1)
+      -- If spec is not known yet, try to request inspect for the unit currently under mouse/target/focus.
+      if IS_RETAIL and (not e.spec or e.spec == "") and e.guid and not InCombatLockdown() then
+        local unit = nil
+        if UnitGUID then
+          if UnitExists and UnitExists("mouseover") and UnitGUID("mouseover") == e.guid then unit = "mouseover"
+          elseif UnitExists and UnitExists("target") and UnitGUID("target") == e.guid then unit = "target"
+          elseif UnitExists and UnitExists("focus") and UnitGUID("focus") == e.guid then unit = "focus"
+          end
+        end
+
+        -- If not directly mouseover/target/focus, try nameplate units so spec can be fetched even when the player
+        -- isn't currently targeted. (Retail only; harmless elsewhere.)
+        if not unit and UnitExists and UnitGUID then
+          for i = 1, 40 do
+            local u = "nameplate" .. i
+            if UnitExists(u) and UnitGUID(u) == e.guid then
+              unit = u
+              break
+            end
+          end
+        end
+        if unit and CanInspect and CanInspect(unit) then
+          self:_EnqueueInspect(e.guid, unit)
+        end
       end
 
-      -- Class (colored)
-      if e.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class] then
-        local c = RAID_CLASS_COLORS[e.class]
-        local className =
-          (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[e.class]) or
-          (LOCALIZED_CLASS_NAMES_FEMALE and LOCALIZED_CLASS_NAMES_FEMALE[e.class]) or
-          e.class
-        GameTooltip:AddLine(className, c.r, c.g, c.b)
-      end
-
-      -- Spec (Retail inspect; present when known)
-      if e.spec and e.spec ~= "" then
-        GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
-      end
-
-      -- Guild
-      if e.guild and e.guild ~= "" then
-        GameTooltip:AddLine(e.guild, 0.8, 0.8, 0.8)
-      end
-
-      -- Realm
-      if e.realm and e.realm ~= "" then
-        GameTooltip:AddLine("Realm: " .. e.realm, 0.8, 0.8, 0.8)
-      end
-
-      -- Zone
-      if e.zone and e.zone ~= "" then
-        GameTooltip:AddLine(e.zone, 0.8, 0.8, 0.8)
-      end
-      if e.kosType == L.KOS then
-        GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
-      elseif e.kosType == L.GUILD_KOS then
-        GameTooltip:AddLine(L.TT_GUILD_KOS, 1,0.8,0.2)
-      elseif (e.isHidden == true) or (e.kosType == L.HIDDEN) then
-        GameTooltip:AddLine("[" .. (L.HIDDEN or "Hidden") .. "]", 0.7,0.7,0.7)
-      end
-      GameTooltip:Show()
+      self:_ShowEntryTooltip(selfBtn, e)
     end)
     b:SetScript("OnLeave", function(selfBtn)
       selfBtn.bg:Hide()
       GameTooltip:Hide()
+      if self._tooltipOwner == selfBtn then
+        self._tooltipOwner = nil
+        self._tooltipGuid = nil
+      end
       if self.frame and MouseIsOver and not MouseIsOver(self.frame) then
         self:SetHoverFreeze(false)
       end
@@ -1424,6 +1469,10 @@ function Nearby:_OnInspectReady(eventGuid)
     entry.spec = specName
     entry.lastSeen = entry.lastSeen or time()
     self:ScheduleRefresh(true)
+    -- If the tooltip for this entry is currently open, rebuild it immediately so spec appears right away.
+    if self._tooltipGuid == eventGuid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+      self:_ShowEntryTooltip(self._tooltipOwner, entry)
+    end
   end
 
   if ClearInspectPlayer then pcall(ClearInspectPlayer) end
