@@ -30,6 +30,31 @@ local STEALTH_AURA_SPELLIDS = {
 local stealthStateByGUID = {} -- guid -> true (stealthed)
 local lastStealthNotifyAt = {} -- nameLower -> time
 local visibleStateByGUID = {} -- guid -> true (visible)
+local stealthLastSeenByGUID = {} -- guid -> last seen timestamp
+
+local STEALTH_STATE_TTL = 120
+local STEALTH_NOTIFY_TTL = 120
+local STEALTH_CLEANUP_INTERVAL = 30
+local lastStealthCleanupAt = 0
+
+local function CleanupStealthState(now)
+  if (now - lastStealthCleanupAt) < STEALTH_CLEANUP_INTERVAL then return end
+  lastStealthCleanupAt = now
+
+  for guid, lastSeen in pairs(stealthLastSeenByGUID) do
+    if (now - (lastSeen or 0)) > STEALTH_STATE_TTL then
+      stealthLastSeenByGUID[guid] = nil
+      stealthStateByGUID[guid] = nil
+      visibleStateByGUID[guid] = nil
+    end
+  end
+
+  for nameLower, lastAt in pairs(lastStealthNotifyAt) do
+    if (now - (lastAt or 0)) > STEALTH_NOTIFY_TTL then
+      lastStealthNotifyAt[nameLower] = nil
+    end
+  end
+end
 
 local function ShouldNotifyStealth(nameLower)
   local now = Now()
@@ -86,6 +111,10 @@ end
 local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
   if not IS_RETAIL then return end
   if not guid or not name or name == "" then return end
+
+  local now = Now()
+  stealthLastSeenByGUID[guid] = now
+  CleanupStealthState(now)
 
   local DB = GetDB()
   local Notifier = GetNotifier()
@@ -237,6 +266,10 @@ function Detector:OnNameplateRemoved(unit)
 
   local okG, guid = pcall(UnitGUID, unit)
   if not okG or not guid then return end
+
+  local now = Now()
+  stealthLastSeenByGUID[guid] = now
+  CleanupStealthState(now)
 
   local okN, name = pcall(UnitName, unit)
   if not okN or name == nil then return end

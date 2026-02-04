@@ -1,6 +1,13 @@
 # KillOnSight – Changelog
 
 
+## 3.2.3
+### Changed
+- Core: consolidated GUI refresh debouncing to allow immediate and deferred updates without clobbering each other.
+- Detector: added TTL cleanup for stealth/visibility state tables to prevent long-session buildup.
+- Sync: switched to addon metadata version and safer percent-encoding for payload values.
+- Minimap/Notifier: removed duplicate dropdown helper and unused anti-spam stub.
+
 ## 3.2.2
 ### Added
 - Retail: pre-warm specialization inspect cache for new Nearby entries using a lightweight throttled queue.
