@@ -23,21 +23,6 @@ local function ShowDropdown(menuTable)
   ToggleDropDownMenu(1, nil, f, "cursor", 0, 0)
 end
 
-local function ShowDropdown(menuTable)
-  if not Minimap._menuFrame then
-    Minimap._menuFrame = CreateFrame("Frame", "KillOnSight_MinimapMenu", UIParent, "UIDropDownMenuTemplate")
-  end
-  local f = Minimap._menuFrame
-  UIDropDownMenu_Initialize(f, function(self, level)
-    for _,item in ipairs(menuTable) do
-      local info = UIDropDownMenu_CreateInfo()
-      for k,v in pairs(item) do info[k] = v end
-      UIDropDownMenu_AddButton(info, level)
-    end
-  end, "MENU")
-  ToggleDropDownMenu(1, nil, f, "cursor", 0, 0)
-end
-
 local dataobj = LDB:NewDataObject("Kill on Sight", {
   type = "data source",
   text = L.UI_TITLE,

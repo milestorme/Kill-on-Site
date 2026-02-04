@@ -17,20 +17,6 @@ end
 
 
 
--- Additional anti-spam for KoS / Guild alerts across all detection sources (detector + combat log).
--- This prevents duplicate warnings when multiple systems detect the same player close together.
-Notifier._lastKosAlertAt = Notifier._lastKosAlertAt or {}
-
-local function ShouldAlertOnce(key, cooldownSeconds)
-  local now = GetTime()
-  local last = Notifier._lastKosAlertAt[key]
-  if last and (now - last) < cooldownSeconds then
-    return false
-  end
-  Notifier._lastKosAlertAt[key] = now
-  return true
-end
-
 -- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
 local function IsInGoblinTown()
   local sub = (GetSubZoneText and GetSubZoneText()) or ""

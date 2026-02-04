@@ -107,18 +107,30 @@ local function GetMidnightStats() return _G.KillOnSight_MidnightStats end
 local LocaleSanityCheck -- forward
 
 -- Debounced GUI refresh (safe to call from anywhere)
-local _guiRefreshQueued = false
-local function _ScheduleGUIRefresh()
-  if _guiRefreshQueued then return end
-  _guiRefreshQueued = true
-  C_Timer.After(0, function()
-    _guiRefreshQueued = false
-    if KillOnSight and KillOnSight.GUI and KillOnSight.GUI.RefreshAll then
-      pcall(KillOnSight.GUI.RefreshAll)
-    elseif KillOnSight and KillOnSight.RefreshGUI then
-      pcall(KillOnSight.RefreshGUI)
-    end
-  end)
+local _guiRefreshQueued = {}
+local function _DoGUIRefresh()
+  local gui = (KillOnSight and KillOnSight.GUI) or GetGUI()
+  if gui and gui.RefreshAll then
+    pcall(function() gui:RefreshAll() end)
+  elseif KillOnSight and KillOnSight.RefreshGUI then
+    pcall(KillOnSight.RefreshGUI)
+  end
+end
+
+local function _ScheduleGUIRefresh(delay, key)
+  local bucket = key or "default"
+  if _guiRefreshQueued[bucket] then return end
+  _guiRefreshQueued[bucket] = true
+  local wait = tonumber(delay) or 0
+  if C_Timer and C_Timer.After then
+    C_Timer.After(wait, function()
+      _guiRefreshQueued[bucket] = nil
+      _DoGUIRefresh()
+    end)
+  else
+    _guiRefreshQueued[bucket] = nil
+    _DoGUIRefresh()
+  end
 end
 
 -- Compatibility wrappers: Encounter tracking lives in Midnight_Stats.lua
@@ -137,7 +149,7 @@ function Core:ResolveEncounter(guid)
 end
 
 function Core:_ScheduleGUIRefresh()
-  _ScheduleGUIRefresh()
+  _ScheduleGUIRefresh(0, "immediate")
 end
 
 
@@ -433,25 +445,8 @@ local function SetCachedGuild(guid, guild, now)
 end
 
 -- Debounced GUI refresh (used by deferred guild resolution)
-local _pendingGUIRefresh = false
-local function _ScheduleGUIRefresh()
-  if _pendingGUIRefresh then return end
-  _pendingGUIRefresh = true
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0.2, function()
-      _pendingGUIRefresh = false
-      local GUI = GetGUI()
-      if GUI and GUI.RefreshAll then
-        GUI:RefreshAll()
-      end
-    end)
-  else
-    _pendingGUIRefresh = false
-    local GUI = GetGUI()
-    if GUI and GUI.RefreshAll then
-      GUI:RefreshAll()
-    end
-  end
+local function _ScheduleGUIRefreshDeferred()
+  _ScheduleGUIRefresh(0.2, "deferred")
 end
 
 
@@ -555,7 +550,7 @@ local function ResolvePendingGuilds()
   end
 
   if changed then
-    _ScheduleGUIRefresh()
+    _ScheduleGUIRefreshDeferred()
   end
 end
 
