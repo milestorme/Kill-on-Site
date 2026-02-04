@@ -68,6 +68,9 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimal nearby window"
 L.UI_NEARBY_ROWFADE = "Per-row fade timers"
 L.UI_NEARBY_ROWICONS = "Row icons (class/skull)"
 L.UI_NEARBY_SCALE = "Nearby window scale"
+L.UI_NEARBY_NAME_FONT = "Nearby name font"
+L.UI_NEARBY_NAME_SIZE = "Nearby name size"
+
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Options"

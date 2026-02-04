@@ -2,13 +2,15 @@
 ## Title: Kill on Sight
 ## Notes: Kill on Sight notifier and tracking addon (Titan Reforged 3.80.0)
 ## Author: Milestorme
-## Version: 3.1.3
+## Version: 3.1.4
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
+## OptionalDeps: LibSharedMedia-3.0
 ## X-Localizations: enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
 
 Libs/LibStub/LibStub.lua
+Libs/LibSharedMedia-3.0/lib.xml
 Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua
 Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua

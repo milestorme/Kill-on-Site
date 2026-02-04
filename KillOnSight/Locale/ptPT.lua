@@ -68,6 +68,9 @@ L.UI_NEARBY_MINIMAL = "Janela 'por perto' ultra-minimal"
 L.UI_NEARBY_ROWFADE = "Temporizadores de esbatimento por linha"
 L.UI_NEARBY_ROWICONS = "Ícones por linha (classe/caveira)"
 L.UI_NEARBY_SCALE = "Escala da janela 'por perto'"
+L.UI_NEARBY_NAME_FONT = "Tipo de letra dos nomes próximos"
+L.UI_NEARBY_NAME_SIZE = "Tamanho do tipo de letra dos nomes próximos"
+
 L.UI_OPTIONS = "Opções"
 
 L.UI_OPTIONS_TITLE = "Opções"

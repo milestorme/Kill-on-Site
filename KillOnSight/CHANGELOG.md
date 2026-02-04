@@ -1,5 +1,15 @@
 # KillOnSight – Changelog
 
+## 3.1.4
+### Added
+- Added Nearby Name Font dropdown to the Options panel.
+- Added Nearby Name Size slider to adjust player name text in the Nearby list.
+	- Embedded LibSharedMedia-3.0 for expanded font support and automatic font detection.
+- Added full localisation for:
+	- Nearby name font
+	- Nearby name size
+	- across all supported game locales.
+
 ## 3.1.3
 ### Fixed
 - Nearby list context menu now uses Blizzard dropdown initialization to avoid missing `EasyMenu` at runtime.

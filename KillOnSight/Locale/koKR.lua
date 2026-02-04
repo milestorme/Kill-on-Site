@@ -66,6 +66,9 @@ L.UI_NEARBY_MINIMAL = "초미니 근처 창"
 L.UI_NEARBY_ROWFADE = "행별 페이드 타이머"
 L.UI_NEARBY_ROWICONS = "행 아이콘 (직업/해골)"
 L.UI_NEARBY_SCALE = "근처 창 크기"
+L.UI_NEARBY_NAME_FONT = "근처 이름 글꼴"
+L.UI_NEARBY_NAME_SIZE = "근처 이름 크기"
+
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "옵션"

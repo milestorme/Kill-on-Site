@@ -82,6 +82,237 @@ local Nearby = {
   orderCounter = 0,
 }
 
+local NEARBY_NAME_FONTS = {
+  ["Morpheus"]      = "Fonts\\MORPHEUS.TTF",
+  ["Skurri"]        = "Fonts\\SKURRI.TTF",
+}
+
+-- Fonts that should not appear in the dropdown (either unreliable or not desired).
+-- Note: this is about *dropdown entries* (labels), not files on disk.
+local function IsBlockedNearbyFont(name)
+  if not name or name == "" then return true end
+  -- Explicit removals requested.
+  local lower = string.lower(tostring(name))
+  if lower == "system" then return true end
+  if lower == "tooltip" then return true end
+  if lower == "highlight" then return true end
+  if lower == "friz quadrata" then return true end
+  if lower == "arial narrow" then return true end
+  if lower == "2002" then return true end
+  if lower == "2002 bold" then return true end
+
+  -- Remove the AR* fonts (e.g. "AR ...")
+  -- Keep this tight so we don't accidentally hide unrelated fonts.
+  if string.match(name, "^AR%s") then return true end
+
+  return false
+end
+
+-- Build a richer font list when possible:
+-- 1) Include a handful of common UI font objects (when present).
+-- 2) If LibSharedMedia-3.0 is installed, include its registered fonts.
+local function BuildNearbyNameFontMap(self)
+-- Re-apply when LibSharedMedia registers fonts (prevents "font not loaded yet" edge cases)
+if not self._lsmCallbackRegistered and LSM and LSM.RegisterCallback then
+  self._lsmCallbackRegistered = true
+  pcall(function()
+    LSM:RegisterCallback(self, "LibSharedMedia_Registered", function()
+      if Nearby and Nearby.ApplyNameFont then Nearby:ApplyNameFont(true) end
+    end)
+  end)
+end
+
+  if self._nearbyNameFontMap and self._nearbyNameFontChoices then
+    -- Font packs can register fonts after login. If LibSharedMedia is present, we
+    -- keep the cache but also listen for new registrations and invalidate.
+    return
+  end
+
+  local map = {}
+  local choices = { "Default" }
+
+  -- Built-in file fonts (always available on supported clients).
+  for label, path in pairs(NEARBY_NAME_FONTS) do
+    if not IsBlockedNearbyFont(label) then
+      map[label] = path
+      choices[#choices+1] = label
+    end
+  end
+
+  -- Common UI font objects (may vary by client).
+  local fontObjects = {
+    { "Chat",            _G.ChatFontNormal },
+    { "Quest Title",     _G.QuestTitleFont },
+    { "Number",          _G.NumberFontNormal },
+    { "Huge Number",     _G.NumberFontNormalHuge },
+  }
+  for _, item in ipairs(fontObjects) do
+    local label, fo = item[1], item[2]
+    if fo and fo.GetFont then
+      local p = select(1, fo:GetFont())
+      if p and p ~= "" and not map[label] and not IsBlockedNearbyFont(label) then
+        map[label] = p
+        choices[#choices+1] = label
+      end
+    end
+  end
+
+  -- LibSharedMedia fonts (if present). This is the easiest way for users to get lots of fonts
+  -- without us shipping any assets.
+  local lsm
+  if _G.LibStub then
+    lsm = _G.LibStub("LibSharedMedia-3.0", true)
+  end
+  if lsm and lsm.List and lsm.Fetch then
+    -- Invalidate cached lists when new fonts are registered (font packs often load later).
+    if lsm.RegisterCallback and not self._lsmFontCallbackRegistered then
+      self._lsmFontCallbackRegistered = true
+      pcall(function()
+        lsm:RegisterCallback(self, "LibSharedMedia_Registered", function(_, mediaType)
+          if mediaType == "font" then
+            self._nearbyNameFontMap = nil
+            self._nearbyNameFontChoices = nil
+          end
+        end)
+      end)
+    end
+
+    local ok, list = pcall(function() return lsm:List("font") end)
+    if ok and type(list) == "table" then
+      table.sort(list)
+      for _, name in ipairs(list) do
+        if name and name ~= "" and name ~= "Default" and not map[name] and not IsBlockedNearbyFont(name) then
+          local p
+          pcall(function() p = lsm:Fetch("font", name) end)
+          if p and p ~= "" then
+            map[name] = p
+            choices[#choices+1] = name
+          end
+        end
+      end
+    end
+  end
+
+  -- Keep dropdown deterministic.
+  -- Sort everything after "Default" alphabetically.
+  local rest = {}
+  for i = 2, #choices do rest[#rest+1] = choices[i] end
+  table.sort(rest)
+  choices = { "Default" }
+  for _, v in ipairs(rest) do choices[#choices+1] = v end
+
+  self._nearbyNameFontMap = map
+  self._nearbyNameFontChoices = choices
+end
+
+function Nearby:GetNameFontChoices()
+  BuildNearbyNameFontMap(self)
+  return self._nearbyNameFontChoices or { "Default" }
+end
+
+function Nearby:ApplyNameFont(silent)
+  BuildNearbyNameFontMap(self)
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile()
+  local choice = (prof and prof.nearbyNameFont) or "Default"
+  local sizeChoice = (prof and prof.nearbyNameFontSize)
+  if type(sizeChoice) ~= "number" then sizeChoice = nil end
+
+  -- Resolve desired font path
+  local path = (self._nearbyNameFontMap and self._nearbyNameFontMap[choice]) or NEARBY_NAME_FONTS[choice]
+  local defPath, defSize, defFlags
+  if GameFontHighlight and GameFontHighlight.GetFont then
+    defPath, defSize, defFlags = GameFontHighlight:GetFont()
+  end
+
+  if not self.rows then return end
+
+  -- Use the first row to pick reasonable defaults for size/flags
+  local anyRow = self.rows[1]
+  local curPath, curSize, curFlags
+  if anyRow and anyRow.text and anyRow.text.GetFont then
+    curPath, curSize, curFlags = anyRow.text:GetFont()
+  end
+
+  local size = sizeChoice or curSize or defSize or 12
+  local flags = curFlags or defFlags
+
+  local wantedPath
+  if choice ~= "Default" and path and path ~= "" then
+    wantedPath = path
+  else
+    wantedPath = defPath or curPath
+  end
+  if not wantedPath or wantedPath == "" then return end
+
+  -- Track failures/retries per font choice
+  self._badFontsWarned = self._badFontsWarned or {}
+  self._fontApplyRetry = self._fontApplyRetry or {}
+
+  local anyApplied = false
+  local anyFailed = false
+
+  -- Apply safely: if SetFont fails for a row, immediately restore its previous font.
+  for _, row in ipairs(self.rows) do
+    if row and row.text and row.text.SetFont and row.text.GetFont then
+      local prevPath, prevSize, prevFlags = row.text:GetFont()
+      local ok = false
+      pcall(function() ok = row.text:SetFont(wantedPath, size, flags) end)
+
+      if ok then
+        anyApplied = true
+        -- Force an immediate redraw (avoids "blank until next SetText" quirks)
+        if row.text.GetText and row.text.SetText then
+          local t = row.text:GetText()
+          if t ~= nil then row.text:SetText(t) end
+        end
+      else
+        anyFailed = true
+        pcall(function()
+          if prevPath and prevPath ~= "" then
+            row.text:SetFont(prevPath, prevSize or size, prevFlags)
+          end
+        end)
+      end
+    end
+  end
+
+  -- If nothing applied, we likely hit an LSM timing race. Retry a few times quickly.
+  if (not anyApplied or anyFailed) and choice ~= "Default" and C_Timer and C_Timer.After then
+    local retries = self._fontApplyRetry[choice] or 0
+    if retries < 5 then
+      self._fontApplyRetry[choice] = retries + 1
+      local delay = 0.10 * (retries + 1) -- 0.10s, 0.20s, ... up to 0.60s
+      C_Timer.After(delay, function()
+        if Nearby and Nearby.ApplyNameFont then
+          Nearby:ApplyNameFont(true)
+        end
+      end)
+      return
+    end
+  end
+
+  -- Final failure warning (once per font), then fall back silently to Default on next open
+  if not anyApplied and choice ~= "Default" then
+    if not silent and not self._badFontsWarned[choice] then
+      self._badFontsWarned[choice] = true
+      if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+        DEFAULT_CHAT_FRAME:AddMessage("KillOnSight: Font '" .. choice .. "' could not be loaded. Falling back to Default.")
+      end
+    end
+  end
+
+  -- Success: clear retry counter
+  if choice ~= "Default" then
+    self._fontApplyRetry[choice] = 0
+  end
+end
+
+
+
+
+
+
 -- Spy-like retention: keep players ACTIVE for this long, then INACTIVE (dimmed) before removal.
 local ACTIVE_TTL = 30   -- seconds: considered 'nearby'
 local INACTIVE_TTL = 30 -- seconds: keep dimmed before removing

@@ -92,9 +92,38 @@ function Detector:CheckUnit(unit)
 
 
 
-  local guid = UnitGUID(unit)
+  
+local guid = UnitGUID(unit)
 local name = GetUnitNameSafe(unit)
-if not name then return end
+
+-- Sometimes (especially right on PLAYER_TARGET_CHANGED) the client hasn't populated unit name yet.
+-- Defer a few short retries so targeted enemy players land in Nearby immediately once data arrives.
+if not guid or not name then
+  if (unit == "target" or unit == "mouseover") and C_Timer and C_Timer.After then
+    self._deferUnitChecks = self._deferUnitChecks or {}
+    local now = (GetTime and GetTime()) or 0
+    local d = self._deferUnitChecks[unit]
+    if not d or (now - (d.t or 0)) > 1 then
+      d = { n = 0, t = now }
+    end
+    if d.n < 10 then
+      d.n = d.n + 1
+      d.t = now
+      self._deferUnitChecks[unit] = d
+      C_Timer.After(0.05, function()
+        if Detector and Detector.CheckUnit and UnitExists(unit) then
+          Detector:CheckUnit(unit)
+        end
+      end)
+    end
+  end
+  return
+end
+
+-- reset retry counter once we have data
+if self._deferUnitChecks and self._deferUnitChecks[unit] then
+  self._deferUnitChecks[unit] = nil
+end
 
 
   local classFile = UnitIsPlayer(unit) and select(2, UnitClass(unit)) or nil

@@ -68,6 +68,9 @@ L.UI_NEARBY_MINIMAL = "超精簡附近視窗"
 L.UI_NEARBY_ROWFADE = "每列淡出計時"
 L.UI_NEARBY_ROWICONS = "列圖示 (職業/骷髏)"
 L.UI_NEARBY_SCALE = "附近視窗縮放"
+L.UI_NEARBY_NAME_FONT = "附近名字字體"
+L.UI_NEARBY_NAME_SIZE = "附近名字字號"
+
 L.UI_OPTIONS = "選項"
 
 L.UI_OPTIONS_TITLE = "選項"

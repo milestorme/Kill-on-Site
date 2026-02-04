@@ -1507,19 +1507,14 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       opt:SetWidth(vw)
     end
 
-    -- Measure the lowest bottom across children/regions and fit the scroll child to it.
+    -- Measure the lowest bottom across *children* and fit the scroll child to it.
+    -- (Avoid scanning regions: some templates create regions at 0,0 which can make the
+    -- scroll range huge even when there is nothing to scroll.)
     local top = opt:GetTop() or optScroll:GetTop()
     local minBottom = nil
 
     for _,child in ipairs({ opt:GetChildren() }) do
       local b = child and child.GetBottom and child:GetBottom() or nil
-      if b and (not minBottom or b < minBottom) then
-        minBottom = b
-      end
-    end
-
-    for _,region in ipairs({ opt:GetRegions() }) do
-      local b = region and region.GetBottom and region:GetBottom() or nil
       if b and (not minBottom or b < minBottom) then
         minBottom = b
       end
@@ -1671,6 +1666,75 @@ sNearbyScale:SetScript("OnValueChanged", function(self, val)
   _G[self:GetName().."Text"]:SetText(string.format("%s (%.2f)", L.UI_NEARBY_SCALE, val))
 end)
 
+-- Nearby name font
+local fontLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+fontLabel:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -18)
+fontLabel:SetText(L.UI_NEARBY_NAME_FONT or "Nearby name font")
+
+local fontChoices
+if KillOnSight_Nearby and KillOnSight_Nearby.GetNameFontChoices then
+  fontChoices = KillOnSight_Nearby:GetNameFontChoices()
+end
+if type(fontChoices) ~= "table" or #fontChoices == 0 then
+  fontChoices = { "Default", "Morpheus", "Skurri" }
+end
+
+local ddNearbyFont = CreateDropdown(opt, fontChoices)
+UIDropDownMenu_SetWidth(ddNearbyFont, 140)
+ddNearbyFont:SetPoint("TOPLEFT", fontLabel, "BOTTOMLEFT", -16, -2)
+
+-- Initialize from profile
+prof.nearbyNameFont = prof.nearbyNameFont or "Default"
+-- If the saved font is no longer offered (filtered out), fall back to Default.
+do
+  local ok = false
+  for _, v in ipairs(fontChoices) do
+    if v == prof.nearbyNameFont then ok = true break end
+  end
+  if not ok then prof.nearbyNameFont = "Default" end
+end
+ddNearbyFont.selected = prof.nearbyNameFont
+UIDropDownMenu_SetText(ddNearbyFont, ddNearbyFont.selected)
+
+hooksecurefunc("UIDropDownMenu_SetText", function(dd, txt)
+  if dd ~= ddNearbyFont then return end
+  prof.nearbyNameFont = ddNearbyFont.selected or "Default"
+  if KillOnSight_Nearby and KillOnSight_Nearby.ApplyNameFont then
+    KillOnSight_Nearby:ApplyNameFont()
+  end
+end)
+
+-- Nearby name font size
+local sizeLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+sizeLabel:SetPoint("TOPLEFT", ddNearbyFont, "BOTTOMLEFT", 16, -14)
+sizeLabel:SetText(L.UI_NEARBY_NAME_SIZE or "Nearby name size")
+
+local sizeValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+sizeValue:SetPoint("LEFT", sizeLabel, "RIGHT", 8, 0)
+
+local sNearbyNameSize = CreateFrame("Slider", "KillOnSightNearbyNameSizeSlider", opt, "OptionsSliderTemplate")
+sNearbyNameSize:SetPoint("TOPLEFT", sizeLabel, "BOTTOMLEFT", 0, -6)
+sNearbyNameSize:SetMinMaxValues(8, 20)
+sNearbyNameSize:SetValueStep(1)
+sNearbyNameSize:SetObeyStepOnDrag(true)
+_G[sNearbyNameSize:GetName().."Low"]:SetText("8")
+_G[sNearbyNameSize:GetName().."High"]:SetText("20")
+
+if type(prof.nearbyNameFontSize) ~= "number" then prof.nearbyNameFontSize = 12 end
+sNearbyNameSize:SetValue(prof.nearbyNameFontSize)
+sizeValue:SetText(tostring(prof.nearbyNameFontSize))
+_G[sNearbyNameSize:GetName().."Text"]:SetText("")
+
+sNearbyNameSize:SetScript("OnValueChanged", function(self, val)
+  val = math.floor(val + 0.5)
+  prof.nearbyNameFontSize = val
+  sizeValue:SetText(tostring(val))
+  _G[self:GetName().."Text"]:SetText("")
+  if KillOnSight_Nearby and KillOnSight_Nearby.ApplyNameFont then
+    KillOnSight_Nearby:ApplyNameFont()
+  end
+end)
+
 
 -- Nearby window is always ultra-minimal (no toggle)
 prof.nearbyMinimal = true
@@ -1679,7 +1743,7 @@ if KillOnSight_Nearby and KillOnSight_Nearby.ApplyMinimalMode then
 end
 
   local sync2 = MakeButton(opt, L.UI_SYNC, 120, 22)
-  sync2:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -26)
+  sync2:SetPoint("TOPLEFT", sNearbyNameSize, "BOTTOMLEFT", 0, -26)
   sync2:SetScript("OnClick", function()
     KillOnSight_Sync:Hello()
     KillOnSight_Sync:RequestDiff()
