@@ -66,6 +66,8 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimales Nah-Fenster"
 L.UI_NEARBY_ROWFADE = "Pro-Zeile Ausblend-Timer"
 L.UI_NEARBY_ROWICONS = "Zeilensymbole (Klasse/Totenkopf)"
 L.UI_NEARBY_SCALE = "Skalierung des Nah-Fensters"
+L.UI_NEARBY_NAME_FONT = "Schriftart der Namen in der Nähe"
+L.UI_NEARBY_NAME_SIZE = "Schriftgröße der Namen in der Nähe"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Optionen"

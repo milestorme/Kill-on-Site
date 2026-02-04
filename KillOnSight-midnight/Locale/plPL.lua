@@ -68,6 +68,8 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimalne okno"
 L.UI_NEARBY_ROWFADE = "Zanikanie wierszy"
 L.UI_NEARBY_ROWICONS = "Ikony wierszy (klasa/czaszka)"
 L.UI_NEARBY_SCALE = "Skala okna"
+L.UI_NEARBY_NAME_FONT = "Czcionka nazw w pobliżu"
+L.UI_NEARBY_NAME_SIZE = "Rozmiar czcionki nazw w pobliżu"
 L.UI_OPTIONS = "Opcje"
 
 L.UI_OPTIONS_TITLE = "Opcje"

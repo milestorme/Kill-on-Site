@@ -1,5 +1,15 @@
 # KillOnSight – Changelog
 
+## 3.1.8
+### Added
+- Added Nearby Name Font dropdown to the Options panel.
+- Added Nearby Name Size slider to adjust player name text in the Nearby list.
+	- Embedded LibSharedMedia-3.0 for expanded font support and automatic font detection.
+- Added full localisation for:
+	- Nearby name font
+	- Nearby name size
+	- across all supported game locales.
+
 ## 3.1.7
 ### Fixed
 - Retail: ensure open-world win/loss stats credit when tracking targets or mouseover enemies.

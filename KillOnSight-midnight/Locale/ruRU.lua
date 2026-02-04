@@ -66,6 +66,8 @@ L.UI_NEARBY_MINIMAL = "Ультра-минималистичное окно ря
 L.UI_NEARBY_ROWFADE = "Таймеры затухания по строкам"
 L.UI_NEARBY_ROWICONS = "Иконки строки (класс/череп)"
 L.UI_NEARBY_SCALE = "Масштаб окна рядом"
+L.UI_NEARBY_NAME_FONT = "Шрифт имён рядом"
+L.UI_NEARBY_NAME_SIZE = "Размер шрифта имён рядом"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Настройки"

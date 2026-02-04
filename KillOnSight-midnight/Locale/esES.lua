@@ -66,6 +66,8 @@ L.UI_NEARBY_MINIMAL = "Ventana de cercanos ultra minimal"
 L.UI_NEARBY_ROWFADE = "Temporizadores de desvanecer por fila"
 L.UI_NEARBY_ROWICONS = "Iconos por fila (clase/calavera)"
 L.UI_NEARBY_SCALE = "Escala de la ventana de cercanos"
+L.UI_NEARBY_NAME_FONT = "Fuente de nombres cercanos"
+L.UI_NEARBY_NAME_SIZE = "Tamaño de fuente de nombres cercanos"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Opciones"

@@ -68,6 +68,8 @@ L.UI_NEARBY_MINIMAL = "Finestra vicinanze ultra-minimale"
 L.UI_NEARBY_ROWFADE = "Timer dissolvenza per riga"
 L.UI_NEARBY_ROWICONS = "Icone riga (classe/teschio)"
 L.UI_NEARBY_SCALE = "Scala finestra vicinanze"
+L.UI_NEARBY_NAME_FONT = "Carattere dei nomi vicini"
+L.UI_NEARBY_NAME_SIZE = "Dimensione carattere dei nomi vicini"
 L.UI_OPTIONS = "Opzioni"
 
 L.UI_OPTIONS_TITLE = "Opzioni"

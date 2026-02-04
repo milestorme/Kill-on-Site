@@ -2,14 +2,16 @@
 ## Title: Kill on Sight: Midnight
 ## Notes: Retail-only Midnight fork (BG/WPVP focused)
 ## Author: Milestorme
-## Version: 3.1.7
+## Version: 3.1.8
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
+## OptionalDeps: LibSharedMedia-3.0
 ## X-Localizations: enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
 
 Libs/LibStub/LibStub.lua
 Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
+Libs/LibSharedMedia-3.0/lib.xml
 Libs/AceLocale-3.0/AceLocale-3.0.lua
 Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua
 Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua

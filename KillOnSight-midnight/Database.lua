@@ -70,6 +70,9 @@ local DEFAULTS = {
     -- Nearby window is always ultra-minimal (no toggle)
     nearbyMinimal = true,
     nearbyRowIcons = true,
+    -- Font used for player names in the Nearby list (dropdown in Options)
+    nearbyNameFont = "Default",
+    nearbyNameFontSize = 12,
 -- Stealth detection
 stealthDetectEnabled = true,
 stealthDetectChat = true,
@@ -160,6 +163,8 @@ function DB:Init()
 
   -- New option defaults (older SavedVariables won't have these)
   if realmDB.profile.nearbySound == nil then realmDB.profile.nearbySound = true end
+  if realmDB.profile.nearbyNameFont == nil then realmDB.profile.nearbyNameFont = "Default" end
+  if realmDB.profile.nearbyNameFontSize == nil then realmDB.profile.nearbyNameFontSize = 12 end
   if realmDB.profile.disableInGoblinTowns == nil then realmDB.profile.disableInGoblinTowns = false end
 
   -- prune very old change log if it grew huge

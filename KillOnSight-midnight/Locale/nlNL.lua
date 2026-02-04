@@ -66,6 +66,8 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimaal nabij-venster"
 L.UI_NEARBY_ROWFADE = "Vervagtimers per rij"
 L.UI_NEARBY_ROWICONS = "Rijpictogrammen (klasse/schedel)"
 L.UI_NEARBY_SCALE = "Schaal van nabij-venster"
+L.UI_NEARBY_NAME_FONT = "Lettertype van namen in de buurt"
+L.UI_NEARBY_NAME_SIZE = "Lettergrootte van namen in de buurt"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Opties"
