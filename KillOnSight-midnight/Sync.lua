@@ -34,13 +34,20 @@ end
 
 local function Escape(s)
   s = s or ""
-  s = s:gsub("|", "/")
-  s = s:gsub("\n"," ")
+  s = s:gsub("%%", "%%25")
+  s = s:gsub("|", "%%7C")
+  s = s:gsub("\r", "%%0D")
+  s = s:gsub("\n", "%%0A")
+  s = s:gsub("/", "%%2F")
   return s
 end
 local function Unescape(s)
   s = s or ""
-  s = s:gsub("/", "|")
+  s = s:gsub("%%0D", "\r")
+  s = s:gsub("%%0A", "\n")
+  s = s:gsub("%%2F", "/")
+  s = s:gsub("%%7C", "|")
+  s = s:gsub("%%25", "%%")
   return s
 end
 
