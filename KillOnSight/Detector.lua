@@ -126,12 +126,13 @@ if self._deferUnitChecks and self._deferUnitChecks[unit] then
 end
 
 
-  local classFile = UnitIsPlayer(unit) and select(2, UnitClass(unit)) or nil
+  local isPlayer = UnitIsPlayer(unit)
+  local classFile = isPlayer and select(2, UnitClass(unit)) or nil
+  local guild = isPlayer and GetUnitGuild(unit) or nil
 -- Nearby list (hostile players)
-if UnitIsPlayer(unit) and UnitCanAttack("player", unit) then
+if isPlayer and UnitCanAttack("player", unit) then
   if withinNearbyRange then
   -- classFile computed once above
-  local guild = GetUnitGuild(unit)
 	  -- Track enemy encounters (Spy-style): touch an active encounter, don't increment count here.
 	  local Core = GetCore()
 	  if Core and Core.TouchEncounter then
@@ -171,7 +172,6 @@ end
     end
     return
   end
-  local guild = GetUnitGuild(unit)
   if guid and guild and DB.UpdateLastAttackerGuildByGUID then
     -- If this player is in the Attackers list, enrich it with guild
     local updated = DB:UpdateLastAttackerGuildByGUID(guid, guild)
