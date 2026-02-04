@@ -60,11 +60,9 @@ local Nearby = {
   name = nil,
 
   -- Retail-only: spec detection via Inspect
-  _inspectQueue = nil,        -- array of { guid=..., unit=... }
-  _inspectQueued = nil,       -- [guid]=true
-  _inspectPending = nil,      -- { guid=..., unit=... }
-  _lastInspectAt = 0,
+  _inspectMgr = nil,         -- initialized lazily by _EnsureInspect()
   _inspectEventFrame = nil,
+
 
   nameToKey = {}, -- [lowerName]=key
   alerted = {},   -- [lowerName] = true if alerted this presence
@@ -1242,7 +1240,7 @@ function Nearby:Create()
           end
         end
         if unit and CanInspect and CanInspect(unit) then
-          self:_EnqueueInspect(e.guid, unit)
+          self:_RequestSpecForGuid(e.guid, unit)
         end
       end
 
@@ -1397,90 +1395,244 @@ end
 
 
 -- ===== Retail Inspect-based spec detection =====
+
+-- A single-flight, throttled inspect manager to learn enemy specs on Retail.
+-- Goals:
+--   * Prefer cached spec immediately (Blizzard-tooltip-like)
+--   * Pre-warm cache when a Nearby entry first appears (lightweight throttle)
+--   * Avoid repeated inspect requests for the same GUID (cache + backoff)
+--   * Refresh open tooltips immediately when INSPECT_READY fires
+
+local SPEC_CACHE_TTL = 60 * 60         -- 1 hour "fresh" cache window (spec rarely matters beyond this)
+local INSPECT_RETRY_BACKOFF = 15        -- seconds after a failed attempt before retrying the same GUID
+local INSPECT_THROTTLE = 0.55           -- minimum seconds between NotifyInspect calls (Retail rate limits)
+
 function Nearby:_EnsureInspect()
-  if self._inspectQueue then return end
-  self._inspectQueue = {}
-  self._inspectQueued = {}
-  self._inspectPending = nil
-  self._lastInspectAt = 0
+  if self._inspectMgr then return end
+  self._inspectMgr = {
+    queue = {},
+    queued = {},
+    pending = nil,     -- { guid = ..., unit = ... }
+    lastAt = 0,
+    lastUnit = {},     -- guid -> last known unit token
+    specCache = {},    -- guid -> { spec = "Fury", ts = GetTime() }
+    backoff = {},      -- guid -> retryAt (GetTime)
+  }
 end
 
-function Nearby:_EnqueueInspect(guid, unit)
-  if not guid or not unit or unit == "" then return end
+local function _Now()
+  return (GetTime and GetTime()) or time()
+end
+
+function Nearby:_SpecCacheGet(guid)
+  self:_EnsureInspect()
+  local c = self._inspectMgr.specCache[guid]
+  if not c then return nil end
+  local now = _Now()
+  if (now - (c.ts or 0)) > SPEC_CACHE_TTL then
+    self._inspectMgr.specCache[guid] = nil
+    return nil
+  end
+  return c.spec
+end
+
+function Nearby:_SpecCacheSet(guid, specName)
+  if not guid or not specName or specName == "" then return end
+  self:_EnsureInspect()
+  self._inspectMgr.specCache[guid] = { spec = specName, ts = _Now() }
+  -- Clear any backoff on success
+  self._inspectMgr.backoff[guid] = nil
+end
+
+function Nearby:_InspectBackoffActive(guid)
+  self:_EnsureInspect()
+  local t = self._inspectMgr.backoff[guid]
+  return t and (_Now() < t)
+end
+
+function Nearby:_SetInspectBackoff(guid)
+  self:_EnsureInspect()
+  self._inspectMgr.backoff[guid] = _Now() + INSPECT_RETRY_BACKOFF
+end
+
+function Nearby:_FindUnitByGuid(guid)
+  if not guid or not UnitExists or not UnitGUID then return nil end
   self:_EnsureInspect()
 
-  if self._inspectQueued[guid] or (self._inspectPending and self._inspectPending.guid == guid) then
+  -- Fast path: last unit we successfully matched for this guid
+  local lu = self._inspectMgr.lastUnit[guid]
+  if lu and UnitExists(lu) and UnitGUID(lu) == guid then
+    return lu
+  end
+
+  -- Common tokens first
+  if UnitExists("target") and UnitGUID("target") == guid then return "target" end
+  if UnitExists("mouseover") and UnitGUID("mouseover") == guid then return "mouseover" end
+  if UnitExists("focus") and UnitGUID("focus") == guid then return "focus" end
+
+  -- Nameplates
+  for i = 1, 40 do
+    local u = "nameplate" .. i
+    if UnitExists(u) and UnitGUID(u) == guid then return u end
+  end
+
+  return nil
+end
+
+function Nearby:_TryResolveSpecFromUnit(unit)
+  if not IS_RETAIL then return nil end
+  if not unit or unit == "" then return nil end
+  if not UnitExists or not UnitExists(unit) then return nil end
+  if not GetInspectSpecialization or not GetSpecializationInfoByID then return nil end
+
+  local specID = GetInspectSpecialization(unit)
+  if specID and specID > 0 then
+    local _, name = GetSpecializationInfoByID(specID)
+    if name and name ~= "" then
+      return name
+    end
+  end
+  return nil
+end
+
+-- Public-ish entrypoint: try to learn spec for this guid using the best known unit token.
+-- This is safe to call frequently; it is cache-aware and throttled.
+function Nearby:_RequestSpecForGuid(guid, unit)
+  if not IS_RETAIL then return end
+  if not guid then return end
+  self:_EnsureInspect()
+
+  -- If already cached, apply to entry immediately.
+  local cached = self:_SpecCacheGet(guid)
+  if cached and cached ~= "" then
+    local key = self.guidToKey and self.guidToKey[guid]
+    local entry = key and self.entries and self.entries[key]
+    if entry and (not entry.spec or entry.spec == "") then
+      entry.spec = cached
+      self:ScheduleRefresh(true)
+      if self._tooltipGuid == guid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+        self:_ShowEntryTooltip(self._tooltipOwner, entry)
+      end
+    end
     return
   end
 
-  table.insert(self._inspectQueue, { guid = guid, unit = unit })
-  self._inspectQueued[guid] = true
+  if self:_InspectBackoffActive(guid) then return end
+  if InCombatLockdown and InCombatLockdown() then return end
+
+  -- Resolve/refresh unit token if not provided.
+  if (not unit or unit == "") then
+    unit = self:_FindUnitByGuid(guid)
+  end
+  if not unit or unit == "" then return end
+
+  -- Remember last unit for this guid.
+  self._inspectMgr.lastUnit[guid] = unit
+
+  -- If client already has inspect cached for this unit, pick it up immediately.
+  local immediate = self:_TryResolveSpecFromUnit(unit)
+  if immediate and immediate ~= "" then
+    self:_SpecCacheSet(guid, immediate)
+    local key = self.guidToKey and self.guidToKey[guid]
+    local entry = key and self.entries and self.entries[key]
+    if entry then
+      entry.spec = immediate
+      self:ScheduleRefresh(true)
+      if self._tooltipGuid == guid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+        self:_ShowEntryTooltip(self._tooltipOwner, entry)
+      end
+    end
+    return
+  end
+
+  -- Queue inspect request (single-flight + throttle)
+  local mgr = self._inspectMgr
+  if mgr.queued[guid] or (mgr.pending and mgr.pending.guid == guid) then return end
+  table.insert(mgr.queue, { guid = guid, unit = unit })
+  mgr.queued[guid] = true
   self:_ProcessInspectQueue()
+end
+
+-- Called when a new Nearby entry is created (pre-warm).
+function Nearby:_PrewarmSpecForEntry(entry, unit)
+  if not IS_RETAIL then return end
+  if not entry or not entry.guid then return end
+  if entry.spec and entry.spec ~= "" then
+    -- keep cache consistent
+    self:_SpecCacheSet(entry.guid, entry.spec)
+    return
+  end
+  self:_RequestSpecForGuid(entry.guid, unit)
 end
 
 function Nearby:_ProcessInspectQueue()
   if not IS_RETAIL then return end
   self:_EnsureInspect()
-  if self._inspectPending then return end
-
-  -- Basic throttle to avoid hitting inspect rate limits.
-  -- Use GetTime() when available so we can do sub-second throttling (time() is integer seconds).
-  local now = (GetTime and GetTime()) or time()
-  if self._lastInspectAt and (now - self._lastInspectAt) < 0.25 then return end
+  local mgr = self._inspectMgr
+  if mgr.pending then return end
   if InCombatLockdown and InCombatLockdown() then return end
 
-  while #self._inspectQueue > 0 do
-    local item = table.remove(self._inspectQueue, 1)
-    local guid, unit = item.guid, item.unit
-    self._inspectQueued[guid] = nil
+  local now = _Now()
+  if (now - (mgr.lastAt or 0)) < INSPECT_THROTTLE then return end
 
-    if UnitExists and UnitExists(unit) and UnitGUID and UnitGUID(unit) == guid and CanInspect and CanInspect(unit) then
-      if NotifyInspect then
+  while #mgr.queue > 0 do
+    local item = table.remove(mgr.queue, 1)
+    local guid, unit = item.guid, item.unit
+    mgr.queued[guid] = nil
+
+    if self:_InspectBackoffActive(guid) then
+      -- skip for now
+    else
+      if UnitExists and UnitExists(unit) and UnitGUID and UnitGUID(unit) == guid and CanInspect and CanInspect(unit) and NotifyInspect then
+        mgr.lastUnit[guid] = unit
         NotifyInspect(unit)
-        self._inspectPending = { guid = guid, unit = unit }
-        self._lastInspectAt = now
+        mgr.pending = { guid = guid, unit = unit }
+        mgr.lastAt = now
         return
+      else
+        -- couldn't inspect (out of range/phased/etc.) - back off briefly to avoid spamming
+        self:_SetInspectBackoff(guid)
       end
     end
-    -- invalid/out of range; keep looping
   end
 end
 
 function Nearby:_OnInspectReady(eventGuid)
   if not IS_RETAIL then return end
-  if not self._inspectPending or not eventGuid then return end
-  if self._inspectPending.guid ~= eventGuid then return end
+  if not eventGuid then return end
+  self:_EnsureInspect()
+  local mgr = self._inspectMgr
 
-  local unit = self._inspectPending.unit
-  local specName = nil
+  -- Try to find a live unit token for this guid so we can read the spec immediately.
+  local unit = self:_FindUnitByGuid(eventGuid)
+  local specName = unit and self:_TryResolveSpecFromUnit(unit) or nil
 
-  if unit and UnitExists and UnitExists(unit) and GetInspectSpecialization then
-    local specID = GetInspectSpecialization(unit)
-    if specID and specID > 0 and GetSpecializationInfoByID then
-      local _, name = GetSpecializationInfoByID(specID)
-      specName = name
+  -- Store on entry/cache (if still present)
+  if specName and specName ~= "" then
+    self:_SpecCacheSet(eventGuid, specName)
+    local key = self.guidToKey and self.guidToKey[eventGuid]
+    local entry = key and self.entries and self.entries[key]
+    if entry then
+      entry.spec = specName
+      entry.lastSeen = entry.lastSeen or time()
+      self:ScheduleRefresh(true)
+
+      -- If the tooltip for this entry is currently open, rebuild it immediately.
+      if self._tooltipGuid == eventGuid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+        self:_ShowEntryTooltip(self._tooltipOwner, entry)
+      end
     end
-  end
-
-  -- Store on entry (if still present)
-  local key = self.guidToKey and self.guidToKey[eventGuid]
-  local entry = key and self.entries and self.entries[key]
-  if entry and specName and specName ~= "" then
-    entry.spec = specName
-    entry.lastSeen = entry.lastSeen or time()
-    self:ScheduleRefresh(true)
-    -- If the tooltip for this entry is currently open, rebuild it immediately so spec appears right away.
-    if self._tooltipGuid == eventGuid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
-      self:_ShowEntryTooltip(self._tooltipOwner, entry)
-    end
+  else
+    self:_SetInspectBackoff(eventGuid)
   end
 
   if ClearInspectPlayer then pcall(ClearInspectPlayer) end
-  self._inspectPending = nil
+  mgr.pending = nil
 
   -- Continue queue
   self:_ProcessInspectQueue()
 end
+
 -- =============================================
 
 function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
@@ -1584,24 +1736,12 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   e.realm = ExtractRealm(rawName) or e.realm
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
-  -- Retail-only: try to learn specialization (stored for tooltip).
-  -- Blizzard tooltips often show spec instantly because the inspect data is already cached.
-  -- So: first try reading cached spec immediately; only then queue a NotifyInspect() request.
-  if IS_RETAIL and unit and playerGuid and (not e.spec or e.spec == "") then
-    if UnitGUID and UnitGUID(unit) == playerGuid and UnitExists and UnitExists(unit) then
-      local specName
-      if GetInspectSpecialization and GetSpecializationInfoByID then
-        local specID = GetInspectSpecialization(unit)
-        if specID and specID > 0 then
-          local _, name = GetSpecializationInfoByID(specID)
-          specName = name
-        end
-      end
-      if specName and specName ~= "" then
-        e.spec = specName
-      else
-        self:_EnqueueInspect(playerGuid, unit)
-      end
+    -- Retail-only: pre-warm / learn specialization (cached + throttled).
+  if IS_RETAIL and playerGuid then
+    if e.spec and e.spec ~= "" then
+      self:_SpecCacheSet(playerGuid, e.spec)
+    elseif unit and (not e.spec or e.spec == "") then
+      self:_RequestSpecForGuid(playerGuid, unit)
     end
   end
 

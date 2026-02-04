@@ -1,6 +1,23 @@
 # KillOnSight – Changelog
 
 
+## 3.2.2
+### Added
+- Retail: pre-warm specialization inspect cache for new Nearby entries using a lightweight throttled queue.
+- Retail: internal spec cache/backoff to avoid repeated inspect requests for the same player in crowded areas.
+
+### Changed
+- Retail: rewritten Inspect queue now prefers cached specs, tracks last-known unit tokens per GUID, and refreshes tooltips immediately on INSPECT_READY.
+
+## 3.2.1
+### Changed
+- Retail: rewrote Nearby specialization inspection flow to update tooltips immediately when spec data is already cached.
+- Retail: INSPECT_READY now updates the currently-hovered tooltip without requiring mouse-off/mouse-over.
+
+### Fixed
+- Retail: improved inspect unit resolution by caching last-known unit tokens and re-resolving via mouseover/target/focus/nameplates.
+- Retail: reduced cases where spec would only appear after re-hovering.
+
 ## 3.2.0
 ### Added
 - Nameplate scanning added for specialization inspect detection.
