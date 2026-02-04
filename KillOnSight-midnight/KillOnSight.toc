@@ -41,6 +41,7 @@ Notifier.lua
 NearbyFrame.lua
 Detector.lua
 Activity.lua
+Sync.lua
 GUI.lua
 Minimap.lua
 Portrait.lua
