@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.1.5
+### Fixed
+- Version string consistency across README, TOCs, and sync metadata.
+
 ## 3.1.4
 ### Added
 - Added Nearby Name Font dropdown to the Options panel.

@@ -40,7 +40,7 @@ function dataobj:OnClick(btn)
     if KillOnSight_GUI and KillOnSight_GUI.Toggle then
       KillOnSight_GUI:Toggle()
     end
-    elseif btn == "RightButton" then
+  elseif btn == "RightButton" then
     local prof = DB:GetProfile()
     prof.minimap = prof.minimap or { hide=false, minimapPos=220 }
 
