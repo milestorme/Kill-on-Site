@@ -30,14 +30,19 @@ local function Send(channel, msg)
 end
 
 local function Escape(s)
-  s = s or ""
-  s = s:gsub("|", "/")
-  s = s:gsub("\n"," ")
+  s = tostring(s or "")
+  s = s:gsub("%%", "%%25")
+  s = s:gsub("\n", "%%0A")
+  s = s:gsub("|", "%%7C")
+  s = s:gsub("&", "%%26")
+  s = s:gsub("=", "%%3D")
   return s
 end
 local function Unescape(s)
-  s = s or ""
-  s = s:gsub("/", "|")
+  s = tostring(s or "")
+  s = s:gsub("%%(%x%x)", function(hex)
+    return string.char(tonumber(hex, 16))
+  end)
   return s
 end
 
