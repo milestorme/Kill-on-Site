@@ -11,6 +11,31 @@ local function GetNotifier() return _G.KillOnSight_Notifier end
 -- disable Nearby population.
 local IS_RETAIL = (WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) or false
 
+-- Retail can return protected/"secret" GUID values in certain PvP/instance contexts.
+-- Never use non-string GUIDs as table keys or in comparisons.
+local function _ValidPlayerGUID(guid)
+  -- In BGs/instances Blizzard may hand addons a protected "secret" value that breaks even simple comparisons.
+  -- Never compare or pattern-match the raw value; coerce via tostring inside pcall and validate the result.
+  if type(guid) ~= "string" then return nil end
+  local ok, s = pcall(tostring, guid)
+  if not ok or type(s) ~= "string" then return nil end
+  if s == "" then return nil end
+  if not s:match("^Player%-") then return nil end
+  return s
+end
+
+local function _InspectEnabled()
+  if not IS_RETAIL then return false end
+  if IsInInstance then
+    local inInst, instType = IsInInstance()
+    if inInst and instType and instType ~= "none" then
+      return false
+    end
+  end
+  return true
+end
+
+
 -- Sanctuary detection: prevent Nearby population and clear the list in safe "sanctuary" areas.
 -- Prefer GetZonePVPInfo() which can return "sanctuary"; fall back to IsResting() in versions/zones
 -- where that is the only reliable signal.
@@ -93,7 +118,25 @@ local Nearby = {
 local NEARBY_NAME_FONTS = {
   ["Morpheus"]      = "Fonts\\MORPHEUS.TTF",
   ["Skurri"]        = "Fonts\\SKURRI.TTF",
+  ["Avantgarde"]    = "Interface\\AddOns\\KillOnSight\\Media\\Fonts\\Avantgarde.ttf",
 }
+
+
+
+-- Custom font support:
+-- We do NOT ship proprietary fonts. If you place a font file at:
+--   Interface\AddOns\KillOnSight\Media\Fonts\Avantgarde.ttf
+-- it will appear as "Avantgarde" in the Nearby name font dropdown.
+-- If LibSharedMedia-3.0 is present, we also register it there.
+do
+  local fontPath = "Interface\\AddOns\\KillOnSight\\Media\\Fonts\\Avantgarde.ttf"
+  if _G.LibStub then
+    local lsm = _G.LibStub("LibSharedMedia-3.0", true)
+    if lsm and lsm.Register then
+      pcall(function() lsm:Register("font", "Avantgarde", fontPath) end)
+    end
+  end
+end
 
 -- Fonts that should not appear in the dropdown (either unreliable or not desired).
 -- Note: this is about *dropdown entries* (labels), not files on disk.
@@ -296,8 +339,14 @@ function Nearby:_ShowEntryTooltip(selfBtn, e)
   if e.spec and e.spec ~= "" then
     GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
   elseif IS_RETAIL and e.guid then
-    -- If we have a GUID but no spec yet, show a placeholder; tooltip will refresh when INSPECT_READY fires.
-    GameTooltip:AddLine(L.TT_SPEC_LOADING or "Inspecting...", 0.7, 0.7, 0.7)
+  elseif IS_RETAIL and e.guid then
+    -- Only show "Inspecting..." if we actually have an active request queued/pending for this GUID.
+    local mgr = self._inspectMgr
+    local isPending = mgr and mgr.pending and mgr.pending.guid == e.guid
+    local isQueued = mgr and mgr.queued and mgr.queued[e.guid]
+    if isPending or isQueued then
+      GameTooltip:AddLine(L.TT_SPEC_LOADING or "Inspecting...", 0.7, 0.7, 0.7)
+    end
   end
 
   -- Guild
@@ -365,7 +414,36 @@ end
 
 SafeSetShown = function(frame, shown)
   if not frame then return end
-  -- Never gate on InCombatLockdown for Nearby; attempt immediately with a pcall guard.
+
+  -- Retail BG/instances: SetShown/Show/Hide can be protected in combat.
+  if InCombatLockdown and InCombatLockdown() then
+    -- Defer until combat ends
+    if not _G.__KOS_SAFESET_PEND then _G.__KOS_SAFESET_PEND = {} end
+    _G.__KOS_SAFESET_PEND[frame] = shown and true or false
+
+    if not _G.__KOS_SAFESET_FRAME and CreateFrame then
+      local f = CreateFrame("Frame")
+      f:RegisterEvent("PLAYER_REGEN_ENABLED")
+      f:SetScript("OnEvent", function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        local pend = _G.__KOS_SAFESET_PEND
+        if not pend then return end
+        _G.__KOS_SAFESET_PEND = {}
+        for fr, want in pairs(pend) do
+          pcall(function()
+            if fr and fr.SetShown then
+              fr:SetShown(want)
+            elseif fr then
+              if want then fr:Show() else fr:Hide() end
+            end
+          end)
+        end
+      end)
+      _G.__KOS_SAFESET_FRAME = f
+    end
+    return
+  end
+
   pcall(function()
     if frame.SetShown then
       frame:SetShown(shown and true or false)
@@ -374,6 +452,7 @@ SafeSetShown = function(frame, shown)
     end
   end)
 end
+
 
 local function NormalizeName(name)
   if not name or name == "" then return nil end
@@ -504,7 +583,7 @@ function Nearby:SetShown(shown)
     if shown then self:Create() end
     return
   end
-  if shown then self.frame:Show() else self.frame:Hide() end
+  if shown then self:_SafeSetShown(self.frame, true) else self:_SafeSetShown(self.frame, false) end
   if shown then self:StartTicker() else self:StopTicker() end
 end
 
@@ -1239,7 +1318,7 @@ function Nearby:Create()
             end
           end
         end
-        if unit and CanInspect and CanInspect(unit) then
+        if unit then
           self:_RequestSpecForGuid(e.guid, unit)
         end
       end
@@ -1296,12 +1375,76 @@ function Nearby:Create()
   end
 
 
-  -- Retail-only: listen for Inspect results to learn enemy specs.
+  -- Retail-only: Inspect + unit-token signals for spec detection.
+  -- Important: On Retail you can only inspect via a live unit token (target/mouseover/nameplate),
+  -- so we listen for nameplate/target/mouseover changes and immediately queue an inspect when a
+  -- nameplate appears for a Nearby GUID.
   if IS_RETAIL and not self._inspectEventFrame then
     local inf = CreateFrame("Frame")
     inf:RegisterEvent("INSPECT_READY")
-    inf:SetScript("OnEvent", function(_, _, guid)
-      Nearby:_OnInspectReady(guid)
+    inf:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    inf:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+    inf:RegisterEvent("PLAYER_TARGET_CHANGED")
+    inf:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+    inf:SetScript("OnEvent", function(_, event, arg1)
+      -- Disable Retail inspect/nameplate helpers inside instances/BGs (Nearby is suppressed there).
+      if IsInInstance then
+        local inInst, instType = IsInInstance()
+        if inInst and instType and instType ~= "none" then
+          return
+        end
+      end
+      if event == "INSPECT_READY" then
+        Nearby:_OnInspectReady(arg1)
+        return
+      end
+
+      -- Helper: if this guid is tracked in Nearby and spec is unknown, request it now.
+      local function TryQueueForGuid(guid, unit)
+        if not guid or not Nearby.guidToKey then return end
+        local key = Nearby.guidToKey[guid]
+        if not key then return end
+        local entry = Nearby.entries and Nearby.entries[key]
+        if not entry then return end
+        if entry.spec and entry.spec ~= "" then return end
+        Nearby:_RequestSpecForGuid(guid, unit)
+      end
+
+      if event == "NAME_PLATE_UNIT_ADDED" then
+        local unit = arg1
+        if unit and UnitGUID then
+          local guid = UnitGUID(unit)
+          -- Remember the freshest unit token for this guid.
+          Nearby:_EnsureInspect()
+        if type(guid) ~= "string" or guid == "" then
+          return
+        end
+        Nearby._inspectMgr.lastUnit[guid] = unit
+          TryQueueForGuid(guid, unit)
+        end
+      elseif event == "NAME_PLATE_UNIT_REMOVED" then
+        local unit = arg1
+        -- UnitGUID(unit) may already be nil here; clear any lastUnit entries that pointed at this nameplate token.
+        Nearby:_EnsureInspect()
+        local mgr = Nearby._inspectMgr
+        if mgr and mgr.lastUnit and unit and unit ~= "" then
+          for g, u in pairs(mgr.lastUnit) do
+            if u == unit then
+              mgr.lastUnit[g] = nil
+            end
+          end
+        end
+      elseif event == "PLAYER_TARGET_CHANGED" then
+        if UnitGUID and UnitExists and UnitExists("target") then
+          local guid = UnitGUID("target")
+          TryQueueForGuid(guid, "target")
+        end
+      elseif event == "UPDATE_MOUSEOVER_UNIT" then
+        if UnitGUID and UnitExists and UnitExists("mouseover") then
+          local guid = UnitGUID("mouseover")
+          TryQueueForGuid(guid, "mouseover")
+        end
+      end
     end)
     self._inspectEventFrame = inf
   end
@@ -1405,19 +1548,37 @@ end
 
 local SPEC_CACHE_TTL = 60 * 60         -- 1 hour "fresh" cache window (spec rarely matters beyond this)
 local INSPECT_RETRY_BACKOFF = 15        -- seconds after a failed attempt before retrying the same GUID
-local INSPECT_THROTTLE = 0.55           -- minimum seconds between NotifyInspect calls (Retail rate limits)
+local INSPECT_THROTTLE = 0.30           -- minimum seconds between NotifyInspect calls (Retail rate limits)
+local INSPECT_RETRY_SOFT_BACKOFF = 1.5    -- seconds after a transient failure / stale unit token (Retail nameplate churn)
 
 function Nearby:_EnsureInspect()
   if self._inspectMgr then return end
   self._inspectMgr = {
     queue = {},
     queued = {},
-    pending = nil,     -- { guid = ..., unit = ... }
+    pending = nil,     -- { guid = ..., unit = ..., startedAt = ... }
     lastAt = 0,
     lastUnit = {},     -- guid -> last known unit token
     specCache = {},    -- guid -> { spec = "Fury", ts = GetTime() }
     backoff = {},      -- guid -> retryAt (GetTime)
   }
+  -- Retail: drive the inspect queue even when INSPECT_READY never fires.
+  -- Without a heartbeat, a single stuck inspect can leave entries showing "Inspecting..." forever.
+  if not self._inspectMgr.heartbeat and CreateFrame then
+    local hb = CreateFrame("Frame")
+    local acc = 0
+    hb:SetScript("OnUpdate", function(_, elapsed)
+      acc = acc + (elapsed or 0)
+      if acc < 0.15 then return end
+      acc = 0
+      if not self._inspectMgr then return end
+      local mgr = self._inspectMgr
+      if _InspectEnabled() and (mgr.pending or (mgr.queue and #mgr.queue > 0)) then
+        self:_ProcessInspectQueue()
+      end
+    end)
+    self._inspectMgr.heartbeat = hb
+  end
 end
 
 local function _Now()
@@ -1425,6 +1586,8 @@ local function _Now()
 end
 
 function Nearby:_SpecCacheGet(guid)
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return nil end
   self:_EnsureInspect()
   local c = self._inspectMgr.specCache[guid]
   if not c then return nil end
@@ -1437,6 +1600,8 @@ function Nearby:_SpecCacheGet(guid)
 end
 
 function Nearby:_SpecCacheSet(guid, specName)
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return end
   if not guid or not specName or specName == "" then return end
   self:_EnsureInspect()
   self._inspectMgr.specCache[guid] = { spec = specName, ts = _Now() }
@@ -1445,17 +1610,24 @@ function Nearby:_SpecCacheSet(guid, specName)
 end
 
 function Nearby:_InspectBackoffActive(guid)
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return nil end
   self:_EnsureInspect()
   local t = self._inspectMgr.backoff[guid]
   return t and (_Now() < t)
 end
 
-function Nearby:_SetInspectBackoff(guid)
+function Nearby:_SetInspectBackoff(guid, seconds)
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return end
   self:_EnsureInspect()
-  self._inspectMgr.backoff[guid] = _Now() + INSPECT_RETRY_BACKOFF
+  local s = seconds or INSPECT_RETRY_BACKOFF
+  self._inspectMgr.backoff[guid] = _Now() + s
 end
 
 function Nearby:_FindUnitByGuid(guid)
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return nil end
   if not guid or not UnitExists or not UnitGUID then return nil end
   self:_EnsureInspect()
 
@@ -1479,6 +1651,93 @@ function Nearby:_FindUnitByGuid(guid)
   return nil
 end
 
+
+-- Build a lookup of all specialization names (localized) so we can recognize them in tooltips.
+local _SPEC_NAME_SET
+local function _BuildSpecNameSet()
+  if _SPEC_NAME_SET then return _SPEC_NAME_SET end
+  local set = {}
+  if not IS_RETAIL then _SPEC_NAME_SET = set; return set end
+
+  -- Retail APIs (guarded)
+  if GetNumClasses and GetClassInfo and GetNumSpecializationsForClassID and GetSpecializationInfoForClassID then
+    local n = GetNumClasses()
+    for i = 1, n do
+      local className, classFile, classID = GetClassInfo(i)
+      if classID then
+        local sn = GetNumSpecializationsForClassID(classID)
+        for s = 1, sn do
+          local _, specName = GetSpecializationInfoForClassID(classID, s)
+          if specName and specName ~= "" then
+            set[string.lower(specName)] = specName
+          end
+        end
+      end
+    end
+  end
+
+  _SPEC_NAME_SET = set
+  return set
+end
+
+local function _StripTooltipText(s)
+  if not s then return nil end
+  -- remove color codes and textures
+  s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+  s = s:gsub("|T.-|t", "")
+  s = s:gsub("^%s+", ""):gsub("%s+$", "")
+  return s
+end
+
+-- Retail: If Blizzard tooltip already shows specialization, pick it up immediately (works in War Mode where NotifyInspect is blocked).
+function Nearby:_TryResolveSpecFromTooltip(unit)
+  if not IS_RETAIL then return nil end
+  if not unit or unit == "" or not UnitExists or not UnitExists(unit) then return nil end
+  if not C_TooltipInfo or not C_TooltipInfo.GetUnit then return nil end
+
+  local _, _, classID = UnitClass(unit)
+  if not classID then return nil end
+
+  local info = C_TooltipInfo.GetUnit(unit)
+  if not info or not info.lines then return nil end
+
+  -- Build a class-restricted spec map to prevent cross-class false positives
+  local classSpecs = {}
+  if GetNumSpecializationsForClassID and GetSpecializationInfoForClassID then
+    local n = GetNumSpecializationsForClassID(classID) or 0
+    for i = 1, n do
+      local _, specName = GetSpecializationInfoForClassID(classID, i)
+      if specName and specName ~= "" then
+        classSpecs[string.lower(specName)] = specName
+      end
+    end
+  end
+
+  local function checkText(s)
+    s = _StripTooltipText(s)
+    if not s or s == "" then return nil end
+    local lower = string.lower(s)
+    local exact = classSpecs[lower]
+    if exact then return exact end
+    -- Substring match, but only among specs of this class (handles "Fury Warrior" etc.)
+    for key, specName in pairs(classSpecs) do
+      if string.find(lower, key, 1, true) then
+        return specName
+      end
+    end
+    return nil
+  end
+
+  for i = 1, #info.lines do
+    local line = info.lines[i]
+    local spec = checkText(line and line.leftText) or checkText(line and line.rightText)
+    if spec then return spec end
+  end
+
+  return nil
+end
+
+
 function Nearby:_TryResolveSpecFromUnit(unit)
   if not IS_RETAIL then return nil end
   if not unit or unit == "" then return nil end
@@ -1498,6 +1757,9 @@ end
 -- Public-ish entrypoint: try to learn spec for this guid using the best known unit token.
 -- This is safe to call frequently; it is cache-aware and throttled.
 function Nearby:_RequestSpecForGuid(guid, unit)
+  if not _InspectEnabled() then return end
+  guid = _ValidPlayerGUID(guid)
+  if not guid then return end
   if not IS_RETAIL then return end
   if not guid then return end
   self:_EnsureInspect()
@@ -1545,6 +1807,22 @@ function Nearby:_RequestSpecForGuid(guid, unit)
     return
   end
 
+  -- War Mode friendly: Blizzard tooltips often include spec even when NotifyInspect is blocked.
+  local tipSpec = self:_TryResolveSpecFromTooltip(unit)
+  if tipSpec and tipSpec ~= "" then
+    self:_SpecCacheSet(guid, tipSpec)
+    local key = self.guidToKey and self.guidToKey[guid]
+    local entry = key and self.entries and self.entries[key]
+    if entry then
+      entry.spec = tipSpec
+      self:ScheduleRefresh(true)
+      if self._tooltipGuid == guid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+        self:_ShowEntryTooltip(self._tooltipOwner, entry)
+      end
+    end
+    return
+  end
+
   -- Queue inspect request (single-flight + throttle)
   local mgr = self._inspectMgr
   if mgr.queued[guid] or (mgr.pending and mgr.pending.guid == guid) then return end
@@ -1555,6 +1833,7 @@ end
 
 -- Called when a new Nearby entry is created (pre-warm).
 function Nearby:_PrewarmSpecForEntry(entry, unit)
+  if not _InspectEnabled() then return end
   if not IS_RETAIL then return end
   if not entry or not entry.guid then return end
   if entry.spec and entry.spec ~= "" then
@@ -1566,10 +1845,33 @@ function Nearby:_PrewarmSpecForEntry(entry, unit)
 end
 
 function Nearby:_ProcessInspectQueue()
+  if not _InspectEnabled() then return end
   if not IS_RETAIL then return end
   self:_EnsureInspect()
   local mgr = self._inspectMgr
-  if mgr.pending then return end
+  -- Fail-safe: sometimes INSPECT_READY never returns (out of range, phased, other addons/Blizzard inspect races).
+  -- Don't let a single stuck request block the whole queue.
+  if mgr.pending then
+    local now = _Now()
+    local pend = mgr.pending
+    local pguid = pend.guid
+    local startedAt = pend.startedAt or 0
+    -- If the unit token we inspected has gone stale (nameplate churn), don't wait the full timeout.
+    local pu = pend.unit
+    if pu and type(pguid) == "string" and UnitExists and UnitExists(pu) and UnitGUID and UnitGUID(pu) ~= pguid then
+      self:_SetInspectBackoff(pguid, INSPECT_RETRY_SOFT_BACKOFF)
+      mgr.pending = nil
+    else
+      if (now - startedAt) < 5.0 then
+        return
+      end
+      -- Timed out: release and try again later.
+      if pguid then
+        self:_SetInspectBackoff(pguid, INSPECT_RETRY_SOFT_BACKOFF)
+      end
+      mgr.pending = nil
+    end
+  end
   if InCombatLockdown and InCombatLockdown() then return end
 
   local now = _Now()
@@ -1583,15 +1885,50 @@ function Nearby:_ProcessInspectQueue()
     if self:_InspectBackoffActive(guid) then
       -- skip for now
     else
-      if UnitExists and UnitExists(unit) and UnitGUID and UnitGUID(unit) == guid and CanInspect and CanInspect(unit) and NotifyInspect then
+      -- Retail: unit tokens (especially nameplates) are volatile. Re-resolve by GUID at inspect-time
+      -- to avoid long delays caused by stale unit tokens.
+      local resolved = self:_FindUnitByGuid(guid)
+      if resolved and resolved ~= "" then
+        unit = resolved
+      end
+
+      if UnitExists and UnitExists(unit) and UnitGUID and UnitGUID(unit) == guid and UnitIsPlayer and UnitIsPlayer(unit) and (not UnitIsUnit or not UnitIsUnit(unit, "player")) then
+        -- Try tooltip spec first (War Mode / hostile inspect restrictions)
+        local tipSpec = self:_TryResolveSpecFromTooltip(unit)
+        if tipSpec and tipSpec ~= "" then
+          self:_SpecCacheSet(guid, tipSpec)
+          local key = self.guidToKey and self.guidToKey[guid]
+          local entry = key and self.entries and self.entries[key]
+          if entry then
+            entry.spec = tipSpec
+            self:ScheduleRefresh(true)
+            if self._tooltipGuid == guid and self._tooltipOwner and GameTooltip and GameTooltip:IsOwned(self._tooltipOwner) then
+              self:_ShowEntryTooltip(self._tooltipOwner, entry)
+            end
+          end
+          return
+        end
+
+        -- If CanInspect exists and says no, don't enter a stuck "Inspecting..." state.
+        if CanInspect and (not CanInspect(unit)) then
+          self:_SetInspectBackoff(guid, INSPECT_RETRY_SOFT_BACKOFF)
+          return
+        end
+
         mgr.lastUnit[guid] = unit
         NotifyInspect(unit)
-        mgr.pending = { guid = guid, unit = unit }
+        mgr.pending = { guid = guid, unit = unit, startedAt = _Now() }
         mgr.lastAt = now
         return
       else
-        -- couldn't inspect (out of range/phased/etc.) - back off briefly to avoid spamming
-        self:_SetInspectBackoff(guid)
+        -- Couldn't inspect. If the unit token went stale / we couldn't resolve it, apply only a soft backoff
+        -- so the spec doesn't sit "loading" for 15s.
+        if not unit or unit == "" or (UnitExists and not UnitExists(unit)) or (UnitGUID and UnitExists and UnitExists(unit) and UnitGUID(unit) ~= guid) then
+          self:_SetInspectBackoff(guid, INSPECT_RETRY_SOFT_BACKOFF)
+        else
+          -- out of range/phased/etc.
+          self:_SetInspectBackoff(guid)
+        end
       end
     end
   end
@@ -1603,9 +1940,29 @@ function Nearby:_OnInspectReady(eventGuid)
   self:_EnsureInspect()
   local mgr = self._inspectMgr
 
-  -- Try to find a live unit token for this guid so we can read the spec immediately.
-  local unit = self:_FindUnitByGuid(eventGuid)
+  -- Only treat this as "ours" if we actually have a pending request for this GUID.
+  -- Blizzard tooltips and other addons can also trigger INSPECT_READY; we should not interfere.
+  local isOurs = (mgr.pending and mgr.pending.guid == eventGuid)
+
+  -- Prefer the exact unit token we inspected (most reliable, especially for target/mouseover).
+  local unit
+  if isOurs and mgr.pending and mgr.pending.unit and mgr.pending.unit ~= "" then
+    unit = mgr.pending.unit
+  else
+    unit = self:_FindUnitByGuid(eventGuid)
+  end
+
+  -- Try resolve spec from that unit.
   local specName = unit and self:_TryResolveSpecFromUnit(unit) or nil
+
+  -- If that failed but this was our request, try one more time using any last known unit for this guid.
+  if (not specName or specName == "") and isOurs then
+    local fallback = self._inspectMgr and self._inspectMgr.lastUnit and self._inspectMgr.lastUnit[eventGuid]
+    if fallback and fallback ~= unit then
+      specName = self:_TryResolveSpecFromUnit(fallback)
+      if specName and specName ~= "" then unit = fallback end
+    end
+  end
 
   -- Store on entry/cache (if still present)
   if specName and specName ~= "" then
@@ -1623,11 +1980,23 @@ function Nearby:_OnInspectReady(eventGuid)
       end
     end
   else
-    self:_SetInspectBackoff(eventGuid)
+    -- Only backoff if this completion was for our own request; otherwise leave it alone.
+    if isOurs then
+      self:_SetInspectBackoff(eventGuid, INSPECT_RETRY_SOFT_BACKOFF)
+    end
   end
 
-  if ClearInspectPlayer then pcall(ClearInspectPlayer) end
-  mgr.pending = nil
+  if isOurs then
+    -- Let Blizzard/tooltip consumers read the data before we clear it.
+    if C_Timer and C_Timer.After and ClearInspectPlayer then
+      C_Timer.After(0.05, function()
+        pcall(ClearInspectPlayer)
+      end)
+    elseif ClearInspectPlayer then
+      pcall(ClearInspectPlayer)
+    end
+    mgr.pending = nil
+  end
 
   -- Continue queue
   self:_ProcessInspectQueue()
@@ -1903,3 +2272,69 @@ function Nearby:Init()
 end
 
 KillOnSight_Nearby = Nearby
+
+-- Safe visibility toggles: avoid ADDON_ACTION_BLOCKED during combat lockdown.
+function Nearby:_SafeSetShown(frame, shown)
+  if not frame or not frame.SetShown then return end
+
+  -- If Nearby is suppressed in instances/BGs, we still must not touch protected UI in combat.
+  if InCombatLockdown and InCombatLockdown() then
+    self._deferredNearbyShown = shown and true or false
+    if not self._nearbyCombatFixFrame and CreateFrame then
+      local f = CreateFrame("Frame")
+      f:RegisterEvent("PLAYER_REGEN_ENABLED")
+      f:SetScript("OnEvent", function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        local want = self._deferredNearbyShown
+        self._deferredNearbyShown = nil
+        if want ~= nil and self.frame and self.frame.SetShown then
+          pcall(self.frame.SetShown, self.frame, want)
+        end
+      end)
+      self._nearbyCombatFixFrame = f
+    end
+    return
+  end
+
+  pcall(frame.SetShown, frame, shown and true or false)
+end
+
+
+
+
+-- =========================================================
+-- Midnight Retail Nameplate Auto-Inspect
+-- Queues inspect as soon as a nameplate for a GUID appears
+-- =========================================================
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+  f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+
+  local function ResolveGUID(unit)
+    if unit and UnitIsPlayer and UnitIsPlayer(unit) and UnitGUID then
+      return UnitGUID(unit)
+    end
+  end
+
+  f:SetScript("OnEvent", function(_, event, unit)
+    if not _InspectEnabled() then return end
+
+    local guid = _ValidPlayerGUID(ResolveGUID(unit))
+    if not guid then return end
+
+    -- Nearby is exposed as a global for cross-file access.
+    local NearbyMod = _G.KillOnSight_Nearby
+    if not NearbyMod or not NearbyMod._RequestSpecForGuid then return end
+
+    if event == "NAME_PLATE_UNIT_ADDED" then
+      -- Nameplate units are the most reliable non-target token for enemy inspection on Retail.
+      NearbyMod:_RequestSpecForGuid(guid, unit)
+    elseif event == "NAME_PLATE_UNIT_REMOVED" then
+      -- If we cached this exact unit token as the last known match, clear it.
+      if NearbyMod._inspectMgr and NearbyMod._inspectMgr.lastUnit and NearbyMod._inspectMgr.lastUnit[guid] == unit then
+        NearbyMod._inspectMgr.lastUnit[guid] = nil
+      end
+    end
+  end)
+end

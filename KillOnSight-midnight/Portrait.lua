@@ -29,10 +29,20 @@ local function RunRetail()
 
   local f = CreateFrame("Frame")
 
+  local function InRestrictedInstance()
+    if not IsInInstance then return false end
+    local inInst, instType = IsInInstance()
+    return inInst and instType and instType ~= "none"
+  end
+
   local function SafeToString(v)
+    -- In BGs/instances Blizzard may expose protected "secret" values that break even equality checks.
+    -- Convert using tostring inside pcall, then coerce to a *plain* Lua string via format inside pcall.
     local ok, s = pcall(tostring, v)
-    if not ok or type(s) ~= "string" or s == "" then return nil end
-    return s
+    if not ok then return nil end
+    local ok2, plain = pcall(string.format, "%s", s)
+    if not ok2 or type(plain) ~= "string" or plain == "" then return nil end
+    return plain
   end
 
   local function NormalizeName(name)
@@ -67,6 +77,7 @@ local function RunRetail()
   end
 
   local function IsKoSTarget()
+    if InRestrictedInstance() then return false end
     if not UnitExists("target") or not UnitIsPlayer("target") then return false end
     local rawN, rawR = UnitName("target")
     local n = SafeToString(rawN)
@@ -90,6 +101,7 @@ local function RunRetail()
   end
 
   local function IsGuildKoSTarget()
+    if InRestrictedInstance() then return false end
     if not UnitExists("target") or not UnitIsPlayer("target") then return false end
     local rawGuildName = GetGuildInfo("target")
     local guildName = SafeToString(rawGuildName)
