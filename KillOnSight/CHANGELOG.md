@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.1.6
+### Fixed
+- Sync spam on enter world if not in a guild 
+
 ## 3.1.5
 ### Fixed
 - Version string consistency across README, TOCs, and sync metadata.

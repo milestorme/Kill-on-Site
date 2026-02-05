@@ -20,6 +20,18 @@ local MAX_DIFF_BYTES = 28000 -- approx, across serialized lines before chunking
 local peers = {} -- [sender] = { theirRev=0, theirSeq=0, lastHelloAt=0 }
 
 local function CanSync() return IsInGuild() end
+
+local syncDisabledWarned = false
+local function WarnSyncDisabledOnce()
+  -- Only print this once per session to avoid chat spam when zoning/entering instances.
+  -- Reset automatically when the player becomes eligible to sync again.
+  if CanSync() then syncDisabledWarned = false; return false end
+  if syncDisabledWarned then return true end
+  syncDisabledWarned = true
+  Notifier:Chat(L.SYNC_DISABLED)
+  return true
+end
+
 local function BestChannel()
   if IsInGuild() then return "GUILD" end
   return nil
@@ -168,10 +180,10 @@ end
 
 function Sync:Hello()
   if not CanSync() then
-    Notifier:Chat(L.SYNC_DISABLED); return
+    WarnSyncDisabledOnce(); return
   end
   local ch = BestChannel()
-  if not ch then Notifier:Chat(L.SYNC_DISABLED); return end
+  if not ch then WarnSyncDisabledOnce(); return end
   local d = DB:GetData()
   Send(ch, ("HELLO|%s|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0), ADDON_VER))
 end
@@ -184,10 +196,10 @@ function Sync:RequestDiff()
     return
   end
   if not CanSync() then
-    Notifier:Chat(L.SYNC_DISABLED); return
+    WarnSyncDisabledOnce(); return
   end
   local ch = BestChannel()
-  if not ch then Notifier:Chat(L.SYNC_DISABLED); return end
+  if not ch then WarnSyncDisabledOnce(); return end
   local d = DB:GetData()
   Send(ch, ("REQ|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0)))
   nextSyncAllowedAt = (GetTime and GetTime() or 0) + (SYNC_COOLDOWN or 60)

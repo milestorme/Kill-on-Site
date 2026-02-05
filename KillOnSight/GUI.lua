@@ -799,7 +799,6 @@ local function UpdateAddState()
   local exists = false
   if txt ~= "" then
     exists = ((DB.HasPlayer and DB:HasPlayer(txt)) or (DB.LookupPlayer and DB:LookupPlayer(txt) ~= nil) or false)
-  elseif UnitExists("target") and UnitIsPlayer("target") then
   elseif (not (nameBox.HasFocus and nameBox:HasFocus())) and UnitExists("target") and UnitIsPlayer("target") then
     local tName = UnitName("target")
     if tName and tName ~= "" then
