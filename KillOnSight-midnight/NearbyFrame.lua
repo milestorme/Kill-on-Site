@@ -303,6 +303,16 @@ function Nearby:ApplyNameFont()
       end
     end
   end
+
+  -- Keep the auto-width measurer in sync with the row font.
+  if self._awMeasureFS and self._awMeasureFS.SetFont then
+    local usePath = path or defPath
+    local size = sizeChoice or defSize or 12
+    local flags = defFlags
+    pcall(function() self._awMeasureFS:SetFont(usePath or defPath, size, flags) end)
+  end
+
+  if self.UpdateDynamicWidth then pcall(function() self:UpdateDynamicWidth() end) end
 end
 
 
@@ -450,6 +460,51 @@ SafeSetShown = function(frame, shown)
     else
       if shown then frame:Show() else frame:Hide() end
     end
+  end)
+end
+
+
+
+-- Safe width setter (Retail/BG combat-safe): defer SetWidth in combat to avoid taint/protected errors.
+local function SafeSetWidth(nearbyObj, width)
+  if not nearbyObj or not nearbyObj.frame or not nearbyObj.frame.SetWidth then return end
+
+  if InCombatLockdown and InCombatLockdown() then
+    -- Defer until combat ends
+    if not _G.__KOS_SAFEWIDTH_PEND then _G.__KOS_SAFEWIDTH_PEND = {} end
+    _G.__KOS_SAFEWIDTH_PEND[nearbyObj] = width
+
+    if not _G.__KOS_SAFEWIDTH_FRAME and CreateFrame then
+      local f = CreateFrame("Frame")
+      f:RegisterEvent("PLAYER_REGEN_ENABLED")
+      f:SetScript("OnEvent", function()
+        if InCombatLockdown and InCombatLockdown() then return end
+        local pend = _G.__KOS_SAFEWIDTH_PEND
+        if not pend then return end
+        _G.__KOS_SAFEWIDTH_PEND = {}
+        for obj, w in pairs(pend) do
+          pcall(function()
+            if obj and obj.frame and obj.frame.SetWidth then
+              obj.frame:SetWidth(w)
+              if obj._ApplyRowWidths then obj:_ApplyRowWidths(w) end
+            end
+          end)
+          if obj then
+            obj._widthAnimating = false
+            if obj.frame and obj.frame.SetScript then
+              obj.frame:SetScript("OnUpdate", nil)
+            end
+          end
+        end
+      end)
+      _G.__KOS_SAFEWIDTH_FRAME = f
+    end
+    return
+  end
+
+  pcall(function()
+    nearbyObj.frame:SetWidth(width)
+    if nearbyObj._ApplyRowWidths then nearbyObj:_ApplyRowWidths(width) end
   end)
 end
 
@@ -877,13 +932,22 @@ function Nearby:GetSortedList()
     self._sortedDirty = true
   end
 
+  -- Track which entries are already present in the cached list so we can
+  -- safely append newly-seen players while sort is frozen (e.g. in combat)
+  -- without re-sorting and changing click targets.
+  if not self._sortedMap then
+    self._sortedMap = {}
+  end
+
   local frozen = self:IsSortFrozen()
 
   -- If we have no cached list yet, build once even if frozen.
   if self._sortedDirty and (not frozen or #self._sortedList == 0) then
     wipe(self._sortedList)
+    wipe(self._sortedMap)
     for _, e in pairs(self.entries) do
       self._sortedList[#self._sortedList + 1] = e
+      self._sortedMap[e] = true
     end
     table.sort(self._sortedList, function(a, b)
       local aKoS = (a.kosType == L.KOS or a.kosType == L.GUILD_KOS)
@@ -898,6 +962,16 @@ function Nearby:GetSortedList()
       return (a.order or 0) > (b.order or 0)
     end)
     self._sortedDirty = false
+  elseif frozen and self._sortedDirty then
+    -- Sorting is frozen (combat / hover): keep existing order stable, but
+    -- ensure newly added entries appear immediately by appending any missing
+    -- ones to the end. We'll rebuild+sort properly once unfrozen.
+    for _, e in pairs(self.entries) do
+      if not self._sortedMap[e] then
+        self._sortedList[#self._sortedList + 1] = e
+        self._sortedMap[e] = true
+      end
+    end
   end
 
   return self._sortedList
@@ -964,10 +1038,16 @@ function Nearby:_SetWidthTarget(target)
   target = Clamp(target or minW, minW, maxW)
   self._widthTarget = target
 
+
+  -- In combat on Retail/BGs, SetWidth can be protected/taint; defer to PLAYER_REGEN_ENABLED.
+  if InCombatLockdown and InCombatLockdown() then
+    self._widthTarget = target
+    SafeSetWidth(self, target)
+    return
+  end
   -- Immediate mode if disabled
   if prof.nearbyAutoWidth == false then
-    self.frame:SetWidth(target)
-    self:_ApplyRowWidths(target)
+    SafeSetWidth(self, target)
     return
   end
 
@@ -984,9 +1064,14 @@ function Nearby:_SetWidthTarget(target)
     local cur = self.frame:GetWidth() or 0
     local goal = self._widthTarget
     local diff = goal - cur
+    if InCombatLockdown and InCombatLockdown() then
+      -- Stop animating in combat; width will be applied once combat ends.
+      self._widthAnimating = false
+      self.frame:SetScript("OnUpdate", nil)
+      return
+    end
     if math.abs(diff) < 1.0 then
-      self.frame:SetWidth(goal)
-      self:_ApplyRowWidths(goal)
+      SafeSetWidth(self, goal)
       self._widthAnimating = false
       self.frame:SetScript("OnUpdate", nil)
       return
@@ -996,8 +1081,7 @@ function Nearby:_SetWidthTarget(target)
     local speed = Clamp(math.abs(diff) * 12, 1400, 7000) -- faster dynamic speed
     local step = Clamp(diff, -speed * elapsed, speed * elapsed)
     local nextW = cur + step
-    self.frame:SetWidth(nextW)
-    self:_ApplyRowWidths(nextW)
+    SafeSetWidth(self, nextW)
   end)
 end
 
@@ -1008,11 +1092,20 @@ function Nearby:UpdateDynamicWidth()
   local prof = DB and DB:GetProfile() or {}
   if prof.nearbyAutoWidth == false then return end
 
+  local measure = self._awMeasureFS
   local maxText = 0
+
   if self.rows then
     for _, row in ipairs(self.rows) do
-      if row and row:IsShown() and row.text and row.text.GetStringWidth then
-        local w = row.text:GetStringWidth() or 0
+      if row and row:IsShown() and row.text and row.text.GetText then
+        local s = row.text:GetText() or ""
+        local w = 0
+        if measure and measure.SetText and measure.GetStringWidth then
+          measure:SetText(s)
+          w = measure:GetStringWidth() or 0
+        elseif row.text.GetStringWidth then
+          w = row.text:GetStringWidth() or 0
+        end
         if w > maxText then maxText = w end
       end
     end
@@ -1248,6 +1341,16 @@ function Nearby:Create()
   f:SetFrameStrata("MEDIUM")
   f:SetClampedToScreen(true)
   MakeBackdrop(f)
+
+  -- Auto-width measurer: an unconstrained FontString used to measure full text width.
+  -- On some clients, GetStringWidth() on a constrained FontString can return a clamped value.
+  local measureFS = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  measureFS:SetPoint("TOPLEFT", f, "BOTTOMLEFT", -10000, -10000) -- keep it off-screen
+  measureFS:SetAlpha(0)
+  measureFS:SetText("")
+  measureFS:SetWordWrap(false)
+  measureFS:SetMaxLines(1)
+  self._awMeasureFS = measureFS
 
   -- Freeze ordering while the user interacts with the window (Spy-stable clicking).
   f:SetScript("OnEnter", function()

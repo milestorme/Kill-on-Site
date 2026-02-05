@@ -1,5 +1,34 @@
 # KillOnSight – Changelog
 
+## Version 3.2.8
+
+### Nearby Frame – Dynamic Auto Width
+
+* Reworked auto-width system for improved reliability on Retail clients.
+* Nearby frame now measures text using an unconstrained internal FontString to correctly expand for long entries.
+* Faster, smoother width animation for more responsive resizing.
+* Disabled text wrapping so entries remain on a single line.
+
+### Combat Safety Fixes
+
+* Fixed `ADDON_ACTION_BLOCKED` error caused by resizing the Nearby frame during combat.
+* Nearby list **continues updating in combat** so new enemies appear instantly.
+* Frame resizing and re-sorting are safely deferred until combat ends.
+* Pending width updates apply automatically on `PLAYER_REGEN_ENABLED`.
+
+### Behaviour Improvements
+
+* Prevented animation loop from attempting width updates during combat lockdown.
+* Improved refresh flow so spec updates and new sightings do not cause protected calls.
+* Stabilised Nearby updates in battlegrounds and high-combat environments.
+
+### Internal
+
+* Refactored NearbyFrame width calculation and update flow.
+* Added safer handling for width animation and refresh queues.
+* General cleanup to reduce taint risk on Retail UI.
+
+
 ## Version 3.2.7
 
 ### Nearby Frame Improvements
