@@ -1,8 +1,9 @@
 # Kill on Sight (KoS)
 
 **Author:** Milestorme
+**Contributor** Minstrel
 
-Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list, alerts, and optional stealth detection support across multiple game versions.
+Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list and alerts.
 
 ## Features
 
@@ -12,13 +13,12 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
   - Sorts by most recent **Last seen**
   - Optional row icons (class/skull), per-row fade timers, scaling, transparency
   - Auto-hide when empty
-  - One-click actions (Add KoS / Add Guild) with visual tags
+  - One-click actions (Add KoS) with visual tags
 - **Notifications**
   - Chat message, screen flash, and optional sound
   - Separate stealth detection banner + sound (when enabled)
   - Throttling to prevent spam
-- **Attackers / Stats UI**
-  - Attackers list
+- **Stats UI**
   - Enemy statistics: first seen, last seen, seen count, wins/losses
   - Sorting and reset controls
 - **Sync**

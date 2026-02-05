@@ -188,12 +188,16 @@ function Sync:Init()
   C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
 end
 
-function Sync:Hello()
-  if not CanSync() then
-    Notifier:Chat(L.SYNC_DISABLED); return
+function Sync:Hello(silent)
+if not CanSync() then
+    if not silent then Notifier:Chat(L.SYNC_DISABLED) end
+    return
   end
   local ch = BestChannel()
-  if not ch then Notifier:Chat(L.SYNC_DISABLED); return end
+  if not ch then
+    if not silent then Notifier:Chat(L.SYNC_DISABLED) end
+    return
+  end
   local d = DB:GetData()
   Send(ch, ("HELLO|%s|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0), ADDON_VER))
 end

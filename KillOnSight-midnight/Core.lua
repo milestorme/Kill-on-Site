@@ -367,7 +367,8 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
   if cmd == "sync" then
     local Sync = GetSync()
     if Sync then
-      Sync:Hello()
+      -- Hello is useful, but keep it silent so we don't double-print SYNC_DISABLED.
+      Sync:Hello(true)
       return Sync:RequestDiff()
     end
     return
@@ -862,7 +863,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
 	    if Detector and not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit("target") end
 	    if GUI then GUI:RefreshAll() end
 	    -- Print sync warning first (if any), then the Retail nameplate limitation warning.
-	    if Sync then Sync:Hello() end
+	    if Sync then Sync:Hello(true) end
 	    WarnIfEnemyNameplatesDisabled()
 	    return
 	  end
