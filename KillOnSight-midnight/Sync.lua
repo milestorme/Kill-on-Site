@@ -143,13 +143,41 @@ local function DeserializeChange(msg)
 end
 
 local function SendChunks(channel, lines)
+  local maxPacketLen = 220
+  local longLineSeq = (Sync and Sync._longLineSeq) or 0
+  local function NextLongLineId()
+    longLineSeq = longLineSeq + 1
+    if Sync then Sync._longLineSeq = longLineSeq end
+    return tostring(longLineSeq)
+  end
+
+  local function SendLongLine(line)
+    local encoded = Escape(line)
+    local lineId = NextLongLineId()
+    local maxPayloadLen = 180
+    local total = math.ceil(#encoded / maxPayloadLen)
+    for part = 1, total do
+      local startIdx = (part - 1) * maxPayloadLen + 1
+      local chunk = encoded:sub(startIdx, startIdx + maxPayloadLen - 1)
+      Send(channel, ("DL|%s|%d|%d|%s"):format(lineId, part, total, chunk))
+    end
+  end
+
   local buf = ""
   for _,line in ipairs(lines) do
-    if #buf + #line + 1 > 220 then
-      Send(channel, "D|"..buf)
-      buf = ""
+    if #line > maxPacketLen then
+      if buf ~= "" then
+        Send(channel, "D|"..buf)
+        buf = ""
+      end
+      SendLongLine(line)
+    else
+      if #buf + #line + 1 > maxPacketLen then
+        Send(channel, "D|"..buf)
+        buf = ""
+      end
+      buf = buf .. line .. "\n"
     end
-    buf = buf .. line .. "\n"
   end
   if buf ~= "" then
     Send(channel, "D|"..buf)
@@ -189,6 +217,7 @@ function Sync:RequestDiff()
 end
 
 local rx = {} -- [sender] = { lines={} }
+local rxLong = {} -- [sender] = { [id] = { total = n, parts = {}, received = 0 } }
 
 local function ApplyLines(sender, lines)
   local applied = 0
@@ -336,12 +365,41 @@ function Sync:OnMessage(prefix, msg, channel, sender)
     return
   end
 
+  if cmd == "DL" then
+    local lineId, part, total, chunk = strsplit("|", rest or "", 4)
+    if not lineId or not part or not total or not chunk then return end
+    part = tonumber(part) or 0
+    total = tonumber(total) or 0
+    if part < 1 or total < 1 then return end
+
+    rxLong[sender] = rxLong[sender] or {}
+    local bucket = rxLong[sender][lineId]
+    if not bucket then
+      bucket = { total = total, parts = {}, received = 0 }
+      rxLong[sender][lineId] = bucket
+    end
+    if not bucket.parts[part] then
+      bucket.parts[part] = chunk
+      bucket.received = bucket.received + 1
+    end
+
+    if bucket.received >= bucket.total then
+      local assembled = table.concat(bucket.parts, "")
+      local line = Unescape(assembled)
+      rx[sender] = rx[sender] or { lines = {} }
+      table.insert(rx[sender].lines, line)
+      rxLong[sender][lineId] = nil
+    end
+    return
+  end
+
   if cmd == "END" then
     local bucket = rx[sender]
     if bucket and bucket.lines then
       ApplyLines(sender, bucket.lines)
     end
     rx[sender] = nil
+    rxLong[sender] = nil
     return
   end
 end

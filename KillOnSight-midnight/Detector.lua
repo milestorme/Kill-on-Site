@@ -56,10 +56,19 @@ local function CleanupStealthState(now)
   end
 end
 
+local function GetStealthNotifyCooldown()
+  local DB = GetDB()
+  local prof = DB and DB.GetProfile and DB:GetProfile()
+  local cooldown = prof and tonumber(prof.stealthNotifyCooldownSeconds)
+  if not cooldown or cooldown < 0 then cooldown = 8 end
+  return cooldown
+end
+
 local function ShouldNotifyStealth(nameLower)
   local now = Now()
   local last = lastStealthNotifyAt[nameLower]
-  if last and (now - last) < 8 then return false end
+  local cooldown = GetStealthNotifyCooldown()
+  if last and (now - last) < cooldown then return false end
   lastStealthNotifyAt[nameLower] = now
   return true
 end
