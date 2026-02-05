@@ -79,8 +79,9 @@ stealthDetectChat = true,
 stealthDetectSound = true,
 stealthDetectCenterWarning = true,
 stealthDetectAddToNearby = true,
-stealthWarningHoldSeconds = 6.0,
-stealthWarningFadeSeconds = 1.2,
+    stealthWarningHoldSeconds = 6.0,
+    stealthWarningFadeSeconds = 1.2,
+    stealthNotifyCooldownSeconds = 8,
 
     -- Enemy stats pruning policy (enabled by default)
     statsPruneEnabled = true,
@@ -166,6 +167,7 @@ function DB:Init()
   if realmDB.profile.nearbyNameFont == nil then realmDB.profile.nearbyNameFont = "Default" end
   if realmDB.profile.nearbyNameFontSize == nil then realmDB.profile.nearbyNameFontSize = 12 end
   if realmDB.profile.disableInGoblinTowns == nil then realmDB.profile.disableInGoblinTowns = false end
+  if realmDB.profile.stealthNotifyCooldownSeconds == nil then realmDB.profile.stealthNotifyCooldownSeconds = 8 end
 
   -- prune very old change log if it grew huge
   local data = realmDB.data
@@ -565,6 +567,15 @@ function DB:ApplyRemoteChange(sender, change)
 
   -- keep our revision monotonic
   d.revision = math.max(tonumber(d.revision or 0), tonumber(change.rev or 0))
+
+  -- record remote changes locally so we can forward them to peers
+  d.changes = d.changes or {}
+  d.changeSeq = (d.changeSeq or 0) + 1
+  local seq = d.changeSeq
+  d.changes[seq] = { op = change.op, kind = change.kind, key = change.key, entry = change.entry, rev = change.rev }
+  if (seq % CHANGELOG_PRUNE_EVERY) == 0 then
+    self:PruneChangeLog()
+  end
 end
 
 
