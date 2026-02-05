@@ -931,6 +931,98 @@ function Nearby:ScheduleRefresh(immediate)
   end)
 end
 
+
+-- ===== Nearby dynamic width (auto-fit longest visible row) =====
+local function Clamp(v, lo, hi)
+  if v < lo then return lo end
+  if v > hi then return hi end
+  return v
+end
+
+function Nearby:_ApplyRowWidths(frameWidth)
+  if not self.rows then return end
+  local inner = math.max(50, (frameWidth or 200) - 24) -- left/right frame padding
+  for _, row in ipairs(self.rows) do
+    if row and row.SetWidth then
+      row:SetWidth(inner)
+      if row.text and row.text.SetWidth then
+        -- Set a width for clipping, but keep wordwrap off so it never becomes multi-line.
+        row.text:SetWidth(math.max(10, inner - 28))
+      end
+    end
+  end
+end
+
+function Nearby:_SetWidthTarget(target)
+  if not (self.frame and self.frame.SetWidth) then return end
+
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile() or {}
+  local minW = prof.nearbyMinWidth or 216
+  local maxW = prof.nearbyMaxWidth or 450
+
+  target = Clamp(target or minW, minW, maxW)
+  self._widthTarget = target
+
+  -- Immediate mode if disabled
+  if prof.nearbyAutoWidth == false then
+    self.frame:SetWidth(target)
+    self:_ApplyRowWidths(target)
+    return
+  end
+
+  if self._widthAnimating then return end
+  self._widthAnimating = true
+
+  self.frame:SetScript("OnUpdate", function(_, elapsed)
+    if not self._widthTarget then
+      self._widthAnimating = false
+      self.frame:SetScript("OnUpdate", nil)
+      return
+    end
+
+    local cur = self.frame:GetWidth() or 0
+    local goal = self._widthTarget
+    local diff = goal - cur
+    if math.abs(diff) < 1.0 then
+      self.frame:SetWidth(goal)
+      self:_ApplyRowWidths(goal)
+      self._widthAnimating = false
+      self.frame:SetScript("OnUpdate", nil)
+      return
+    end
+
+    -- Smooth approach: pixels per second
+    local speed = Clamp(math.abs(diff) * 12, 1400, 7000) -- faster dynamic speed
+    local step = Clamp(diff, -speed * elapsed, speed * elapsed)
+    local nextW = cur + step
+    self.frame:SetWidth(nextW)
+    self:_ApplyRowWidths(nextW)
+  end)
+end
+
+function Nearby:UpdateDynamicWidth()
+  if not (self.frame and self.frame.IsShown and self.frame:IsShown()) then return end
+
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile() or {}
+  if prof.nearbyAutoWidth == false then return end
+
+  local maxText = 0
+  if self.rows then
+    for _, row in ipairs(self.rows) do
+      if row and row:IsShown() and row.text and row.text.GetStringWidth then
+        local w = row.text:GetStringWidth() or 0
+        if w > maxText then maxText = w end
+      end
+    end
+  end
+
+  -- Text padding: left inset (18) + right inset (10) + frame padding (24)
+  local desired = math.floor(maxText + 18 + 10 + 24 + 0.5)
+  self:_SetWidthTarget(desired)
+end
+
 local function RowLabel(e, tNow)
   local c = ClassColorHex(e.class)
   local lvl = (e.level and e.level > 0) and tostring(e.level) or "??"
@@ -1004,7 +1096,7 @@ local function ShowMenuFor(self, e)
       end
     },
     { text = L.UI_CLEAR_NEARBY, notCheckable = true, func = function()
-        self:ClearAll({ keepShown = true })
+        self:ClearAll({ keepShown = true, rescan = true, immediate = true })
       end
     },
     { text = CLOSE, notCheckable = true },
@@ -1072,6 +1164,11 @@ local function UpdateScroll(self)
 
       row.text:SetText(RowLabel(e, tNow))
 
+      -- Cache width for dynamic frame sizing
+      if row.text and row.text.GetStringWidth then
+        row._desiredTextWidth = row.text:GetStringWidth() or 0
+      end
+
 
       local DB = GetDB()
       local prof = DB and DB:GetProfile()
@@ -1137,6 +1234,8 @@ local function UpdateScroll(self)
       end
     end
   end
+
+  if self.UpdateDynamicWidth then pcall(function() self:UpdateDynamicWidth() end) end
 
   FauxScrollFrame_Update(self.scroll, total, visible, 22)
 end
@@ -1282,7 +1381,9 @@ function Nearby:Create()
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     b.text:SetPoint("LEFT", 18, 0)
     b.text:SetJustifyH("LEFT")
-    b.text:SetWidth(171)
+    b.text:SetPoint("RIGHT", -10, 0)
+    b.text:SetWordWrap(false)
+    b.text:SetMaxLines(1)
     b.text:SetText("")
 
     -- (Hidden/stealth indicator is rendered inline in the row text via a texture tag.)
@@ -1471,8 +1572,55 @@ function Nearby:Create()
   self:Refresh() -- apply auto-hide immediately
 end
 
+
+function Nearby:RescanVisibleUnits()
+  local Detector = _G.KillOnSight_Detector
+  if not (Detector and Detector.CheckUnit) then return end
+
+  -- Prefer explicit unit tokens first.
+  local tokens = { "target", "mouseover", "focus" }
+  for i = 1, #tokens do
+    local u = tokens[i]
+    if UnitExists and UnitExists(u) then
+      pcall(function() Detector:CheckUnit(u, true) end)
+    end
+  end
+
+  -- Nameplates: modern API (works on many Classic clients too).
+  if C_NamePlate and C_NamePlate.GetNamePlates then
+    local plates = C_NamePlate.GetNamePlates()
+    if plates then
+      for i = 1, #plates do
+        local plate = plates[i]
+        local unit = plate and (plate.namePlateUnitToken or (plate.unitFrame and plate.unitFrame.unit))
+        if unit and UnitExists and UnitExists(unit) then
+          pcall(function() Detector:CheckUnit(unit, true) end)
+        end
+      end
+    end
+  end
+
+  -- Fallback scan: nameplate1..nameplate40 (safe no-op on clients that don't expose these).
+  if UnitExists then
+    for i = 1, 40 do
+      local u = "nameplate" .. i
+      if UnitExists(u) then
+        pcall(function() Detector:CheckUnit(u, true) end)
+      end
+    end
+  end
+end
+
 function Nearby:ClearAll(opts)
   opts = opts or {}
+
+  -- Cancel any queued refresh; otherwise ScheduleRefresh may be blocked until the timer fires.
+  if self._refreshTimer and self._refreshTimer.Cancel then
+    pcall(function() self._refreshTimer:Cancel() end)
+  end
+  self._refreshTimer = nil
+  self._nextAllowedRefresh = 0
+
   self.entries = {}
   self.guidToKey = {}
   self.nameToKey = {}
@@ -1488,7 +1636,16 @@ function Nearby:ClearAll(opts)
   if self.frame and not opts.keepShown then
     SafeSetShown(self.frame, false)
   end
-  self:ScheduleRefresh()
+
+  if opts.rescan then
+    pcall(function() self:RescanVisibleUnits() end)
+  end
+
+  if opts.immediate then
+    if self.Refresh then pcall(function() self:Refresh() end) end
+  else
+    self:ScheduleRefresh(true)
+  end
 end
 
 function Nearby:HandleSanctuaryChange()

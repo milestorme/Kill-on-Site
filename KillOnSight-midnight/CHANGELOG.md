@@ -1,5 +1,40 @@
 # KillOnSight – Changelog
 
+## Version 3.2.7
+
+### Nearby Frame Improvements
+
+* Added **dynamic auto-width** for Nearby list.
+* Nearby frame now expands to fit the longest visible entry on a single line.
+* Disabled text wrapping to prevent multi-line entries.
+* Added smooth width animation with significantly faster expansion speed.
+* Improved resize responsiveness when specs or fonts update.
+
+### Performance & Behaviour
+
+* Optimised width animation using dynamic speed scaling (fast expand, smooth settle).
+* Reduced micro-resize jitter when multiple players update at once.
+* Improved refresh handling after spec cache updates.
+
+### Inspect / Spec Handling
+
+* Improved inspect cache behaviour.
+* Pre-warm inspect cache when Nearby entries appear (lightweight throttle).
+* Prevent repeated inspect requests once a player spec is known.
+* Faster tooltip spec updates.
+
+### Font Handling
+
+* Fixed issue where font selection required size change to apply.
+* Font updates now apply instantly without blanking Nearby entries.
+* Improved stability when switching fonts while players are visible.
+
+### Internal
+
+* Cleaned up NearbyFrame update flow.
+* Reduced refresh lag caused by queued timers.
+* General code refactor for smoother UI updates.
+
 ## v3.2.6
 
 ### Fixed
