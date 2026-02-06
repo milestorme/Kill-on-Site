@@ -682,6 +682,13 @@ local function BuildStats(opts)
     local e = stats[k]
     if e then
       local name = (e.name) or k
+      local displayName = name
+      if e.realm and e.realm ~= "" then
+        displayName = name .. "-" .. e.realm
+      elseif e.fullName and e.fullName:find("-", 1, true) then
+        -- Back-compat: if older records only have fullName
+        displayName = e.fullName
+      end
       local guild = (e.guild) or ""
 
       local ok = true
@@ -695,7 +702,7 @@ local function BuildStats(opts)
         local classFile = _NormalizeClass(e.classFile) or _GuessClassFor(name, nil)
         local isKos = (kosPlayers and kosPlayers[k]) ~= nil
         local isGuild = (guild ~= "") and hasGuild(guild)
-        local nameText = _ColorizeName(name, classFile)
+        local nameText = _ColorizeName(displayName or name, classFile)
         if util and util.AppendTags then
           nameText = util:AppendTags(nameText, isKos, isGuild)
         else
@@ -1337,11 +1344,13 @@ local pPlayers = CreateFrame("Frame", nil, frame)
 
   local lClass = AddInfoLine(1, (L.UI_CLASS or "Class"))
   local lGuild = AddInfoLine(2, L.UI_GUILD)
-  local lFirst = AddInfoLine(3, (L.UI_STATS_FIRSTSEEN or "First seen"))
-  local lLast  = AddInfoLine(4, L.UI_LAST_SEEN)
-  local lSeen  = AddInfoLine(5, (L.UI_STATS_SEEN or "Seen"))
-  local lW     = AddInfoLine(6, (L.UI_STATS_WINS or "Wins"))
-  local lL     = AddInfoLine(7, (L.UI_STATS_LOSES or "Losses"))
+  local lFaction = AddInfoLine(3, (L.UI_FACTION or "Faction"))
+  
+  local lFirst = AddInfoLine(4, (L.UI_STATS_FIRSTSEEN or "First seen"))
+  local lLast  = AddInfoLine(5, L.UI_LAST_SEEN)
+  local lSeen  = AddInfoLine(6, (L.UI_STATS_SEEN or "Seen"))
+  local lW     = AddInfoLine(7, (L.UI_STATS_WINS or "Wins"))
+  local lL     = AddInfoLine(8, (L.UI_STATS_LOSES or "Losses"))
 
   local btnAdd = MakeButton(dPane, (L.UI_ADD_KOS or "Add KoS"), 170, 22)
   btnAdd:SetPoint("BOTTOM", dPane, "BOTTOM", 0, 44)
@@ -1359,6 +1368,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       dName:SetText("-")
       lClass:SetText((L.UI_CLASS or "Class") .. ": -")
       lGuild:SetText(L.UI_GUILD .. ": -")
+      if lFaction then lFaction:SetText((L.UI_FACTION or "Faction") .. ": -") end
       lFirst:SetText((L.UI_STATS_FIRSTSEEN or "First seen") .. ": -")
       lLast:SetText(L.UI_LAST_SEEN .. ": -")
       lSeen:SetText((L.UI_STATS_SEEN or "Seen") .. ": -")
@@ -1380,6 +1390,23 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
     lClass:SetText((L.UI_CLASS or "Class") .. ": " .. classLabel)
     lGuild:SetText(L.UI_GUILD .. ": " .. ((e.guild and e.guild ~= "") and e.guild or "-"))
+
+local factionLabel = "-"
+    local fg = e.faction
+    if fg and fg ~= "" then
+      local aName = _G.FACTION_ALLIANCE or "Alliance"
+      local hName = _G.FACTION_HORDE or "Horde"
+      if fg == "Alliance" then
+        factionLabel = "|cff3f7fff" .. aName .. "|r"
+      elseif fg == "Horde" then
+        factionLabel = "|cffff3333" .. hName .. "|r"
+      else
+        factionLabel = fg
+      end
+    end
+    if lFaction then
+      lFaction:SetText((L.UI_FACTION or "Faction") .. ": " .. factionLabel)
+    end
     lFirst:SetText((L.UI_STATS_FIRSTSEEN or "First seen") .. ": " .. FormatTime(e.firstSeenAt))
     lLast:SetText(L.UI_LAST_SEEN .. ": " .. FormatTime(e.lastSeenAt))
     local seenN = tonumber(e.seenCount or 0) or 0

@@ -439,7 +439,7 @@ end
 -- The encounter counter is incremented only when an encounter resolves
 -- (win/loss/timeout) via StatsAddSeenEncounter().
 -- Optional guid lets us backfill class for enemies where we don't yet have a unit.
-function DB:NoteEnemySeen(name, classFile, guild, guid)
+function DB:NoteEnemySeen(name, classFile, guild, guid, factionGroup)
   local d = self:GetData()
   d.statsPlayers = d.statsPlayers or {}
 
@@ -488,7 +488,24 @@ function DB:NoteEnemySeen(name, classFile, guild, guid)
       e.guild = guild
       self:_BumpStatsRevision()
     end
+
+-- Track realm/fullName for cross-realm identification
+if name and name ~= "" then
+  local base = name:match("^[^-]+") or name
+  local realm = name:match("^[^-]+%-(.+)$") or ""
+  if e.name ~= base then e.name = base; self:_BumpStatsRevision() end
+  if e.realm ~= realm then e.realm = realm; self:_BumpStatsRevision() end
+  if e.fullName ~= name then e.fullName = name; self:_BumpStatsRevision() end
+end
+
   end
+
+if factionGroup and factionGroup ~= "" then
+  if e.faction ~= factionGroup then
+    e.faction = factionGroup
+    self:_BumpStatsRevision()
+  end
+end
 end
 
 -- Increment "seenCount" once per encounter resolution (win/loss/timeout).
@@ -534,6 +551,13 @@ function DB:StatsAddLoss(name)
   end
   e.loses = (tonumber(e.loses or 0) or 0) + 1
   self:_BumpStatsRevision()
+end
+-- Return stats record for a player (or nil). Useful for pulling cached faction/class/guild.
+function DB:StatsGetPlayer(name)
+  local d = self:GetData(); d.statsPlayers = d.statsPlayers or {}
+  local key = _StatsKey(name)
+  if not key then return nil end
+  return d.statsPlayers[key]
 end
 
 -- Returns true if an enemy stats record already exists for this name.

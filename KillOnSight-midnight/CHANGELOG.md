@@ -1,5 +1,28 @@
 # KillOnSight – Changelog
 
+## Version 3.2.9
+
+### Added
+
+* Added Faction color to nearby tooltip and faction to stats.
+* Store **realm** in stats and display players as `Name-Realm` on Stats page.
+* New **Nearby Background** slider with profile persistence.
+* Blizzard-style slider layout for Nearby Scale / Background.
+
+### Changed
+
+* Reworked Nearby sliders to match Name Size layout (label + value + slider).
+* Converted UI text to locale keys:
+
+  * `L.UI_NEARBY_SCALE`
+  * `L.UI_NEARBY_BACKGROUND`
+* Cleaned locale strings (removed debug text like “0=invisible”).
+
+### Fixed
+
+* Removed Realm: heading from tooltip
+* Fixed font chat message spam
+
 ## Version 3.2.8
 
 ### Nearby Frame – Dynamic Auto Width

@@ -454,7 +454,7 @@ function Detector:CheckUnit(unit, forceNearby)
 
   -- Stats note (does not increment encounters; just updates last seen/class/guild).
   if isEnemyPlayer and DB.NoteEnemySeen then
-    DB:NoteEnemySeen(name, classFile, guild, guid)
+    DB:NoteEnemySeen(name, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
   end
 
   -- Retail: class/guild metadata can arrive late; ensure the Stats UI updates even when

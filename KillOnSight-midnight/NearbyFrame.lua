@@ -296,7 +296,7 @@ function Nearby:ApplyNameFont()
           if choice ~= "Default" and not self._badFontsWarned[choice] then
             self._badFontsWarned[choice] = true
             if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-              DEFAULT_CHAT_FRAME:AddMessage("KillOnSight: Font '" .. choice .. "' could not be loaded. Falling back to Default.")
+              DEFAULT_CHAT_FRAME:AddMessage("")
             end
           end
         end
@@ -328,7 +328,19 @@ function Nearby:_ShowEntryTooltip(selfBtn, e)
   GameTooltip:SetOwner(selfBtn, "ANCHOR_RIGHT")
 
   -- Name
-  GameTooltip:AddLine(e.name)
+
+-- Name (faction-colored when known)
+do
+  local fg = e.factionGroup
+  if fg == "Alliance" then
+    GameTooltip:AddLine(e.name, 0.25, 0.5, 1.0)
+  elseif fg == "Horde" then
+    GameTooltip:AddLine(e.name, 1.0, 0.2, 0.2)
+  else
+    -- Default: keep Blizzard-like name color (gold-ish)
+    GameTooltip:AddLine(e.name, 1.0, 0.82, 0.0)
+  end
+end
 
   -- Level
   if e.level then
@@ -366,7 +378,7 @@ function Nearby:_ShowEntryTooltip(selfBtn, e)
 
   -- Realm
   if e.realm and e.realm ~= "" then
-    GameTooltip:AddLine("Realm: " .. e.realm, 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(e.realm, 0.8, 0.8, 0.8)
   end
 
   -- Zone
@@ -2365,6 +2377,29 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   e.realm = ExtractRealm(rawName) or e.realm
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
+
+-- Faction: capture instantly from a live unit token (e.g. nameplate unit) and persist into stats.
+if unit and UnitFactionGroup then
+  local fg = UnitFactionGroup(unit)
+  if fg and fg ~= "" then
+    e.factionGroup = fg
+    local DB = GetDB and GetDB()
+    if DB and DB.NoteEnemySeen then
+      pcall(function() DB:NoteEnemySeen(rawName or name, classFile, guild, playerGuid, fg) end)
+    end
+  end
+end
+
+-- Prime cached faction from stats so future sightings can color immediately even before unit is available.
+if (not e.factionGroup or e.factionGroup == "") and GetDB then
+  local DB = GetDB()
+  if DB and DB.StatsGetPlayer then
+    local se = DB:StatsGetPlayer(rawName or name)
+    if se and se.faction and se.faction ~= "" then
+      e.factionGroup = se.faction
+    end
+  end
+end
     -- Retail-only: pre-warm / learn specialization (cached + throttled).
   if IS_RETAIL and playerGuid then
     if e.spec and e.spec ~= "" then
