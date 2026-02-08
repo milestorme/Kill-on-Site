@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = '左键：打开/关闭'
 L.TT_MINIMAP_RIGHTCLICK = '右键：菜单'
 
 L.TT_ON_KOS = '在KoS列表'
+L.TT_GUILD = "公会"
+L.TT_KOS = "见面即杀"
+L.TT_NOT_TARGETABLE = "无法选中"
 
 L.TT_GUILD_KOS = '公会KoS'
 
@@ -175,3 +178,5 @@ L.UI_NOTES = "备注"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近检测受限，因为敌方姓名版已关闭。请在“界面 > 名称”中启用敌方姓名版以获得完整检测。可按 V 键切换。"
 
 L["TT_NOT_TARGETABLE"] = "当前无法选为目标"
+
+L.UI_NEARBY_BG_DARKNESS = "附近窗口背景深色度"

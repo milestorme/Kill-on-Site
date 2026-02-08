@@ -3,6 +3,21 @@
 local ADDON_NAME = ...
 local L = KillOnSight_L
 
+-- Classic-safe shim: some clients/builds don't ship SafeSetShown helper.
+if type(SafeSetShown) ~= "function" then
+  function SafeSetShown(f, shown)
+    if not f then return end
+    -- Avoid protected show/hide attempts during combat lockdown.
+    if InCombatLockdown and InCombatLockdown() then return end
+    if shown then
+      if f.Show then f:Show() end
+    else
+      if f.Hide then f:Hide() end
+    end
+  end
+end
+
+
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 
@@ -12,7 +27,6 @@ local function GetNotifier() return _G.KillOnSight_Notifier end
 local function IsInSanctuary()
   local pvpType = (GetZonePVPInfo and GetZonePVPInfo())
   if pvpType == "sanctuary" then return true end
-  if IsResting and IsResting() then return true end
   return false
 end
 
@@ -80,7 +94,58 @@ local Nearby = {
   ticker = nil,
   tickerInterval = 0.5,
   orderCounter = 0,
+  -- Dynamic width (auto-fit to longest visible entry)
+  autoWidthEnabled = true, -- can be overridden by profile: prof.nearbyAutoWidth
+  autoWidthMin = 216,
+  autoWidthMax = 450,
+  _awTarget = nil,
+  _awActive = false,
+  _awRowPad = 45, -- frame padding beyond text width (default layout: 216 - 171)
 }
+
+-- Unified suppression logic: when suppressed, Nearby must NEVER try to show (prevents flicker).
+function Nearby:IsSuppressed(prof)
+  if IsInSanctuary() then return true, "sanctuary" end
+  if prof and prof.disableInGoblinTowns and IsInGoblinTown() then return true, "goblin" end
+  return false, nil
+end
+
+function Nearby:HandleSuppressionChange()
+  if not self.frame then return end
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile()
+
+  local suppressed, reason = self:IsSuppressed(prof)
+
+  if suppressed then
+    self._suppressed = reason or true
+
+    -- Hard lock: stop periodic refresh work and force-hide without letting fades re-show.
+    self:StopTicker()
+
+    if self._fadeGroup and self._fadeGroup:IsPlaying() then
+      self._fadeGroup._hideOnDone = false
+      self._fadeGroup:Stop()
+    end
+
+    -- Clear + hide immediately while suppressed.
+    if next(self.entries) ~= nil then
+      self:ClearAll({ keepShown = false })
+    else
+      SafeSetShown(self.frame, false)
+    end
+    return true
+  end
+
+  -- Leaving suppressed area: re-enable periodic refresh.
+  if self._suppressed then
+    self._suppressed = nil
+    self:StartTicker()
+    self:ScheduleRefresh()
+  end
+  return false
+end
+
 
 local NEARBY_NAME_FONTS = {
   ["Morpheus"]      = "Fonts\\MORPHEUS.TTF",
@@ -302,6 +367,17 @@ function Nearby:ApplyNameFont(silent)
     end
   end
 
+
+-- Keep the hidden auto-width measurer in sync with the row font (unbounded width measurement).
+if self._awMeasureFS and self._awMeasureFS.SetFont then
+  pcall(function() self._awMeasureFS:SetFont(wantedPath, size, flags) end)
+  if self._awMeasureFS.SetWordWrap then self._awMeasureFS:SetWordWrap(false) end
+  if self._awMeasureFS.SetMaxLines then self._awMeasureFS:SetMaxLines(1) end
+end
+
+-- Font change affects string widths; trigger an auto-width recompute.
+self._awDirty = true
+
   -- Success: clear retry counter
   if choice ~= "Default" then
     self._fontApplyRetry[choice] = 0
@@ -515,6 +591,19 @@ function Nearby:_SetFrameHeightSafe(h)
           KillOnSight_Nearby.frame:SetHeight(KillOnSight_Nearby._pendingHeight)
           KillOnSight_Nearby._pendingHeight = nil
         end
+        -- Apply any pending width changes blocked during combat (secure rows).
+        if KillOnSight_Nearby and KillOnSight_Nearby._pendingWidthApply and KillOnSight_Nearby.frame then
+          KillOnSight_Nearby._pendingWidthApply = nil
+          local w = KillOnSight_Nearby._awTarget or (KillOnSight_Nearby.frame:GetWidth())
+          if w then
+            KillOnSight_Nearby.frame:SetWidth(w)
+            if KillOnSight_Nearby._ApplyRowWidths then
+              KillOnSight_Nearby:_ApplyRowWidths(w)
+            end
+          end
+          KillOnSight_Nearby._awActive = false
+          KillOnSight_Nearby._awTarget = nil
+        end
         KillOnSight_Nearby._regenHooked = false
       end)
     end
@@ -530,6 +619,8 @@ function Nearby:AutoFitHeight(visibleCount)
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
+  local bodyA = prof.nearbyBackdropAlpha
+  if bodyA == nil then bodyA = 0.5 end
 
   local minimal = prof.nearbyMinimal == true
   local maxRows = (self.rows and #self.rows) or 0
@@ -568,18 +659,21 @@ end
 
 
 function Nearby:ApplyMinimalMode()
+
   if InCombatLockdown and InCombatLockdown() then self:QueueLayout(); return end
   if not self.frame then return end
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
+  local bodyA = prof.nearbyBackdropAlpha
+  if bodyA == nil then bodyA = 0.5 end
 
   local minimal = prof.nearbyMinimal == true
   -- backdrop
   if self.frame.SetBackdrop then
     if minimal then
       self.frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
-      self.frame:SetBackdropColor(0,0,0,0.35)
+      self.frame:SetBackdropColor(0,0,0,bodyA)
     else
       self.frame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -628,6 +722,122 @@ function Nearby:ApplyMinimalMode()
   end
 end
 
+
+
+-- =========================
+-- Dynamic width (auto-fit)
+-- =========================
+function Nearby:_GetAutoWidthSettings()
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile()
+  local enabled = self.autoWidthEnabled
+  if prof and prof.nearbyAutoWidth ~= nil then
+    enabled = (prof.nearbyAutoWidth == true)
+  end
+  local minW = (prof and prof.nearbyMinWidth) or self.autoWidthMin
+  local maxW = (prof and prof.nearbyMaxWidth) or self.autoWidthMax
+  return enabled, minW, maxW
+end
+
+function Nearby:_ApplyRowWidths(frameW)
+  if not self.frame or not self.rows then return end
+  if InCombatLockdown and InCombatLockdown() then
+    self._pendingWidthApply = true
+    return
+  end
+
+  -- Default layout: frame 216, rows 180, text 171
+  local rowW = math.max(80, frameW - 36)
+  local textW = math.max(40, rowW - 9)
+
+  for _, row in ipairs(self.rows) do
+    if row and row.SetWidth then
+      row:SetWidth(rowW)
+    end
+    if row and row.text and row.text.SetWidth then
+      row.text:SetWidth(textW)
+    end
+  end
+end
+
+function Nearby:_SetAutoWidthTarget(targetW)
+  if not self.frame then return end
+  local enabled, minW, maxW = self:_GetAutoWidthSettings()
+  if not enabled then return end
+  if not targetW then return end
+
+  if targetW < minW then targetW = minW end
+  if targetW > maxW then targetW = maxW end
+
+  self._awTarget = targetW
+  self._awActive = true
+end
+
+function Nearby:_ComputeAutoWidthTarget()
+  if not self.frame or not self.rows then return end
+  local enabled, minW, maxW = self:_GetAutoWidthSettings()
+  if not enabled then return end
+
+  
+local maxText = 0
+local meas = self._awMeasureFS
+for _, row in ipairs(self.rows) do
+  if row and row:IsShown() and row.text then
+    local t = row.text:GetText()
+    if t and t ~= "" then
+      local w = 0
+      if meas and meas.SetText and meas.GetStringWidth then
+        meas:SetText(t)
+        w = meas:GetStringWidth() or 0
+      else
+        -- Fallback: may be clamped if the FontString has a width.
+        w = row.text:GetStringWidth() or 0
+      end
+      -- Texture tags inside the string (|T...|t) don't always contribute to width; add a tiny bump.
+      if t:find("|T", 1, true) then w = w + 14 end
+      if w > maxText then maxText = w end
+    end
+  end
+end
+
+  local targetW = math.ceil(maxText + (self._awRowPad or 45))
+  if targetW < minW then targetW = minW end
+  if targetW > maxW then targetW = maxW end
+
+  self:_SetAutoWidthTarget(targetW)
+end
+
+function Nearby:_AutoWidthOnUpdate(elapsed)
+  if not self._awActive or not self._awTarget or not self.frame then return end
+  if InCombatLockdown and InCombatLockdown() then return end
+
+  local cur = self.frame:GetWidth() or 0
+  local tgt = self._awTarget
+  local diff = tgt - cur
+  local ad = math.abs(diff)
+
+  if ad <= 1.0 then
+    self.frame:SetWidth(tgt)
+    self:_ApplyRowWidths(tgt)
+    self._awActive = false
+    self._awTarget = nil
+    return
+  end
+
+  -- Very fast, distance-scaled speed (snappy expand, still smooth).
+  local speed = 1400 + (ad * 20)
+  if speed > 7000 then speed = 7000 end
+
+  local step = speed * (elapsed or 0)
+  if diff > 0 then
+    cur = math.min(tgt, cur + step)
+  else
+    cur = math.max(tgt, cur - step)
+  end
+
+  self.frame:SetWidth(cur)
+  self:_ApplyRowWidths(cur)
+end
 
 function Nearby:ApplyLocked()
   if not self.frame then return end
@@ -891,7 +1101,7 @@ local function UpdateScroll(self)
   if InCombatLockdown and InCombatLockdown() then
     self._pendingRefresh = true
     self:QueueLayout()
-    FauxScrollFrame_Update(self.scroll, total, visible, 22)
+  FauxScrollFrame_Update(self.scroll, total, visible, 22)
     return
   end
 
@@ -913,6 +1123,8 @@ local function UpdateScroll(self)
       end
 
       row.text:SetText(RowLabel(e, tNow))
+      -- Dynamic width: recompute after rows are populated (fast, single pass).
+      self._awDirty = true
 
 
       local DB = GetDB()
@@ -980,6 +1192,14 @@ local function UpdateScroll(self)
     end
   end
 
+  -- Apply dynamic width after row texts are set/cleared (only out of combat).
+  if self._awDirty then
+    self._awDirty = nil
+    if self._ComputeAutoWidthTarget then
+      self:_ComputeAutoWidthTarget()
+    end
+  end
+
   FauxScrollFrame_Update(self.scroll, total, visible, 22)
 end
 
@@ -991,8 +1211,23 @@ function Nearby:Create()
   f:SetFrameStrata("MEDIUM")
   f:SetClampedToScreen(true)
   MakeBackdrop(f)
+  -- Width animation (auto-fit)
+  f:SetScript("OnUpdate", function(_, elapsed)
+    if KillOnSight_Nearby and KillOnSight_Nearby._AutoWidthOnUpdate then
+      KillOnSight_Nearby:_AutoWidthOnUpdate(elapsed)
+    end
+  end)
 
-  -- Title + count like Spy
+
+  
+-- Hidden measurer FontString for unbounded width calculations (GetStringWidth is clamped when the FS has a width).
+local meas = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+meas:Hide()
+if meas.SetWordWrap then meas:SetWordWrap(false) end
+if meas.SetMaxLines then meas:SetMaxLines(1) end
+self._awMeasureFS = meas
+
+-- Title + count like Spy
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetText(L.UI_TITLE)
   self.titleFS = title
@@ -1065,7 +1300,7 @@ function Nearby:Create()
       selfBtn:SetAttribute("macrotext",  "/targetexact " .. tname)
     end)
     b:SetPoint("TOPLEFT", 12, -56 - (i-1)*22)
-    b:SetSize(180, 22)
+    b:SetSize((f:GetWidth() or 216) - 36, 22)
 
     b.bg = b:CreateTexture(nil, "BACKGROUND")
     b.bg:SetAllPoints(true)
@@ -1088,7 +1323,9 @@ function Nearby:Create()
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     b.text:SetPoint("LEFT", 18, 0)
     b.text:SetJustifyH("LEFT")
-    b.text:SetWidth(171)
+    b.text:SetWordWrap(false)
+    if b.text.SetMaxLines then b.text:SetMaxLines(1) end
+    b.text:SetWidth((f:GetWidth() or 216) - 45)
     b.text:SetText("")
 
     -- (Hidden/stealth indicator is rendered inline in the row text via a texture tag.)
@@ -1320,7 +1557,7 @@ else
     zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     zf:RegisterEvent("PLAYER_UPDATE_RESTING")
     zf:SetScript("OnEvent", function()
-      Nearby:HandleSanctuaryChange()
+      Nearby:HandleSuppressionChange()
     end)
     self._zoneEventFrame = zf
   end
@@ -1336,14 +1573,19 @@ else
   end
 
   -- Apply sanctuary rule immediately on creation.
-  self:HandleSanctuaryChange()
+  self:HandleSuppressionChange()
+
+  -- Apply saved Nearby font (and keep the auto-width measurer in sync) on startup.
+  if self.ApplyNameFont then
+    pcall(function() self:ApplyNameFont(true) end)
+  end
 
   UpdateScroll(self)
   self:ApplyAlpha()
   self:ApplyLocked()
   self:ApplyMinimalMode()
   self:StartTicker()
-  self:HandleSanctuaryChange()
+  self:HandleSuppressionChange()
   self:Refresh() -- apply auto-hide immediately
 end
 
@@ -1370,18 +1612,6 @@ function Nearby:ClearAll(opts)
   self:ScheduleRefresh()
 end
 
-function Nearby:HandleSanctuaryChange()
-  if not self.frame then return end
-  local inSanct = IsInSanctuary()
-  if inSanct then
-    -- Disable + clear list while in sanctuary.
-    if next(self.entries) ~= nil then
-      self:ClearAll({ keepShown = false })
-    else
-      SafeSetShown(self.frame, false)
-    end
-  end
-end
 
 function Nearby:Seen(name, classFile, guild, kosType, level)
   if not name or name == "" then return end
@@ -1392,23 +1622,10 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
   local prof = DB:GetProfile()
   if prof.showNearbyFrame == false then return end
 
-  -- Optional suppression for neutral goblin towns (Booty Bay / Gadgetzan).
-  if prof.disableInGoblinTowns and IsInGoblinTown() then
-    if next(self.entries) ~= nil then
-      self:ClearAll({ keepShown = false })
-    elseif self.frame and self.frame:IsShown() then
-      SafeSetShown(self.frame, false)
-    end
-    return
-  end
-
-  -- Do not populate Nearby while in a sanctuary area; also clear/hide if needed.
-  if IsInSanctuary() then
-    if next(self.entries) ~= nil then
-      self:ClearAll({ keepShown = false })
-    elseif self.frame and self.frame:IsShown() then
-      SafeSetShown(self.frame, false)
-    end
+  -- Hard suppression (sanctuary + optional goblin towns): while suppressed, Nearby is fully disabled and hidden.
+  local suppressed = self:IsSuppressed(prof)
+  if suppressed then
+    self:HandleSuppressionChange()
     return
   end
 
@@ -1475,6 +1692,12 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
 end
 
 function Nearby:Refresh()
+
+  -- HARD SUPPRESSION GUARD
+  if self._suppressed then
+    return
+  end
+
   if not self.frame then self:Create() end
   if InCombatLockdown and InCombatLockdown() then
     -- Defer refresh & any frame Show/Hide calls until combat ends
@@ -1490,6 +1713,13 @@ function Nearby:Refresh()
 
   if prof.showNearbyFrame == false then
     SafeSetShown(self.frame, false)
+    return
+  end
+
+  -- Hard suppression (sanctuary + optional goblin towns): never attempt to show while suppressed.
+  local suppressed = self:IsSuppressed(prof)
+  if suppressed then
+    self:HandleSuppressionChange()
     return
   end
 
@@ -1545,3 +1775,5 @@ function Nearby:Init()
 end
 
 KillOnSight_Nearby = Nearby
+
+

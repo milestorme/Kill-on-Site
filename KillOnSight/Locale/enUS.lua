@@ -140,6 +140,10 @@ L.TT_MINIMAP_RIGHTCLICK = "Right-click: Menu"
 
 L.TT_ON_KOS = "On KoS list"
 
+L.TT_KOS = "Kill on Sight"
+L.TT_GUILD = "Guild"
+L.TT_NOT_TARGETABLE = "Not targetable"
+
 L.TT_GUILD_KOS = "Guild-KoS"
 
 L.TT_LEVEL_FMT = "Level %s"
@@ -164,3 +168,5 @@ L.UI_NOTES = "Notes"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby is limited because Enemy Nameplates are OFF. Enable Enemy Nameplates (Interface > Names) for full detection. You can toggle them with the V key."
 
 L["TT_NOT_TARGETABLE"] = "Not targetable right now"
+
+L.UI_NEARBY_BG_DARKNESS = "Nearby background darkness"

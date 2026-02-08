@@ -49,6 +49,11 @@ local function RealmKey()
   return realm .. "-" .. faction
 end
 
+-- Legacy key (older versions stored per-realm only)
+local function LegacyRealmKey()
+  return GetRealmName() or "UnknownRealm"
+end
+
 local DEFAULTS = {
   profile = {
     enableSound = true,
@@ -70,6 +75,17 @@ local DEFAULTS = {
     -- Nearby window is always ultra-minimal (no toggle)
     nearbyMinimal = true,
     nearbyRowIcons = true,
+
+-- Nearby name font (stored so it persists across /reload)
+nearbyNameFont = "Default",
+nearbyBackdropAlpha = 0.5,
+        nearbyNameFontSize = 12,
+
+-- Nearby dynamic width (auto-fit)
+nearbyAutoWidth = true,
+nearbyMinWidth = 216,
+nearbyMaxWidth = 450,
+
 -- Stealth detection
 stealthDetectEnabled = true,
 stealthDetectChat = true,
@@ -145,6 +161,35 @@ function DB:Init()
   local key = RealmKey()
   KillOnSightDB.realms[key] = KillOnSightDB.realms[key] or {}
   local realmDB = KillOnSightDB.realms[key]
+
+  -- migrate legacy per-realm data (no faction suffix) if present
+  local legacyKey = LegacyRealmKey()
+  local legacy = KillOnSightDB.realms[legacyKey]
+  if legacy and type(legacy) == "table" then
+    -- If current realmDB is basically empty, copy lists over.
+    local curPlayers = (realmDB.players and next(realmDB.players)) ~= nil
+    local curGuilds  = (realmDB.guilds and next(realmDB.guilds)) ~= nil
+    if (not curPlayers) and legacy.players and type(legacy.players) == "table" then
+      realmDB.players = realmDB.players or {}
+      for k,v in pairs(legacy.players) do
+        if realmDB.players[k] == nil then realmDB.players[k] = v end
+      end
+    end
+    if (not curGuilds) and legacy.guilds and type(legacy.guilds) == "table" then
+      realmDB.guilds = realmDB.guilds or {}
+      for k,v in pairs(legacy.guilds) do
+        if realmDB.guilds[k] == nil then realmDB.guilds[k] = v end
+      end
+    end
+    -- Profile migration: only copy when missing (keep current defaults/options)
+    if legacy.profile and type(legacy.profile) == "table" then
+      realmDB.profile = realmDB.profile or {}
+      for k,v in pairs(legacy.profile) do
+        if realmDB.profile[k] == nil then realmDB.profile[k] = v end
+      end
+    end
+  end
+
   DeepCopy(realmDB, DEFAULTS)
   self.realmKey = key
   self.realmDB = realmDB

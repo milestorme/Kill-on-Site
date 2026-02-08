@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = '왼쪽 클릭: 열기/닫기'
 L.TT_MINIMAP_RIGHTCLICK = '오른쪽 클릭: 메뉴'
 
 L.TT_ON_KOS = 'KoS 목록에 있음'
+L.TT_GUILD = "길드"
+L.TT_KOS = "발견 즉시 공격"
+L.TT_NOT_TARGETABLE = "대상 지정 불가"
 
 L.TT_GUILD_KOS = '길드 KoS'
 
@@ -175,3 +178,5 @@ L.UI_NOTES = "메모"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "근처 감지는 적 이름표가 꺼져 있어 제한됩니다. 전체 감지를 위해 적 이름표(인터페이스 > 이름)를 켜세요. V 키로 토글할 수 있습니다."
 
 L["TT_NOT_TARGETABLE"] = "지금은 대상 지정 불가"
+
+L.UI_NEARBY_BG_DARKNESS = "근처 창 배경 어두움"

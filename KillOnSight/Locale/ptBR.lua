@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Clique esquerdo: Abrir/Fechar'
 L.TT_MINIMAP_RIGHTCLICK = 'Clique direito: Menu'
 
 L.TT_ON_KOS = 'Na lista KoS'
+L.TT_GUILD = "Guilda"
+L.TT_KOS = "Matar ao ver"
+L.TT_NOT_TARGETABLE = "Não pode ser alvo"
 
 L.TT_GUILD_KOS = 'KoS da guilda'
 
@@ -175,3 +178,5 @@ L.UI_NOTES = "Notas"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "O modo Próximos é limitado porque as Placas de Nome inimigas estão DESLIGADAS. Ative as Placas de Nome inimigas (Interface > Nomes) para detecção completa. Você pode alternar com a tecla V."
 
 L["TT_NOT_TARGETABLE"] = "Não é possível selecionar agora"
+
+L.UI_NEARBY_BG_DARKNESS = "Escuridão do fundo da janela de próximos"

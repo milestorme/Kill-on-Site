@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Clic gauche : Ouvrir/Fermer'
 L.TT_MINIMAP_RIGHTCLICK = 'Clic droit : Menu'
 
 L.TT_ON_KOS = 'Sur la liste KoS'
+L.TT_GUILD = "Guilde"
+L.TT_KOS = "Tuer à vue"
+L.TT_NOT_TARGETABLE = "Non ciblable"
 
 L.TT_GUILD_KOS = 'KoS de guilde'
 
@@ -177,3 +180,5 @@ L.UI_NOTES = "Notes"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "La détection Proximité est limitée car les barres de nom ennemies sont DÉSACTIVÉES. Activez les barres de nom ennemies (Interface > Noms) pour une détection complète. Vous pouvez les basculer avec la touche V."
 
 L["TT_NOT_TARGETABLE"] = "Impossible à cibler pour le moment"
+
+L.UI_NEARBY_BG_DARKNESS = "Opacité du fond de la fenêtre À proximité"

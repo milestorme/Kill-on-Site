@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Linksklick: Öffnen/Schließen'
 L.TT_MINIMAP_RIGHTCLICK = 'Rechtsklick: Menü'
 
 L.TT_ON_KOS = 'Auf KoS-Liste'
+L.TT_GUILD = "Gilde"
+L.TT_KOS = "Sofort angreifen"
+L.TT_NOT_TARGETABLE = "Nicht anvisierbar"
 
 L.TT_GUILD_KOS = 'Gilden-KoS'
 
@@ -178,3 +181,5 @@ L.UI_NOTES = "Notizen"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "In der Nähe ist eingeschränkt, weil gegnerische Namensplaketten AUS sind. Aktiviere gegnerische Namensplaketten (Interface > Namen) für volle Erkennung. Umschalten mit der Taste V."
 
 L["TT_NOT_TARGETABLE"] = "Derzeit nicht anvisierbar"
+
+L.UI_NEARBY_BG_DARKNESS = "Dunkelheit des Nahfenster-Hintergrunds"

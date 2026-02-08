@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Venstreklik: Åbn/Luk'
 L.TT_MINIMAP_RIGHTCLICK = 'Højreklik: Menu'
 
 L.TT_ON_KOS = 'På KoS-listen'
+L.TT_GUILD = "Guild"
+L.TT_KOS = "Kill on Sight"
+L.TT_NOT_TARGETABLE = "Not targetable"
 
 L.TT_GUILD_KOS = 'Gilde-KoS'
 
@@ -181,3 +184,5 @@ L.UI_NOTES = "Noter"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby er begrænset fordi Fjendtlige navneskilte er SLÅET FRA. Aktivér Fjendtlige navneskilte (Interface > Navne) for fuld registrering. Du kan skifte med V-tasten."
 
 L["TT_NOT_TARGETABLE"] = "Kan ikke målrettes nu"
+
+L.UI_NEARBY_BG_DARKNESS = "Mørkhed på baggrund i nær-vinduet"

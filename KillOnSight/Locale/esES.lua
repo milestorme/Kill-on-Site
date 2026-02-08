@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Clic izquierdo: Abrir/Cerrar'
 L.TT_MINIMAP_RIGHTCLICK = 'Clic derecho: Menú'
 
 L.TT_ON_KOS = 'En la lista KoS'
+L.TT_GUILD = "Hermandad"
+L.TT_KOS = "Matar al ver"
+L.TT_NOT_TARGETABLE = "No seleccionable"
 
 L.TT_GUILD_KOS = 'KoS de hermandad'
 
@@ -175,3 +178,5 @@ L.UI_NOTES = "Notas"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Cercanos está limitado porque las placas de nombre enemigas están DESACTIVADAS. Activa las placas de nombre enemigas (Interfaz > Nombres) para detección completa. Puedes alternarlas con la tecla V."
 
 L["TT_NOT_TARGETABLE"] = "No se puede seleccionar ahora"
+
+L.UI_NEARBY_BG_DARKNESS = "Oscuridad del fondo de la ventana de cercanos"

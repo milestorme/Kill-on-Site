@@ -499,10 +499,32 @@ local function _NormalizeClass(classIn)
 end
 
 local function _GuessClassFor(name, guid)
+  local function _BaseName(n)
+    if not n or n == "" then return nil end
+    return (n:match("^[^-]+") or n)
+  end
+
+  local base = _BaseName(name)
+
   -- 1) Prefer Nearby cache (fast + reliable when recently seen)
   if name and KillOnSight_Nearby and KillOnSight_Nearby.entries then
     local e = KillOnSight_Nearby.entries[name:lower()]
+    if (not e or not e.class) and base and base:lower() ~= name:lower() then
+      e = KillOnSight_Nearby.entries[base:lower()]
+    end
     if e and e.class then return e.class end
+  end
+
+  -- 1b) Fall back to enemy stats cache (covers names saved as Name-Realm).
+  if base and KillOnSight_DB and KillOnSight_DB.GetData then
+    local data = KillOnSight_DB:GetData()
+    if data and data.statsPlayers then
+      local se = data.statsPlayers[base:lower()]
+      if se and se.classFile then
+        local cf = _NormalizeClass(se.classFile) or se.classFile
+        if cf then return cf end
+      end
+    end
   end
 
   -- 2) Try GUID lookup (works when GUID is known/resolvable)
@@ -1637,37 +1659,78 @@ if not IS_RETAIL then
 end
 
 
+
 -- Nearby window scale
+local scaleLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+scaleLabel:SetPoint("TOPLEFT", anchorBelowAutoHide, "BOTTOMLEFT", 0, anchorOffset)
+scaleLabel:SetText(L.UI_NEARBY_SCALE or "Nearby window scale")
+
 local sNearbyScale = CreateFrame("Slider", "KillOnSightNearbyScaleSlider", opt, "OptionsSliderTemplate")
-sNearbyScale:SetPoint("TOPLEFT", anchorBelowAutoHide, "BOTTOMLEFT", 0, anchorOffset)
+sNearbyScale:SetPoint("TOPLEFT", scaleLabel, "BOTTOMLEFT", 0, -6)
 sNearbyScale:SetMinMaxValues(0.60, 1.60)
 sNearbyScale:SetValueStep(0.05)
 sNearbyScale:SetObeyStepOnDrag(true)
-_G[sNearbyScale:GetName().."Text"]:SetText(L.UI_NEARBY_SCALE)
 _G[sNearbyScale:GetName().."Low"]:SetText("0.6")
 _G[sNearbyScale:GetName().."High"]:SetText("1.6")
 
 prof.nearbyFrame = prof.nearbyFrame or {}
 if type(prof.nearbyFrame.scale) ~= "number" then prof.nearbyFrame.scale = 1.0 end
 sNearbyScale:SetValue(prof.nearbyFrame.scale)
-_G[sNearbyScale:GetName().."Text"]:SetText(string.format("%s (%.2f)", L.UI_NEARBY_SCALE, prof.nearbyFrame.scale))
+
+local scaleValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+scaleValue:SetPoint("LEFT", scaleLabel, "RIGHT", 8, 0)
+scaleValue:SetText(string.format("%.2f", prof.nearbyFrame.scale))
 
 sNearbyScale:SetScript("OnValueChanged", function(self, val)
-  -- Clamp & round to step
   val = math.floor((val * 100) + 0.5) / 100
-  prof.nearbyFrame = prof.nearbyFrame or {}
   prof.nearbyFrame.scale = val
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyPosition then
     KillOnSight_Nearby:ApplyPosition()
-  elseif KillOnSight_Nearby and KillOnSight_Nearby.frame and KillOnSight_Nearby.frame.SetScale then
+  elseif KillOnSight_Nearby and KillOnSight_Nearby.frame then
     KillOnSight_Nearby.frame:SetScale(val)
   end
-  _G[self:GetName().."Text"]:SetText(string.format("%s (%.2f)", L.UI_NEARBY_SCALE, val))
+  scaleValue:SetText(string.format("%.2f", val))
 end)
+
+-- Nearby background darkness
+local darkLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+darkLabel:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -18)
+darkLabel:SetText(L.UI_NEARBY_BG_DARKNESS or "Nearby background darkness")
+
+local darkValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+darkValue:SetPoint("LEFT", darkLabel, "RIGHT", 8, 0)
+
+local sNearbyDarkness = CreateFrame("Slider", "KillOnSightNearbyDarknessSlider", opt, "OptionsSliderTemplate")
+sNearbyDarkness:SetPoint("TOPLEFT", darkLabel, "BOTTOMLEFT", 0, -6)
+sNearbyDarkness:SetMinMaxValues(0, 1)
+sNearbyDarkness:SetValueStep(0.05)
+sNearbyDarkness:SetObeyStepOnDrag(true)
+_G[sNearbyDarkness:GetName().."Low"]:SetText("0")
+_G[sNearbyDarkness:GetName().."High"]:SetText("1")
+
+sNearbyDarkness:SetScript("OnValueChanged", function(self, value)
+  local v = tonumber(string.format("%.2f", value)) or 0.5
+  darkValue:SetText(v)
+  local DB = _G.KillOnSight_DB
+  local prof = (DB and DB.GetProfile and DB:GetProfile()) or (DB and DB.profile) or {}
+  prof.nearbyBackdropAlpha = v
+  if KillOnSight_Nearby and KillOnSight_Nearby.ApplyMinimalMode then
+    KillOnSight_Nearby:ApplyMinimalMode()
+  end
+end)
+
+do
+  local DB = _G.KillOnSight_DB
+  local prof = (DB and DB.GetProfile and DB:GetProfile()) or (DB and DB.profile) or {}
+  local v = prof.nearbyBackdropAlpha
+  if v == nil then v = 0.5 end
+  sNearbyDarkness:SetValue(v)
+  darkValue:SetText(v)
+end
 
 -- Nearby name font
 local fontLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-fontLabel:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -18)
+fontLabel:SetPoint("TOPLEFT", sNearbyDarkness, "BOTTOMLEFT", 0, -18)
 fontLabel:SetText(L.UI_NEARBY_NAME_FONT or "Nearby name font")
 
 local fontChoices

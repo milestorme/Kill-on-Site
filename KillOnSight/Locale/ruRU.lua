@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'ЛКМ: Открыть/Закрыть'
 L.TT_MINIMAP_RIGHTCLICK = 'ПКМ: Меню'
 
 L.TT_ON_KOS = 'В списке KoS'
+L.TT_GUILD = "Гильдия"
+L.TT_KOS = "Убить при встрече"
+L.TT_NOT_TARGETABLE = "Недоступно для цели"
 
 L.TT_GUILD_KOS = 'KoS гильдии'
 
@@ -175,3 +178,5 @@ L.UI_NOTES = "Заметки"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Список рядом ограничен, потому что вражеские индикаторы имен ВЫКЛЮЧЕНЫ. Включите вражеские индикаторы имен (Интерфейс > Имена) для полного обнаружения. Переключается клавишей V."
 
 L["TT_NOT_TARGETABLE"] = "Сейчас нельзя выбрать целью"
+
+L.UI_NEARBY_BG_DARKNESS = "Темнота фона окна рядом"

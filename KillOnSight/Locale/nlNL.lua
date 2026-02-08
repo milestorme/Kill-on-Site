@@ -134,6 +134,9 @@ L.TT_MINIMAP_LEFTCLICK = 'Linkerklik: Openen/Sluiten'
 L.TT_MINIMAP_RIGHTCLICK = 'Rechterklik: Menu'
 
 L.TT_ON_KOS = 'Op KoS-lijst'
+L.TT_GUILD = "Guild"
+L.TT_KOS = "Kill on Sight"
+L.TT_NOT_TARGETABLE = "Not targetable"
 
 L.TT_GUILD_KOS = 'Guild-KoS'
 
@@ -178,3 +181,5 @@ L.UI_NOTES = "Notities"
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Dichtbij is beperkt omdat vijandelijke naamplaten UIT staan. Schakel vijandelijke naamplaten in (Interface > Namen) voor volledige detectie. Je kunt ze toggelen met de V-toets."
 
 L["TT_NOT_TARGETABLE"] = "Nu niet te targeten"
+
+L.UI_NEARBY_BG_DARKNESS = "Donkerheid van nabijheidsvenster-achtergrond"
