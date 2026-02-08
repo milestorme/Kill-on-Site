@@ -1,13 +1,43 @@
 # KillOnSight – Changelog
 
+## v3.3.1
+
+### Fixed
+* Stats **Seen** count now increments correctly when players timeout or are re*encountered from Nearby.
+* Fixed encounter resolution not firing when Nearby entries expired or were cleared.
+* Resolved Lua errors:
+  * GUI.lua missing `end` near EOF.
+  * NearbyFrame.lua unexpected `\` symbol.
+* Fixed Nearby frame incorrectly rendering certain special characters (e.g. `ß`) when using Avantgarde font.
+
+### Improved
+* Added smart font fallback for glyphs not supported by Avantgarde to keep names rendering correctly.
+* Nearby display now stays visually consistent with Tooltip and Target frame name rendering.
+
+## Version 3.3.0
+
+### Added
+
+* Profile system for Options (create, rename, edit).
+* Account*wide KoS database shared across all characters and realms.
+* Improved realm detection for cross*realm players.
+* UTF*8 name handling for special characters in Nearby and Stats.
+* Instant Options UI update when switching profiles.
+
+### Improvements
+
+* Nearby tooltip consistency with Stats data.
+* Default Nearby background opacity set to 60% for new/reset profiles.
+* Localization*friendly UI labels.
+
 ## Version 3.2.9
 
 ### Added
 
 * Added Faction color to nearby tooltip and faction to stats.
-* Store **realm** in stats and display players as `Name-Realm` on Stats page.
+* Store **realm** in stats and display players as `Name*Realm` on Stats page.
 * New **Nearby Background** slider with profile persistence.
-* Blizzard-style slider layout for Nearby Scale / Background.
+* Blizzard*style slider layout for Nearby Scale / Background.
 
 ### Changed
 
@@ -27,7 +57,7 @@
 
 ### Nearby Frame – Dynamic Auto Width
 
-* Reworked auto-width system for improved reliability on Retail clients.
+* Reworked auto*width system for improved reliability on Retail clients.
 * Nearby frame now measures text using an unconstrained internal FontString to correctly expand for long entries.
 * Faster, smoother width animation for more responsive resizing.
 * Disabled text wrapping so entries remain on a single line.
@@ -36,14 +66,14 @@
 
 * Fixed `ADDON_ACTION_BLOCKED` error caused by resizing the Nearby frame during combat.
 * Nearby list **continues updating in combat** so new enemies appear instantly.
-* Frame resizing and re-sorting are safely deferred until combat ends.
+* Frame resizing and re*sorting are safely deferred until combat ends.
 * Pending width updates apply automatically on `PLAYER_REGEN_ENABLED`.
 
 ### Behaviour Improvements
 
 * Prevented animation loop from attempting width updates during combat lockdown.
 * Improved refresh flow so spec updates and new sightings do not cause protected calls.
-* Stabilised Nearby updates in battlegrounds and high-combat environments.
+* Stabilised Nearby updates in battlegrounds and high*combat environments.
 
 ### Internal
 
@@ -56,22 +86,22 @@
 
 ### Nearby Frame Improvements
 
-* Added **dynamic auto-width** for Nearby list.
+* Added **dynamic auto*width** for Nearby list.
 * Nearby frame now expands to fit the longest visible entry on a single line.
-* Disabled text wrapping to prevent multi-line entries.
+* Disabled text wrapping to prevent multi*line entries.
 * Added smooth width animation with significantly faster expansion speed.
 * Improved resize responsiveness when specs or fonts update.
 
 ### Performance & Behaviour
 
 * Optimised width animation using dynamic speed scaling (fast expand, smooth settle).
-* Reduced micro-resize jitter when multiple players update at once.
+* Reduced micro*resize jitter when multiple players update at once.
 * Improved refresh handling after spec cache updates.
 
 ### Inspect / Spec Handling
 
 * Improved inspect cache behaviour.
-* Pre-warm inspect cache when Nearby entries appear (lightweight throttle).
+* Pre*warm inspect cache when Nearby entries appear (lightweight throttle).
 * Prevent repeated inspect requests once a player spec is known.
 * Faster tooltip spec updates.
 
@@ -95,7 +125,7 @@
 * Battlegrounds / instances: prevented “ADDON_ACTION_BLOCKED” errors caused by SetShown() during combat lockdown.
 * Nearby frame visibility changes are now safely deferred until combat ends.
 * Portrait.lua hardened against Blizzard protected “secret” values to prevent dragon icons appearing on all enemies in BGs.
-* Disabled Nearby-related spec / portrait logic in instances where Nearby is suppressed.
+* Disabled Nearby*related spec / portrait logic in instances where Nearby is suppressed.
 * Errors caused by comparing protected GUID values in battlegrounds.
 * Instance suppression now runs before GUID handling to prevent crashes.
 * Nameplate spec system throwing “table index is secret” errors in BGs and instances.
@@ -132,32 +162,32 @@
 ### Changed
 
 * Core: consolidated GUI refresh debouncing to allow immediate and deferred updates without clobbering each other.
-* Detector: added TTL cleanup for stealth/visibility state tables to prevent long-session buildup.
-* Sync: switched to addon metadata version and safer percent-encoding for payload values.
-* Minimap/Notifier: removed duplicate dropdown helper and unused anti-spam stub.
+* Detector: added TTL cleanup for stealth/visibility state tables to prevent long*session buildup.
+* Sync: switched to addon metadata version and safer percent*encoding for payload values.
+* Minimap/Notifier: removed duplicate dropdown helper and unused anti*spam stub.
 
 ## 3.2.2
 
 ### Added
 
-* Retail: pre-warm specialization inspect cache for new Nearby entries using a lightweight throttled queue.
+* Retail: pre*warm specialization inspect cache for new Nearby entries using a lightweight throttled queue.
 * Retail: internal spec cache/backoff to avoid repeated inspect requests for the same player in crowded areas.
 
 ### Changed
 
-* Retail: rewritten Inspect queue now prefers cached specs, tracks last-known unit tokens per GUID, and refreshes tooltips immediately on INSPECT_READY.
+* Retail: rewritten Inspect queue now prefers cached specs, tracks last*known unit tokens per GUID, and refreshes tooltips immediately on INSPECT_READY.
 
 ## 3.2.1
 
 ### Changed
 
 * Retail: rewrote Nearby specialization inspection flow to update tooltips immediately when spec data is already cached.
-* Retail: INSPECT_READY now updates the currently-hovered tooltip without requiring mouse-off/mouse-over.
+* Retail: INSPECT_READY now updates the currently*hovered tooltip without requiring mouse*off/mouse*over.
 
 ### Fixed
 
-* Retail: improved inspect unit resolution by caching last-known unit tokens and re-resolving via mouseover/target/focus/nameplates.
-* Retail: reduced cases where spec would only appear after re-hovering.
+* Retail: improved inspect unit resolution by caching last*known unit tokens and re*resolving via mouseover/target/focus/nameplates.
+* Retail: reduced cases where spec would only appear after re*hovering.
 
 ## 3.2.0
 
@@ -186,7 +216,7 @@
 * Added Nearby Name Font dropdown to the Options panel.
 * Added Nearby Name Size slider to adjust player name text in the Nearby list.
 
-  * Embedded LibSharedMedia-3.0 for expanded font support and automatic font detection.
+  * Embedded LibSharedMedia*3.0 for expanded font support and automatic font detection.
 * Added full localisation for:
 
   * Nearby name font
@@ -197,13 +227,13 @@
 
 ### Fixed
 
-* Retail: ensure open-world win/loss stats credit when tracking targets or mouseover enemies.
+* Retail: ensure open*world win/loss stats credit when tracking targets or mouseover enemies.
 
 ## 3.1.6
 
 ### Fixed
 
-* Retail: avoid UnitAura fallback in stealth checks to prevent AuraUtil secret-value errors.
+* Retail: avoid UnitAura fallback in stealth checks to prevent AuraUtil secret*value errors.
 
 ## 3.1.5
 
@@ -221,20 +251,20 @@
 
 ### Fixed
 
-* Nearby: avoid protected EnableMouse calls in combat to prevent action-blocked errors.
+* Nearby: avoid protected EnableMouse calls in combat to prevent action*blocked errors.
 
 ## 3.1.2
 
 ### Fixed
 
-* Nearby: show realm name in the tooltip and keep click-to-target working for cross-realm players.
+* Nearby: show realm name in the tooltip and keep click*to*target working for cross*realm players.
 
 ## 3.1.1
 
 ### Fixed
 
 * Restored stealth inference on nameplate removal by passing the correct unit token and GUID.
-* Prevented protected layout calls in combat by deferring Nearby minimal-mode layout changes until combat ends.
+* Prevented protected layout calls in combat by deferring Nearby minimal*mode layout changes until combat ends.
 * Prevented protected SetHeight calls in combat by deferring Nearby frame height updates until combat ends.
 * Restored Retail engagement tracking queuing for battleground win attribution.
 * Allowed KoS portrait rings in battlegrounds and arenas (no suppression for KoS/Guild targets).
@@ -257,8 +287,8 @@
   **“secret values”** for unit names.
 * Hardened all nameplate removal handling to safely normalize unit names
   without string comparisons or method calls on protected values.
-* Fixed boolean-test crashes caused by protected return values from
-  `UnitTargetsPlayer()` and combat-window checks.
+* Fixed boolean*test crashes caused by protected return values from
+  `UnitTargetsPlayer()` and combat*window checks.
 
 ### Instance Safety
 
@@ -278,13 +308,13 @@
 * No changes to SavedVariables structure.
 * No data loss or destructive behavior introduced.
 
----
+***
 
 ## Version 3.0.8 (Retail Midnight)
 
 * **Disable Nearby detector on Retail**
 
-  * Prevents repeated forbidden-action errors and UI lockouts
+  * Prevents repeated forbidden*action errors and UI lockouts
   * Portraits no lonher show on KoS targets in BG and stats no longer log in BG due to blizzard API changes
 
 ## Version 3.0.7 (Retail Midnight Stability Update)
@@ -293,12 +323,12 @@
 
 * **Removed COMBAT_LOG_EVENT_UNFILTERED usage on Retail**
 
-  * Prevents repeated forbidden-action errors and UI lockouts
-  * Retail now uses unit-scoped and nameplate-based detection only
+  * Prevents repeated forbidden*action errors and UI lockouts
+  * Retail now uses unit*scoped and nameplate*based detection only
 * **Nearby detection reworked for Retail**
 
   * Uses `NAME_PLATE_UNIT_ADDED`, target, and mouseover
-  * Added **distance filtering** to prevent far-range nameplates from flooding Nearby
+  * Added **distance filtering** to prevent far*range nameplates from flooding Nearby
 * **Enemy Nameplates requirement handling**
 
   * When enemy nameplates are disabled:
@@ -340,11 +370,11 @@
 
 * Removed reliance on deprecated or restricted combat log behavior
 * Reduced unnecessary sorting and refresh work for better performance
-* Improved Nearby list stability in combat-restricted environments
+* Improved Nearby list stability in combat*restricted environments
 
 ### Notes
 
-Retail behavior intentionally differs from Classic-era clients due to Blizzard API changes in Patch 12.0.X Nearby detection on Retail requires **enemy nameplates enabled** for full functionality.
+Retail behavior intentionally differs from Classic*era clients due to Blizzard API changes in Patch 12.0.X Nearby detection on Retail requires **enemy nameplates enabled** for full functionality.
 Stealth alerts are not available in Retail 12.0.x due to Blizzard API restrictions.
 This is a design limitation, not an addon bug.
 
@@ -352,11 +382,11 @@ This is a design limitation, not an addon bug.
 
 ### Fixed
 
-* Deferred guild resolution (Spy-style): guild names now populate reliably for Nearby, Attackers, and Stats once the data becomes available (target/mouseover/nameplates)
+* Deferred guild resolution (Spy*style): guild names now populate reliably for Nearby, Attackers, and Stats once the data becomes available (target/mouseover/nameplates)
 
 * Attackers UI now refreshes automatically when guild info is enriched
 
-* Fixed Nearby list click-to-target reliability, especially in battlegrounds (e.g. Alterac Valley).
+* Fixed Nearby list click*to*target reliability, especially in battlegrounds (e.g. Alterac Valley).
 
   * Secure targeting attributes are now consistent and no longer desync during combat.
   * Clicking a player name now targets the correct unit reliably.
@@ -384,7 +414,7 @@ This is a design limitation, not an addon bug.
 
 * Notes are metadata only and do not change KoS/Guild detection
 
----
+***
 
 ## 3.0.5
 
@@ -393,7 +423,7 @@ This is a design limitation, not an addon bug.
 * Added **Spy KoS import support**
 
   * New slash command: `/kos importspy`
-  * Imports Kill-on-Sight entries from Spy’s SavedVariables
+  * Imports Kill*on*Sight entries from Spy’s SavedVariables
   * Automatically skips entries already present in KillOnSight
   * Safe to disable Spy after import
 * Imported metadata (such as Spy “reason”) is stored safely and ignored by core KoS logic
@@ -403,29 +433,29 @@ This is a design limitation, not an addon bug.
 * Spy must be enabled and loaded at least once before importing
 * No changes to KillOnSight KoS/Guild detection or behavior
 
----
+***
 
 ## 3.0.4
 
 ### Fixed
 
 * NPC **rare, rare elite, elite, and world boss** targets now always display their dragon indicators
-* Corrected client detection so Classic-era clients use proper target-frame handling
+* Corrected client detection so Classic*era clients use proper target*frame handling
 * Ensured Retail and Classic use appropriate visual paths without conflict
 
 ### Notes
 
 * Player KoS and Guild behavior is unchanged
-* This fix applies across Retail, Classic Era, TBC Anniversary, Wrath, and Titan-Reforged
+* This fix applies across Retail, Classic Era, TBC Anniversary, Wrath, and Titan*Reforged
 
----
+***
 
 ## 3.0.3
 
 ### Added
 
 * Full localization support for all major languages
-* Shortened tooltip strings to prevent overflow on non-English clients
+* Shortened tooltip strings to prevent overflow on non*English clients
 * Added TOC localization metadata
 
 ### Fixed
@@ -433,22 +463,22 @@ This is a design limitation, not an addon bug.
 * Retail fallback handling for target frames
 * Minor UI consistency issues across versions
 
----
+***
 
 ## 3.0.2
 
 ### Fixed
 
-* Cross-version targeting fallback logic
+* Cross*version targeting fallback logic
 * Sanctuary zone handling for Nearby list
 * Stability and performance improvements
 
----
+***
 
 ## 3.0.1
 
 ### Added
 
-* Retail target-frame support with safe fallbacks
+* Retail target*frame support with safe fallbacks
 * Improved stealth detection handling
 * Performance optimizations and throttling improvements

@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "超ミニマル付近ウィンドウ"
 L.UI_NEARBY_ROWFADE = "行ごとのフェードタイマー"
 L.UI_NEARBY_ROWICONS = "行アイコン (クラス/髑髏)"
 L.UI_NEARBY_SCALE = "付近ウィンドウの倍率"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "近くの名前のフォント"
 L.UI_NEARBY_NAME_SIZE = "近くの名前のサイズ"
 L.UI_OPTIONS = "オプション"
@@ -145,3 +146,13 @@ L.UI_NOTES = "メモ"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "近くの検知は敵のネームプレートがOFFのため制限されています。完全な検知には敵ネームプレート（インターフェース > 名前）を有効にしてください。Vキーで切り替えできます。"
 L.TT_SPEC_LOADING = "調査中…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "新しいプロファイル名を入力:"

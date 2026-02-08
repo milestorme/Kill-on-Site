@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "초미니 근처 창"
 L.UI_NEARBY_ROWFADE = "행별 페이드 타이머"
 L.UI_NEARBY_ROWICONS = "행 아이콘 (직업/해골)"
 L.UI_NEARBY_SCALE = "근처 창 크기"
+L.UI_NEARBY_BACKGROUND = "근처 배경"
 L.UI_NEARBY_NAME_FONT = "근처 이름 글꼴"
 L.UI_NEARBY_NAME_SIZE = "근처 이름 크기"
 L.UI_OPTIONS = "Options"
@@ -174,3 +175,13 @@ L.UI_NOTES = "메모"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "근처 감지는 적 이름표가 꺼져 있어 제한됩니다. 전체 감지를 위해 적 이름표(인터페이스 > 이름)를 켜세요. V 키로 토글할 수 있습니다."
 L.TT_SPEC_LOADING = "살펴보는 중…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "새 프로필 이름을 입력하세요:"

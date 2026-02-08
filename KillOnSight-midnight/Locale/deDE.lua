@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimales Nah-Fenster"
 L.UI_NEARBY_ROWFADE = "Pro-Zeile Ausblend-Timer"
 L.UI_NEARBY_ROWICONS = "Zeilensymbole (Klasse/Totenkopf)"
 L.UI_NEARBY_SCALE = "Skalierung des Nah-Fensters"
+L.UI_NEARBY_BACKGROUND = "Hintergrund (Nähe)"
 L.UI_NEARBY_NAME_FONT = "Schriftart der Namen in der Nähe"
 L.UI_NEARBY_NAME_SIZE = "Schriftgröße der Namen in der Nähe"
 L.UI_OPTIONS = "Options"
@@ -177,3 +178,13 @@ L.UI_NOTES = "Notizen"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "In der Nähe ist eingeschränkt, weil gegnerische Namensplaketten AUS sind. Aktiviere gegnerische Namensplaketten (Interface > Namen) für volle Erkennung. Umschalten mit der Taste V."
 L.TT_SPEC_LOADING = "Untersuche…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Gib einen Namen für das neue Profil ein:"

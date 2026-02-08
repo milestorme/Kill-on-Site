@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "Finestra vicinanze ultra-minimale"
 L.UI_NEARBY_ROWFADE = "Timer dissolvenza per riga"
 L.UI_NEARBY_ROWICONS = "Icone riga (classe/teschio)"
 L.UI_NEARBY_SCALE = "Scala finestra vicinanze"
+L.UI_NEARBY_BACKGROUND = "Sfondo (Vicini)"
 L.UI_NEARBY_NAME_FONT = "Carattere dei nomi vicini"
 L.UI_NEARBY_NAME_SIZE = "Dimensione carattere dei nomi vicini"
 L.UI_OPTIONS = "Opzioni"
@@ -145,3 +146,13 @@ L.UI_NOTES = "Note"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Vicini è limitato perché le barre dei nomi nemiche sono DISATTIVATE. Abilita le barre dei nomi nemiche (Interfaccia > Nomi) per il rilevamento completo. Puoi alternarle con il tasto V."
 L.TT_SPEC_LOADING = "Ispezione…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Inserisci un nome per il nuovo profilo:"

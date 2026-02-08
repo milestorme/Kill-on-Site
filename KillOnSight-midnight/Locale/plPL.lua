@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimalne okno"
 L.UI_NEARBY_ROWFADE = "Zanikanie wierszy"
 L.UI_NEARBY_ROWICONS = "Ikony wierszy (klasa/czaszka)"
 L.UI_NEARBY_SCALE = "Skala okna"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Czcionka nazw w pobliżu"
 L.UI_NEARBY_NAME_SIZE = "Rozmiar czcionki nazw w pobliżu"
 L.UI_OPTIONS = "Opcje"
@@ -145,3 +146,13 @@ L.UI_NOTES = "Notatki"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Lista w pobliżu jest ograniczona, ponieważ wrogie tabliczki imion są WYŁĄCZONE. Włącz wrogie tabliczki imion (Interfejs > Nazwy), aby uzyskać pełne wykrywanie. Możesz przełączać klawiszem V."
 L.TT_SPEC_LOADING = "Inspekcja…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Wpisz nazwę nowego profilu:"

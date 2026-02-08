@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Ультра-минималистичное окно ря
 L.UI_NEARBY_ROWFADE = "Таймеры затухания по строкам"
 L.UI_NEARBY_ROWICONS = "Иконки строки (класс/череп)"
 L.UI_NEARBY_SCALE = "Масштаб окна рядом"
+L.UI_NEARBY_BACKGROUND = "Фон (рядом)"
 L.UI_NEARBY_NAME_FONT = "Шрифт имён рядом"
 L.UI_NEARBY_NAME_SIZE = "Размер шрифта имён рядом"
 L.UI_OPTIONS = "Options"
@@ -174,3 +175,13 @@ L.UI_NOTES = "Заметки"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Список рядом ограничен, потому что вражеские индикаторы имен ВЫКЛЮЧЕНЫ. Включите вражеские индикаторы имен (Интерфейс > Имена) для полного обнаружения. Переключается клавишей V."
 L.TT_SPEC_LOADING = "Осмотр…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Введите имя для нового профиля:"

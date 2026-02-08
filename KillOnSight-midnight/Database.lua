@@ -44,9 +44,14 @@ local CHANGELOG_PRUNE_EVERY = 25 -- prune every N local changes
 local function Now() return time() end
 
 local function RealmKey()
+  -- Account-wide shared DB across all realms/factions/characters.
+  return "GLOBAL"
+end
+
+local function CharKey()
+  local name = UnitName("player") or "Unknown"
   local realm = GetRealmName() or "UnknownRealm"
-  local faction = UnitFactionGroup("player") or "Neutral"
-  return realm .. "-" .. faction
+  return name .. "-" .. realm
 end
 
 local DEFAULTS = {
@@ -54,13 +59,16 @@ local DEFAULTS = {
     enableSound = true,
     enableScreenFlash = true,
     throttleSeconds = 12,
-    notifyInInstances = true,
     printToChat = true,
     minimap = { hide=false, minimapPos=220 },
     showNearbyFrame = true,
     nearbyFrameLocked = false,
-    nearbyFrame = { point="CENTER", relPoint="CENTER", x=280, y=80, scale=0.80 },
-    nearbyAlpha = 0.80,
+	    -- nearbyFrame.bgAlpha controls the backdrop/border opacity. For simplicity (and
+	    -- backward compatibility), we also keep nearbyAlpha in sync with bgAlpha so the
+	    -- overall window opacity matches the background slider unless fading is enabled.
+	    nearbyFrame = { point="CENTER", relPoint="CENTER", x=280, y=80, scale=0.80, bgAlpha=0.60 },
+	    -- Legacy key (older versions used this for overall frame alpha). Kept for back-compat.
+	    nearbyAlpha = 0.60,
     nearbyAutoHide = false,
     nearbyFade = false,
 
@@ -127,6 +135,77 @@ local function DeepCopy(dst, src)
   end
 end
 
+
+local function _MergeInto(dst, src)
+  -- Merge src table into dst table (dst wins on conflicts)
+  if type(dst) ~= "table" or type(src) ~= "table" then return end
+  for k,v in pairs(src) do
+    if dst[k] == nil then
+      if type(v) == "table" then
+        local t = {}
+        _MergeInto(t, v)
+        dst[k] = t
+      else
+        dst[k] = v
+      end
+    elseif type(dst[k]) == "table" and type(v) == "table" then
+      _MergeInto(dst[k], v)
+    end
+  end
+end
+
+local function _MergeData(dstData, srcData)
+  if type(dstData) ~= "table" or type(srcData) ~= "table" then return end
+
+  dstData.players = dstData.players or {}
+  if type(srcData.players) == "table" then
+    for k, entry in pairs(srcData.players) do
+      if dstData.players[k] == nil then
+        dstData.players[k] = entry
+      else
+        local a = dstData.players[k]
+        local b = entry
+        local aSeen = tonumber(a.lastSeenAt or 0) or 0
+        local bSeen = tonumber(b.lastSeenAt or 0) or 0
+        if bSeen > aSeen then
+          dstData.players[k] = b
+        end
+      end
+    end
+  end
+
+  dstData.guilds = dstData.guilds or {}
+  if type(srcData.guilds) == "table" then
+    for k, entry in pairs(srcData.guilds) do
+      if dstData.guilds[k] == nil then
+        dstData.guilds[k] = entry
+      end
+    end
+  end
+
+  -- Merge statsPlayers if present
+  dstData.statsPlayers = dstData.statsPlayers or {}
+  if type(srcData.statsPlayers) == "table" then
+    for k, entry in pairs(srcData.statsPlayers) do
+      if dstData.statsPlayers[k] == nil then
+        dstData.statsPlayers[k] = entry
+      else
+        local a = dstData.statsPlayers[k]
+        local b = entry
+        local aSeen = tonumber(a.lastSeenAt or 0) or 0
+        local bSeen = tonumber(b.lastSeenAt or 0) or 0
+        if bSeen > aSeen then
+          dstData.statsPlayers[k] = b
+        end
+      end
+    end
+  end
+
+  -- Keep highest revisions
+  dstData.revision = math.max(tonumber(dstData.revision or 0) or 0, tonumber(srcData.revision or 0) or 0)
+  dstData.statsRevision = math.max(tonumber(dstData.statsRevision or 0) or 0, tonumber(srcData.statsRevision or 0) or 0)
+end
+
 local function norm(s)
   if not s or s == "" then return nil end
   s = s:gsub("^%s+",""):gsub("%s+$","")
@@ -145,29 +224,92 @@ function DB:GetStatsRevision()
 end
 
 function DB:Init()
-  KillOnSightDB.realms = KillOnSightDB.realms or {}
-  local key = RealmKey()
-  KillOnSightDB.realms[key] = KillOnSightDB.realms[key] or {}
-  local realmDB = KillOnSightDB.realms[key]
+  -- Use a single account-wide database shared across all realms/factions/characters.
+  KillOnSightDB.global = KillOnSightDB.global or {}
+  local realmDB = KillOnSightDB.global
+
+  -- One-time migration: if older builds stored per-realm DBs, merge them into the global DB.
+  if KillOnSightDB.realms and type(KillOnSightDB.realms) == "table" then
+    for _, old in pairs(KillOnSightDB.realms) do
+      if type(old) == "table" then
+        -- Merge profiles + assignments first
+        if type(old.profiles) == "table" then
+          realmDB.profiles = realmDB.profiles or {}
+          _MergeInto(realmDB.profiles, old.profiles)
+        end
+        if type(old.profileNameByChar) == "table" then
+          realmDB.profileNameByChar = realmDB.profileNameByChar or {}
+          _MergeInto(realmDB.profileNameByChar, old.profileNameByChar)
+        end
+        -- Merge main data tables (players/guilds/stats)
+        if type(old.data) == "table" then
+          realmDB.data = realmDB.data or {}
+          _MergeInto(realmDB.data, DEFAULTS.data) -- ensure structure
+          _MergeData(realmDB.data, old.data)
+        end
+      end
+    end
+  end
+
+  -- Ensure defaults exist on the global DB
   DeepCopy(realmDB, DEFAULTS)
-  self.realmKey = key
+
+  self.realmKey = "GLOBAL"
   self.realmDB = realmDB
 
-  -- Force ultra-minimal Nearby window (no option to change)
-  realmDB.profile.nearbyMinimal = true
+  -- Profiles (options only): allow multiple option sets and per-character assignment.
+  -- Backward compatible: older SVs store options directly in realmDB.profile.
+  realmDB.profiles = realmDB.profiles or {}
+  realmDB.profileNameByChar = realmDB.profileNameByChar or {}
 
-  -- Clean up legacy/dead config keys (kept for backward compatibility in old SVs)
-  realmDB.profile.guildAlertCooldownSeconds = nil
-  realmDB.profile.kosAlertCooldownSeconds = nil
-  realmDB.profile.activityThrottleSeconds = nil
-  realmDB.profile.nearbyRowFade = nil
+  -- Migrate legacy single profile into a named profile.
+  if realmDB.profile and not realmDB.profiles["Default"] then
+    realmDB.profiles["Default"] = realmDB.profile
+  elseif not realmDB.profiles["Default"] then
+    realmDB.profiles["Default"] = {}
+    DeepCopy(realmDB.profiles["Default"], DEFAULTS.profile)
+  end
 
-  -- New option defaults (older SavedVariables won't have these)
-  if realmDB.profile.nearbySound == nil then realmDB.profile.nearbySound = true end
-  if realmDB.profile.nearbyNameFont == nil then realmDB.profile.nearbyNameFont = "Default" end
-  if realmDB.profile.nearbyNameFontSize == nil then realmDB.profile.nearbyNameFontSize = 12 end
-  if realmDB.profile.disableInGoblinTowns == nil then realmDB.profile.disableInGoblinTowns = false end
-  if realmDB.profile.stealthNotifyCooldownSeconds == nil then realmDB.profile.stealthNotifyCooldownSeconds = 8 end
+  local ck = CharKey()
+  local assigned = realmDB.profileNameByChar[ck] or "Default"
+  if not realmDB.profiles[assigned] then
+    assigned = "Default"
+    realmDB.profileNameByChar[ck] = assigned
+  end
+
+  -- Ensure new defaults exist on all profiles (e.g. after updates)
+  for _,pobj in pairs(realmDB.profiles) do
+    if type(pobj) == "table" then
+      DeepCopy(pobj, DEFAULTS.profile)
+      -- Force ultra-minimal Nearby window (no toggle)
+      pobj.nearbyMinimal = true
+    end
+  end
+
+  self.activeProfileName = assigned
+  self.activeProfile = realmDB.profiles[assigned]
+
+
+  -- Back-compat: keep realmDB.profile pointing at Default (some older forks may still read it).
+  realmDB.profile = realmDB.profiles["Default"]
+
+  -- Apply cleanup / defaulting to ALL profiles (keeps profiles consistent across updates)
+  for _, pobj in pairs(realmDB.profiles) do
+    if type(pobj) == "table" then
+      -- Clean up legacy/dead config keys (kept for backward compatibility in old SVs)
+      pobj.guildAlertCooldownSeconds = nil
+      pobj.kosAlertCooldownSeconds = nil
+      pobj.activityThrottleSeconds = nil
+      pobj.nearbyRowFade = nil
+
+      -- New option defaults (older SavedVariables won't have these)
+      if pobj.nearbySound == nil then pobj.nearbySound = true end
+      if pobj.nearbyNameFont == nil then pobj.nearbyNameFont = "Default" end
+      if pobj.nearbyNameFontSize == nil then pobj.nearbyNameFontSize = 12 end
+      if pobj.disableInGoblinTowns == nil then pobj.disableInGoblinTowns = false end
+      if pobj.stealthNotifyCooldownSeconds == nil then pobj.stealthNotifyCooldownSeconds = 8 end
+    end
+  end
 
   -- prune very old change log if it grew huge
   local data = realmDB.data
@@ -191,8 +333,130 @@ function DB:Init()
   end
 end
 
-function DB:GetProfile() return self.realmDB.profile end
+function DB:GetProfile()
+  -- Returns the *active* options profile for the current character.
+  -- (Per realm+faction DB; per-character assignment within that DB.)
+  return self.activeProfile or (self.realmDB and self.realmDB.profile) or {}
+end
+
 function DB:GetData() return self.realmDB.data end
+
+-- ------------------------------------------------------------
+-- Profiles (Options presets)
+-- ------------------------------------------------------------
+
+function DB:ListProfiles()
+  local t = {}
+  local profiles = (self.realmDB and self.realmDB.profiles) or {}
+  for name, pobj in pairs(profiles) do
+    if type(name) == "string" and type(pobj) == "table" then
+      t[#t+1] = name
+    end
+  end
+  table.sort(t)
+  return t
+end
+
+function DB:GetActiveProfileName()
+  return self.activeProfileName or "Default"
+end
+
+function DB:SetActiveProfileName(name)
+  if not self.realmDB then return false end
+  if type(name) ~= "string" or name == "" then return false end
+  if not self.realmDB.profiles or not self.realmDB.profiles[name] then return false end
+
+  local ck = CharKey()
+  self.realmDB.profileNameByChar = self.realmDB.profileNameByChar or {}
+  self.realmDB.profileNameByChar[ck] = name
+
+  self.activeProfileName = name
+  self.activeProfile = self.realmDB.profiles[name]
+  return true
+end
+
+local function _NextProfileName(profiles, base)
+  base = base or "Profile"
+  if not profiles[base] then return base end
+  local i = 2
+  while profiles[(base .. " " .. i)] do i = i + 1 end
+  return (base .. " " .. i)
+end
+
+function DB:CreateProfile(name, copyFrom)
+  if not self.realmDB then return nil end
+  self.realmDB.profiles = self.realmDB.profiles or {}
+
+  if type(name) ~= "string" or name == "" then
+    name = _NextProfileName(self.realmDB.profiles, "Profile")
+  end
+  if self.realmDB.profiles[name] then
+    name = _NextProfileName(self.realmDB.profiles, name)
+  end
+
+  local src = nil
+  if type(copyFrom) == "string" then
+    src = self.realmDB.profiles[copyFrom]
+  elseif type(copyFrom) == "table" then
+    src = copyFrom
+  end
+
+  local dst = {}
+  if type(src) == "table" then
+    -- full copy (including user choices)
+    for k,v in pairs(src) do
+      if type(v) == "table" then
+        local sub = {}
+        -- shallow copy tables (nested config tables are simple)
+        for kk,vv in pairs(v) do sub[kk] = vv end
+        dst[k] = sub
+      else
+        dst[k] = v
+      end
+    end
+  end
+  -- ensure any new defaults exist
+  DeepCopy(dst, DEFAULTS.profile)
+  dst.nearbyMinimal = true
+
+  self.realmDB.profiles[name] = dst
+  return name
+end
+
+function DB:ResetProfile(name)
+  if not self.realmDB or not self.realmDB.profiles then return false end
+  if type(name) ~= "string" or not self.realmDB.profiles[name] then return false end
+  local dst = self.realmDB.profiles[name]
+  for k in pairs(dst) do dst[k] = nil end
+  DeepCopy(dst, DEFAULTS.profile)
+  dst.nearbyMinimal = true
+  return true
+end
+
+function DB:DeleteProfile(name)
+  if not self.realmDB or not self.realmDB.profiles then return false end
+  if type(name) ~= "string" or name == "" then return false end
+  if name == "Default" then return false end
+  if not self.realmDB.profiles[name] then return false end
+
+  self.realmDB.profiles[name] = nil
+
+  -- Reassign any chars that used this profile back to Default
+  self.realmDB.profileNameByChar = self.realmDB.profileNameByChar or {}
+  for ck, pn in pairs(self.realmDB.profileNameByChar) do
+    if pn == name then
+      self.realmDB.profileNameByChar[ck] = "Default"
+    end
+  end
+
+  -- If current char was using it, fall back now
+  if self.activeProfileName == name then
+    self:SetActiveProfileName("Default")
+  end
+
+  return true
+end
+
 
 function DB:GetOldestChangeSeq()
   local d = self:GetData()
@@ -488,17 +752,17 @@ function DB:NoteEnemySeen(name, classFile, guild, guid, factionGroup)
       e.guild = guild
       self:_BumpStatsRevision()
     end
-
--- Track realm/fullName for cross-realm identification
-if name and name ~= "" then
-  local base = name:match("^[^-]+") or name
-  local realm = name:match("^[^-]+%-(.+)$") or ""
-  if e.name ~= base then e.name = base; self:_BumpStatsRevision() end
-  if e.realm ~= realm then e.realm = realm; self:_BumpStatsRevision() end
-  if e.fullName ~= name then e.fullName = name; self:_BumpStatsRevision() end
-end
-
   end
+
+  -- Track realm/fullName for cross-realm identification (do not depend on guild being known)
+  if name and name ~= "" then
+    local base = name:match("^[^-]+") or name
+    local realm = name:match("^[^-]+%-(.+)$") or ""
+    if e.name ~= base then e.name = base; self:_BumpStatsRevision() end
+    if e.realm ~= realm then e.realm = realm; self:_BumpStatsRevision() end
+    if e.fullName ~= name then e.fullName = name; self:_BumpStatsRevision() end
+  end
+
 
 if factionGroup and factionGroup ~= "" then
   if e.faction ~= factionGroup then
@@ -757,6 +1021,136 @@ function DB:PruneStatsPlayers()
     self:_BumpStatsRevision()
   end
   return removed
+end
+
+
+-- ===== Profiles API (options only) =====
+
+function DB:GetActiveProfileName()
+  return self.activeProfileName or "Default"
+end
+
+function DB:ListProfiles()
+  local r = (self.realmDB or {})
+  local p = r.profiles or {}
+  local names = {}
+  for k,v in pairs(p) do
+    if type(v) == "table" then names[#names+1] = k end
+  end
+  table.sort(names)
+  return names
+end
+
+local function _UniqueProfileName(realmDB, base)
+  base = base or "Profile"
+  local n = 1
+  local name = base
+  while realmDB.profiles[name] do
+    n = n + 1
+    name = string.format("%s %d", base, n)
+  end
+  return name
+end
+
+function DB:CreateProfile(name, copyFrom)
+  local r = self.realmDB
+  if not r then return nil end
+  r.profiles = r.profiles or {}
+  if not name or name == "" then
+    name = _UniqueProfileName(r, "Profile")
+  end
+  if r.profiles[name] then
+    name = _UniqueProfileName(r, name)
+  end
+
+  local src = (copyFrom and r.profiles[copyFrom]) or self:GetProfile() or {}
+  local dst = {}
+  DeepCopy(dst, DEFAULTS.profile)
+  DeepCopy(dst, src)
+  dst.nearbyMinimal = true
+  r.profiles[name] = dst
+  return name
+end
+
+function DB:ResetProfile(name)
+  local r = self.realmDB
+  if not r or not r.profiles then return end
+  name = name or self:GetActiveProfileName()
+  if not r.profiles[name] then return end
+  r.profiles[name] = {}
+  DeepCopy(r.profiles[name], DEFAULTS.profile)
+  r.profiles[name].nearbyMinimal = true
+  if self.activeProfileName == name then
+    self.activeProfile = r.profiles[name]
+  end
+end
+
+function DB:DeleteProfile(name)
+  local r = self.realmDB
+  if not r or not r.profiles then return false end
+  name = name or self:GetActiveProfileName()
+  if name == "Default" then return false end
+  if not r.profiles[name] then return false end
+
+  r.profiles[name] = nil
+
+  -- Reassign any characters using this profile back to Default
+  r.profileNameByChar = r.profileNameByChar or {}
+  for ck,pn in pairs(r.profileNameByChar) do
+    if pn == name then r.profileNameByChar[ck] = "Default" end
+  end
+
+  if self.activeProfileName == name then
+    self:SetActiveProfileName("Default")
+  end
+  return true
+end
+function DB:RenameProfile(oldName, newName)
+  local r = self.realmDB
+  if not r or not r.profiles then return nil, "notready" end
+  oldName = oldName or self:GetActiveProfileName()
+  if oldName == "Default" then return nil, "default" end
+  if not r.profiles[oldName] then return nil, "notfound" end
+
+  newName = (newName or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if newName == "" then return nil, "empty" end
+  if newName == oldName then return oldName end
+  if r.profiles[newName] then return nil, "exists" end
+
+  r.profiles[newName] = r.profiles[oldName]
+  r.profiles[oldName] = nil
+
+  -- Update any characters using this profile
+  r.profileNameByChar = r.profileNameByChar or {}
+  for ck,pn in pairs(r.profileNameByChar) do
+    if pn == oldName then r.profileNameByChar[ck] = newName end
+  end
+
+  if self.activeProfileName == oldName then
+    self.activeProfileName = newName
+    self.activeProfile = r.profiles[newName]
+  end
+
+  return newName
+end
+
+
+function DB:SetActiveProfileName(name)
+  local r = self.realmDB
+  if not r or not r.profiles then return false end
+  if not name or not r.profiles[name] then name = "Default" end
+  local ck = CharKey()
+  r.profileNameByChar = r.profileNameByChar or {}
+  r.profileNameByChar[ck] = name
+  self.activeProfileName = name
+  self.activeProfile = r.profiles[name]
+
+  -- Ensure new defaults exist (covers profile created on older version)
+  if type(self.activeProfile) == "table" then
+    DeepCopy(self.activeProfile, DEFAULTS.profile)
+    self.activeProfile.nearbyMinimal = true
+  end
+  return true
 end
 
 

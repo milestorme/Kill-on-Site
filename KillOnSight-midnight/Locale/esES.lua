@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Ventana de cercanos ultra minimal"
 L.UI_NEARBY_ROWFADE = "Temporizadores de desvanecer por fila"
 L.UI_NEARBY_ROWICONS = "Iconos por fila (clase/calavera)"
 L.UI_NEARBY_SCALE = "Escala de la ventana de cercanos"
+L.UI_NEARBY_BACKGROUND = "Fondo (Cercanos)"
 L.UI_NEARBY_NAME_FONT = "Fuente de nombres cercanos"
 L.UI_NEARBY_NAME_SIZE = "Tamaño de fuente de nombres cercanos"
 L.UI_OPTIONS = "Options"
@@ -174,3 +175,13 @@ L.UI_NOTES = "Notas"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Cercanos está limitado porque las placas de nombre enemigas están DESACTIVADAS. Activa las placas de nombre enemigas (Interfaz > Nombres) para detección completa. Puedes alternarlas con la tecla V."
 L.TT_SPEC_LOADING = "Inspeccionando…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Introduce un nombre para el nuevo perfil:"

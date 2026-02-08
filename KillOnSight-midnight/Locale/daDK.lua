@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimalt nær-vindue"
 L.UI_NEARBY_ROWFADE = "Fade-timere pr. række"
 L.UI_NEARBY_ROWICONS = "Rækkeikoner (klasse/kranie)"
 L.UI_NEARBY_SCALE = "Skala for nær-vindue"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Skrifttype for navne i nærheden"
 L.UI_NEARBY_NAME_SIZE = "Skriftstørrelse for navne i nærheden"
 L.UI_OPTIONS = "Options"
@@ -180,3 +181,13 @@ L.UI_NOTES = "Noter"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby er begrænset fordi Fjendtlige navneskilte er SLÅET FRA. Aktivér Fjendtlige navneskilte (Interface > Navne) for fuld registrering. Du kan skifte med V-tasten."
 L.TT_SPEC_LOADING = "Inspicerer…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Indtast et navn til den nye profil:"

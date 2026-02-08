@@ -736,22 +736,29 @@ end
 
 local function CreateDropdown(parent, values)
   local dd = CreateFrame("Frame", nil, parent, "UIDropDownMenuTemplate")
-  dd.values = values
-  dd.selected = values[1]
+  dd.values = values or {}
+  dd.selected = dd.values[1]
+  dd.onChanged = nil -- optional callback(v)
+
   UIDropDownMenu_SetWidth(dd, 90)
   UIDropDownMenu_Initialize(dd, function(self, level)
     local info = UIDropDownMenu_CreateInfo()
-    for _,v in ipairs(values) do
-      info.text = v
+    for _,v in ipairs(dd.values) do
+      local value = v -- Lua 5.1 closure safety
+      info.text = value
       info.func = function()
-        dd.selected = v
-        UIDropDownMenu_SetText(dd, v)
+        dd.selected = value
+        UIDropDownMenu_SetText(dd, value)
+        if type(dd.onChanged) == "function" then
+          dd.onChanged(value)
+        end
       end
-      info.checked = (dd.selected == v)
+      info.checked = (dd.selected == value)
       UIDropDownMenu_AddButton(info, level)
     end
   end)
-  UIDropDownMenu_SetText(dd, dd.selected)
+
+  UIDropDownMenu_SetText(dd, dd.selected or "")
   return dd
 end
 
@@ -806,7 +813,6 @@ local function UpdateAddState()
   local exists = false
   if txt ~= "" then
     exists = ((DB.HasPlayer and DB:HasPlayer(txt)) or (DB.LookupPlayer and DB:LookupPlayer(txt) ~= nil) or false)
-  elseif UnitExists("target") and UnitIsPlayer("target") then
   elseif (not (nameBox.HasFocus and nameBox:HasFocus())) and UnitExists("target") and UnitIsPlayer("target") then
     local tName = UnitName("target")
     if tName and tName ~= "" then
@@ -1485,9 +1491,6 @@ local factionLabel = "-"
       RefreshStatsList()
     end
   end)
-  hooksecurefunc("UIDropDownMenu_SetText", function(dd, txt)
-    if dd == sortDD then RefreshStatsList() end
-  end)
 
   pStats._Refresh = RefreshStatsList
   RefreshStatsList()
@@ -1504,10 +1507,14 @@ local factionLabel = "-"
   -- NOTE: parent MUST be the Options panel (pOpt). If the parent is nil or a wrong variable,
   -- widgets will appear at the screen's top-left (UIParent).
   local optScroll = CreateFrame("ScrollFrame", nil, pOpt, "UIPanelScrollFrameTemplate")
+  frame._optScroll = optScroll
   optScroll:SetPoint("TOPLEFT", pOpt, "TOPLEFT", 0, 0)
   optScroll:SetPoint("BOTTOMRIGHT", pOpt, "BOTTOMRIGHT", -28, 0) -- leave room for the scrollbar
 
   local opt = CreateFrame("Frame", nil, optScroll)
+  optScroll.Child = opt
+  opt._kosWidgets = {}
+  local function _W(k,v) opt._kosWidgets[k]=v end
   -- Size dynamically based on the actual options content so the scrollbar never overshoots into blank space.
   -- (We still set a sane initial size; it will be recalculated on show/resize.)
   opt:SetSize(optScroll:GetWidth() or 700, optScroll:GetHeight() or 1)
@@ -1575,54 +1582,320 @@ local factionLabel = "-"
     end
   end)
 
-  local prof = DB:GetProfile()
+  local _gui = self
+
+  -- Profiles (options presets)
+  local tProfiles = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  tProfiles:SetPoint("TOPLEFT", 20, -20)
+  tProfiles:SetText(L.UI_PROFILES or "Profiles")
+
+  local profiles = (DB.ListProfiles and DB:ListProfiles()) or { "Default" }
+  if #profiles == 0 then profiles = { "Default" } end
+
+  local ddProfile = CreateDropdown(opt, profiles)
+  UIDropDownMenu_SetWidth(ddProfile, 180)
+  ddProfile:SetPoint("TOPLEFT", tProfiles, "BOTTOMLEFT", -16, -2)
+
+  ddProfile.selected = (DB.GetActiveProfileName and DB:GetActiveProfileName()) or "Default"
+  UIDropDownMenu_SetText(ddProfile, ddProfile.selected)
+
+  local function RefreshProfileList()
+    if DB.ListProfiles then
+      ddProfile.values = DB:ListProfiles()
+    end
+    if not ddProfile.values or #ddProfile.values == 0 then
+      ddProfile.values = { "Default" }
+    end
+  end
+
+  RefreshProfileList()
+
+  ddProfile.onChanged = function(v)
+    if DB.SetActiveProfileName and DB:SetActiveProfileName(v) then
+      -- Hard refresh: rebuild the GUI frame so all option widgets re-bind to the newly active profile.
+      local wasShown = frame and frame:IsShown()
+      local tab = frame and (frame.activeTab or 5) or 5
+      if frame then frame:Hide() end
+      frame = nil
+      -- Recreate the UI fresh (same effect as /reload for the addon UI, without reloading the whole UI)
+      if _gui and _gui.Create then _gui:Create() end
+      if frame and frame.ShowTab then frame:ShowTab(tab) end
+      if wasShown and frame then frame:Show() end
+      if _gui and _gui.RefreshAll then _gui:RefreshAll() end
+    end
+  end
+
+  local function MakeBtn(label)
+    local b = CreateFrame("Button", nil, opt, "UIPanelButtonTemplate")
+    b:SetText(label)
+    b:SetSize(80, 22)
+    return b
+  end
+
+  local bNew = MakeBtn(L.UI_PROFILE_NEW or "New")
+  bNew:SetPoint("LEFT", ddProfile, "RIGHT", 10, 0)
+
+  local function _SelectProfile(name)
+    if not name then return end
+    if DB.SetActiveProfileName then
+      DB:SetActiveProfileName(name)
+    end
+    RefreshProfileList()
+    ddProfile.selected = name
+    UIDropDownMenu_SetText(ddProfile, name)
+    -- Force Options UI refresh
+    if frame and frame:IsShown() then
+      local tab = frame.activeTab or 5
+      frame:Hide()
+      frame:Show()
+      if frame.ShowTab then frame:ShowTab(tab) end
+    end
+  end
+
+  -- Popup: name a new profile (instead of auto-creating immediately)
+  if not StaticPopupDialogs["KOS_NEW_PROFILE"] then
+    StaticPopupDialogs["KOS_NEW_PROFILE"] = {
+      text = L.UI_PROFILE_NEW_NAME or "Enter a name for the new profile:",
+      button1 = ACCEPT,
+      button2 = CANCEL,
+      hasEditBox = 1,
+      editBoxWidth = 220,
+      timeout = 0,
+      whileDead = 1,
+      hideOnEscape = 1,
+      preferredIndex = 3,
+
+      OnShow = function(self)
+        local eb = self.editBox or self.EditBox
+        if not eb then return end
+        eb:SetText("")
+        eb:SetFocus()
+      end,
+
+      OnAccept = function(self, copyFrom)
+        if not DB.CreateProfile then return end
+        local eb = self.editBox or self.EditBox
+        if not eb then return end
+        local n = (eb:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        local name = DB:CreateProfile(n, copyFrom)
+        _SelectProfile(name)
+      end,
+
+      EditBoxOnEnterPressed = function(self)
+        local p = self:GetParent()
+        local copyFrom = p.data
+        if not DB.CreateProfile then p:Hide(); return end
+        local n = (self:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        local name = DB:CreateProfile(n, copyFrom)
+        _SelectProfile(name)
+        p:Hide()
+      end,
+
+      EditBoxOnEscapePressed = function(self)
+        self:GetParent():Hide()
+      end,
+    }
+  end
+
+
+  -- Popup: rename current profile
+  if not StaticPopupDialogs["KOS_RENAME_PROFILE"] then
+    local function _KOS_SetPopupError(p, msg)
+      if not p then return end
+      if not p.kosErr then
+        p.kosErr = p:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        local eb = p.editBox or p.EditBox
+        local bc = p.ButtonContainer or _G[p:GetName().."ButtonContainer"]
+        if bc then
+          p.kosErr:SetPoint("BOTTOMLEFT", bc, "TOPLEFT", 0, 10)
+          p.kosErr:SetPoint("BOTTOMRIGHT", bc, "TOPRIGHT", -28, 10)
+        else
+          p.kosErr:SetPoint("TOPLEFT", eb, "BOTTOMLEFT", 0, -6)
+          p.kosErr:SetPoint("RIGHT", p, "RIGHT", -28, 0)
+        end
+        p.kosErr:SetJustifyH("LEFT")
+        p.kosErr:SetTextColor(1, 0.2, 0.2)
+      end
+      p.kosErr:SetText(msg or "")
+      if msg and msg ~= "" then
+        local eb = p.editBox or p.EditBox
+        if eb then eb:SetFocus() end
+        local eb = p.editBox or p.EditBox
+        if eb then eb:HighlightText() end
+      end
+    end
+
+    local function _KOS_TryRename(p, oldName)
+      if not DB.RenameProfile then return true end
+      local eb = p.editBox or p.EditBox
+      if not eb then return false end
+      local n = (eb:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if n == "" then
+        _KOS_SetPopupError(p, L.UI_PROFILE_ERR_EMPTY or "Name can't be empty.")
+        return false
+      end
+
+      local newName, err = DB:RenameProfile(oldName, n)
+      if not newName then
+        if err == "exists" then
+          _KOS_SetPopupError(p, L.UI_PROFILE_ERR_EXISTS or "A profile with that name already exists.")
+        else
+          _KOS_SetPopupError(p, L.UI_PROFILE_ERR_INVALID or "That name can't be used.")
+        end
+        return false
+      end
+
+      _KOS_SetPopupError(p, "")
+      _SelectProfile(newName)
+      return true
+    end
+
+    StaticPopupDialogs["KOS_RENAME_PROFILE"] = {
+      text = L.UI_PROFILE_RENAME or "Rename profile:",
+      button1 = ACCEPT,
+      button2 = CANCEL,
+      hasEditBox = 1,
+      editBoxWidth = 220,
+      timeout = 0,
+      whileDead = 1,
+      hideOnEscape = 1,
+      preferredIndex = 3,
+
+      OnShow = function(self, data)
+        local cur = data or ""
+        local eb = self.editBox or self.EditBox
+        if not eb then return end
+        eb:SetText(cur)
+        eb:HighlightText()
+        _KOS_SetPopupError(self, "")
+        local eb2 = self.editBox or self.EditBox
+        if eb2 then eb2:SetFocus() end
+      end,
+
+      OnAccept = function(self, oldName)
+        if not _KOS_TryRename(self, oldName) then
+          return true -- keep popup open on validation errors (StaticPopup honors truthy return)
+        end
+      end,
+
+      EditBoxOnEnterPressed = function(self)
+        local p = self:GetParent()
+        local oldName = p.data
+        if _KOS_TryRename(p, oldName) then
+          p:Hide()
+        end
+      end,
+
+      EditBoxOnEscapePressed = function(self)
+        self:GetParent():Hide()
+      end,
+    }
+  end
+
+
+  bNew:SetScript("OnClick", function()
+    local cur = (DB.GetActiveProfileName and DB:GetActiveProfileName()) or "Default"
+    StaticPopup_Show("KOS_NEW_PROFILE", nil, nil, cur)
+  end)
+
+  local bCopy = MakeBtn(L.UI_PROFILE_EDIT or "Edit")
+  bCopy:SetPoint("LEFT", bNew, "RIGHT", 6, 0)
+  bCopy:SetScript("OnClick", function()
+    local cur = (DB.GetActiveProfileName and DB:GetActiveProfileName()) or "Default"
+    if cur == "Default" then return end
+    StaticPopup_Show("KOS_RENAME_PROFILE", nil, nil, cur)
+  end)
+
+  local bReset = MakeBtn(L.UI_PROFILE_RESET or "Reset")
+  bReset:SetPoint("LEFT", bCopy, "RIGHT", 6, 0)
+  bReset:SetScript("OnClick", function()
+    if not DB.ResetProfile then return end
+    local cur = (DB.GetActiveProfileName and DB:GetActiveProfileName()) or "Default"
+    DB:ResetProfile(cur)
+    -- UI controls are updated via dropdown refresh
+
+  end)
+
+  local bDel = MakeBtn(L.UI_PROFILE_DELETE or "Delete")
+  bDel:SetPoint("LEFT", bReset, "RIGHT", 6, 0)
+  bDel:SetScript("OnClick", function()
+    if not DB.DeleteProfile then return end
+    local cur = (DB.GetActiveProfileName and DB:GetActiveProfileName()) or "Default"
+    if cur == "Default" then return end
+    if DB:DeleteProfile(cur) then
+      -- Deleting reassigns any chars using it back to Default; ensure UI reflects this immediately.
+      DB:SetActiveProfileName("Default")
+      RefreshProfileList()
+      ddProfile.selected = "Default"
+      UIDropDownMenu_SetText(ddProfile, "Default")
+      UIDropDownMenu_Refresh(ddProfile)
+    end
+  end)
+
+  -- IMPORTANT: do not capture the profile table once at GUI construction time.
+  -- The DB may not be fully initialized yet when the options panel is first created,
+  -- and profiles can be switched at runtime. Always resolve the active profile
+  -- from the DB when reading/writing option values.
+  local function ActiveProfile()
+    local _DB = GetDB and GetDB() or DB
+    if _DB and _DB.GetProfile then
+      return _DB:GetProfile()
+    end
+    return {}
+  end
+
+  local prof = ActiveProfile()
 
   -- Alerts (KoS / Guild)
   local tAlerts = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  tAlerts:SetPoint("TOPLEFT", 20, -20)
+  tAlerts:SetPoint("TOPLEFT", ddProfile, "BOTTOMLEFT", 16, -18)
   tAlerts:SetText(L.UI_ALERTS or "KoS / Guild")
 
   local cSound = MakeCheck(opt, L.UI_SOUND)
+  _W("cSound", cSound)
   cSound:SetPoint("TOPLEFT", tAlerts, "BOTTOMLEFT", 0, -10)
   cSound:SetChecked(prof.enableSound)
 
   local cFlash = MakeCheck(opt, L.UI_FLASH)
+  _W("cFlash", cFlash)
   cFlash:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
   cFlash:SetChecked(prof.enableScreenFlash)
 
-  local cInst = MakeCheck(opt, L.UI_INSTANCES)
-  cInst:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 0, -8)
-  cInst:SetChecked(prof.notifyInInstances)
+
 
   -- Nearby
   local tNearby = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  tNearby:SetPoint("TOPLEFT", cInst, "BOTTOMLEFT", 0, -18)
+  tNearby:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 0, -18)
   tNearby:SetText(L.UI_NEARBY_HEADING or "Nearby")
 
--- Nearby window options
-local cNearby = MakeCheck(opt, L.UI_NEARBY_FRAME)
-cNearby:SetPoint("TOPLEFT", tNearby, "BOTTOMLEFT", 0, -10)
-cNearby:SetChecked(prof.showNearbyFrame ~= false)
-cNearby:SetScript("OnClick", function(self)
-  prof.showNearbyFrame = self:GetChecked()
-  if KillOnSight_Nearby and KillOnSight_Nearby.SetShown then
-    KillOnSight_Nearby:SetShown(prof.showNearbyFrame)
-  end
-end)
+  -- Nearby window options
+  local cNearby = MakeCheck(opt, L.UI_NEARBY_FRAME)
+  _W("cNearby", cNearby)
+  cNearby:SetPoint("TOPLEFT", tNearby, "BOTTOMLEFT", 0, -10)
+  cNearby:SetChecked(prof.showNearbyFrame ~= false)
+  cNearby:SetScript("OnClick", function(self)
+    local p = ActiveProfile()
+    p.showNearbyFrame = self:GetChecked()
+    if KillOnSight_Nearby and KillOnSight_Nearby.SetShown then
+      KillOnSight_Nearby:SetShown((ActiveProfile().showNearbyFrame ~= false))
+    end
+  end)
 
 -- Separate toggle for the Spy-style "detected nearby" sound.
 local cNearbySound = MakeCheck(opt, L.UI_NEARBY_SOUND)
 cNearbySound:SetPoint("TOPLEFT", cNearby, "BOTTOMLEFT", 0, -6)
 cNearbySound:SetChecked(prof.nearbySound ~= false)
 cNearbySound:SetScript("OnClick", function(self)
-  prof.nearbySound = self:GetChecked()
+  local p = ActiveProfile()
+  p.nearbySound = self:GetChecked()
 end)
 
 local cNearbyLock = MakeCheck(opt, L.UI_NEARBY_LOCK)
 cNearbyLock:SetPoint("TOPLEFT", cNearbySound, "BOTTOMLEFT", 0, -10)
 cNearbyLock:SetChecked(prof.nearbyLocked == true)
 cNearbyLock:SetScript("OnClick", function(self)
-  prof.nearbyLocked = self:GetChecked()
+  local p = ActiveProfile()
+  p.nearbyLocked = self:GetChecked()
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyLocked then
     KillOnSight_Nearby:ApplyLocked()
   end
@@ -1633,7 +1906,8 @@ local cAutoHide = MakeCheck(opt, L.UI_NEARBY_AUTOHIDE)
 cAutoHide:SetPoint("TOPLEFT", cNearbyLock, "BOTTOMLEFT", 0, -10)
 cAutoHide:SetChecked(prof.nearbyAutoHide ~= false)
 cAutoHide:SetScript("OnClick", function(self)
-  prof.nearbyAutoHide = self:GetChecked()
+  local p = ActiveProfile()
+  p.nearbyAutoHide = self:GetChecked()
   if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
     KillOnSight_Nearby:Refresh()
   end
@@ -1647,7 +1921,8 @@ if not IS_RETAIL then
   cGoblinTowns:SetPoint("TOPLEFT", cAutoHide, "BOTTOMLEFT", 0, -10)
   cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true)
   cGoblinTowns:SetScript("OnClick", function(self)
-    prof.disableInGoblinTowns = self:GetChecked()
+    local p = ActiveProfile()
+    p.disableInGoblinTowns = self:GetChecked()
     if KillOnSight_Nearby and KillOnSight_Nearby.ClearAll then
       KillOnSight_Nearby:ClearAll({ keepShown = false })
     end
@@ -1658,37 +1933,108 @@ end
 
 
 -- Nearby window scale
+local scaleLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+scaleLabel:SetPoint("TOPLEFT", anchorBelowAutoHide, "BOTTOMLEFT", 0, anchorOffset)
+scaleLabel:SetText(L.UI_NEARBY_SCALE)
+
+local scaleValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+scaleValue:SetPoint("LEFT", scaleLabel, "RIGHT", 8, 0)
+
 local sNearbyScale = CreateFrame("Slider", "KillOnSightNearbyScaleSlider", opt, "OptionsSliderTemplate")
-sNearbyScale:SetPoint("TOPLEFT", anchorBelowAutoHide, "BOTTOMLEFT", 0, anchorOffset)
+  _W("sNearbyScale", sNearbyScale)
+  _W("scaleValue", scaleValue)
+
+sNearbyScale:SetWidth(240)
+sNearbyScale:SetPoint("TOPLEFT", scaleLabel, "BOTTOMLEFT", 0, -6)
 sNearbyScale:SetMinMaxValues(0.60, 1.60)
 sNearbyScale:SetValueStep(0.05)
 sNearbyScale:SetObeyStepOnDrag(true)
-_G[sNearbyScale:GetName().."Text"]:SetText(L.UI_NEARBY_SCALE)
 _G[sNearbyScale:GetName().."Low"]:SetText("0.6")
 _G[sNearbyScale:GetName().."High"]:SetText("1.6")
+_G[sNearbyScale:GetName().."Text"]:SetText("")
 
-prof.nearbyFrame = prof.nearbyFrame or {}
-if type(prof.nearbyFrame.scale) ~= "number" then prof.nearbyFrame.scale = 1.0 end
-sNearbyScale:SetValue(prof.nearbyFrame.scale)
-_G[sNearbyScale:GetName().."Text"]:SetText(string.format("%s (%.2f)", L.UI_NEARBY_SCALE, prof.nearbyFrame.scale))
+do
+  local p = ActiveProfile()
+  p.nearbyFrame = p.nearbyFrame or {}
+  if type(p.nearbyFrame.scale) ~= "number" then p.nearbyFrame.scale = 1.0 end
+  sNearbyScale:SetValue(p.nearbyFrame.scale)
+  scaleValue:SetText(string.format("(%.2f)", p.nearbyFrame.scale))
+end
 
 sNearbyScale:SetScript("OnValueChanged", function(self, val)
-  -- Clamp & round to step
+  if opt._kosSync then return end
   val = math.floor((val * 100) + 0.5) / 100
-  prof.nearbyFrame = prof.nearbyFrame or {}
-  prof.nearbyFrame.scale = val
+  local p = ActiveProfile()
+  p.nearbyFrame = p.nearbyFrame or {}
+  p.nearbyFrame.scale = val
+
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyPosition then
     KillOnSight_Nearby:ApplyPosition()
   elseif KillOnSight_Nearby and KillOnSight_Nearby.frame and KillOnSight_Nearby.frame.SetScale then
     KillOnSight_Nearby.frame:SetScale(val)
   end
-  _G[self:GetName().."Text"]:SetText(string.format("%s (%.2f)", L.UI_NEARBY_SCALE, val))
+
+  scaleValue:SetText(string.format("(%.2f)", val))
 end)
+
+-- Nearby background
+local bgLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+bgLabel:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -18)
+bgLabel:SetText(L.UI_NEARBY_BACKGROUND)
+
+local bgValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+bgValue:SetPoint("LEFT", bgLabel, "RIGHT", 8, 0)
+
+local sNearbyBG = CreateFrame("Slider", "KillOnSightNearbyBGAlphaSlider", opt, "OptionsSliderTemplate")
+  _W("sNearbyBG", sNearbyBG)
+  _W("bgValue", bgValue)
+
+sNearbyBG:SetWidth(240)
+sNearbyBG:SetPoint("TOPLEFT", bgLabel, "BOTTOMLEFT", 0, -6)
+sNearbyBG:SetMinMaxValues(0.00, 1.00)
+sNearbyBG:SetValueStep(0.05)
+sNearbyBG:SetObeyStepOnDrag(true)
+_G[sNearbyBG:GetName().."Low"]:SetText("0")
+_G[sNearbyBG:GetName().."High"]:SetText("100")
+_G[sNearbyBG:GetName().."Text"]:SetText("")
+
+do
+  local p = ActiveProfile()
+  p.nearbyFrame = p.nearbyFrame or {}
+  if type(p.nearbyFrame.bgAlpha) ~= "number" then
+    if type(p.nearbyAlpha) == "number" then
+      p.nearbyFrame.bgAlpha = p.nearbyAlpha
+    else
+      p.nearbyFrame.bgAlpha = 0.80
+    end
+  end
+  sNearbyBG:SetValue(p.nearbyFrame.bgAlpha)
+  bgValue:SetText(string.format("(%d%%)", math.floor((p.nearbyFrame.bgAlpha*100)+0.5)))
+end
+
+sNearbyBG:SetScript("OnValueChanged", function(self, val)
+  if opt._kosSync then return end
+  val = math.floor((val * 100) + 0.5) / 100
+  local p = ActiveProfile()
+  p.nearbyFrame = p.nearbyFrame or {}
+  p.nearbyFrame.bgAlpha = val
+	  -- Keep legacy key in sync for older code paths, but do NOT use frame alpha for this.
+	  p.nearbyAlpha = val
+
+	  if KillOnSight_Nearby then
+	    if KillOnSight_Nearby.ApplyBackdrop then KillOnSight_Nearby:ApplyBackdrop() end
+	    -- Minimal mode owns the backdrop in that state.
+	    if KillOnSight_Nearby.ApplyMinimalMode then KillOnSight_Nearby:ApplyMinimalMode() end
+	  end
+
+  bgValue:SetText(string.format("(%d%%)", math.floor((val*100)+0.5)))
+end)
+
 
 
 -- Nearby name font
 local fontLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-fontLabel:SetPoint("TOPLEFT", sNearbyScale, "BOTTOMLEFT", 0, -18)
+fontLabel:SetPoint("TOPLEFT", sNearbyBG, "BOTTOMLEFT", 0, -18)
 fontLabel:SetText(L.UI_NEARBY_NAME_FONT or "Nearby name font")
 
 local fontChoices
@@ -1699,25 +2045,36 @@ if type(fontChoices) ~= "table" or #fontChoices == 0 then
   fontChoices = { "Default", "Morpheus", "Skurri" }
 end
 local ddNearbyFont = CreateDropdown(opt, fontChoices)
+  _W("ddNearbyFont", ddNearbyFont)
+
 UIDropDownMenu_SetWidth(ddNearbyFont, 140)
 ddNearbyFont:SetPoint("TOPLEFT", fontLabel, "BOTTOMLEFT", -16, -2)
 
 -- Initialize from profile
-prof.nearbyNameFont = prof.nearbyNameFont or "Default"
+local _pFont = ActiveProfile()
+_pFont.nearbyNameFont = _pFont.nearbyNameFont or "Default"
 -- If the saved font is no longer offered (filtered out), fall back to Default.
 do
   local ok = false
   for _, v in ipairs(fontChoices) do
-    if v == prof.nearbyNameFont then ok = true break end
+    if v == _pFont.nearbyNameFont then ok = true break end
   end
-  if not ok then prof.nearbyNameFont = "Default" end
+  if not ok then _pFont.nearbyNameFont = "Default" end
 end
-ddNearbyFont.selected = prof.nearbyNameFont
+ddNearbyFont.selected = _pFont.nearbyNameFont
 UIDropDownMenu_SetText(ddNearbyFont, ddNearbyFont.selected)
+ddNearbyFont.onChanged = function(v)
+  local p = ActiveProfile()
+  p.nearbyNameFont = v or "Default"
+  if KillOnSight_Nearby and KillOnSight_Nearby.ApplyNameFont then
+    KillOnSight_Nearby:ApplyNameFont()
+  end
+end
 
 hooksecurefunc("UIDropDownMenu_SetText", function(dd, txt)
   if dd ~= ddNearbyFont then return end
-  prof.nearbyNameFont = ddNearbyFont.selected or "Default"
+  local p = ActiveProfile()
+  p.nearbyNameFont = ddNearbyFont.selected or "Default"
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyNameFont then
     KillOnSight_Nearby:ApplyNameFont()
   end
@@ -1733,6 +2090,9 @@ local sizeValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 sizeValue:SetPoint("LEFT", sizeLabel, "RIGHT", 8, 0)
 
 local sNearbyNameSize = CreateFrame("Slider", "KillOnSightNearbyNameSizeSlider", opt, "OptionsSliderTemplate")
+  _W("sNearbyNameSize", sNearbyNameSize)
+  _W("sizeValue", sizeValue)
+
 sNearbyNameSize:SetPoint("TOPLEFT", sizeLabel, "BOTTOMLEFT", 0, -6)
 sNearbyNameSize:SetMinMaxValues(8, 20)
 sNearbyNameSize:SetValueStep(1)
@@ -1740,14 +2100,19 @@ sNearbyNameSize:SetObeyStepOnDrag(true)
 _G[sNearbyNameSize:GetName().."Low"]:SetText("8")
 _G[sNearbyNameSize:GetName().."High"]:SetText("20")
 
-if type(prof.nearbyNameFontSize) ~= "number" then prof.nearbyNameFontSize = 12 end
-sNearbyNameSize:SetValue(prof.nearbyNameFontSize)
-sizeValue:SetText(tostring(prof.nearbyNameFontSize))
+do
+  local p = ActiveProfile()
+  if type(p.nearbyNameFontSize) ~= "number" then p.nearbyNameFontSize = 12 end
+  sNearbyNameSize:SetValue(p.nearbyNameFontSize)
+  sizeValue:SetText(tostring(p.nearbyNameFontSize))
+end
 _G[sNearbyNameSize:GetName().."Text"]:SetText("")
 
 sNearbyNameSize:SetScript("OnValueChanged", function(self, val)
+  if opt._kosSync then return end
   val = math.floor(val + 0.5)
-  prof.nearbyNameFontSize = val
+  local p = ActiveProfile()
+  p.nearbyNameFontSize = val
   sizeValue:SetText(tostring(val))
   _G[self:GetName().."Text"]:SetText("")
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyNameFont then
@@ -1756,17 +2121,129 @@ sNearbyNameSize:SetScript("OnValueChanged", function(self, val)
 end)
 
 
+  -- Refresh visible option controls from the currently active profile (so profile switching updates UI immediately).
+  function opt:_RefreshOptionsFromProfile()
+    prof = ActiveProfile()
 
+    -- Alerts
+    if cSound and cSound.SetChecked then cSound:SetChecked(prof.enableSound) end
+    if cFlash and cFlash.SetChecked then cFlash:SetChecked(prof.enableScreenFlash) end
+
+    -- Nearby section
+    if cNearby and cNearby.SetChecked then cNearby:SetChecked(prof.showNearbyFrame ~= false) end
+    if cNearbySound and cNearbySound.SetChecked then cNearbySound:SetChecked(prof.nearbySound ~= false) end
+    if cNearbyLock and cNearbyLock.SetChecked then cNearbyLock:SetChecked(prof.nearbyLocked == true) end
+    if cAutoHide and cAutoHide.SetChecked then cAutoHide:SetChecked(prof.nearbyAutoHide ~= false) end
+    if cGoblinTowns and cGoblinTowns.SetChecked then cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true) end
+
+    -- Scale
+    prof.nearbyFrame = prof.nearbyFrame or {}
+    if type(prof.nearbyFrame.scale) ~= "number" then prof.nearbyFrame.scale = 1.0 end
+    if sNearbyScale and sNearbyScale.SetValue then
+      sNearbyScale:SetValue(prof.nearbyFrame.scale)
+    end
+    if scaleValue and scaleValue.SetText then
+      scaleValue:SetText(string.format("(%.2f)", prof.nearbyFrame.scale))
+    end
+
+    -- Background alpha
+    if type(prof.nearbyFrame.bgAlpha) ~= "number" then
+      if type(prof.nearbyAlpha) == "number" then
+        prof.nearbyFrame.bgAlpha = prof.nearbyAlpha
+      else
+        prof.nearbyFrame.bgAlpha = 0.60
+      end
+    end
+    if sNearbyBG and sNearbyBG.SetValue then
+      sNearbyBG:SetValue(prof.nearbyFrame.bgAlpha)
+    end
+    if bgValue and bgValue.SetText then
+      bgValue:SetText(string.format("(%d%%)", math.floor((prof.nearbyFrame.bgAlpha*100)+0.5)))
+    end
+
+    -- Font dropdown + size
+    prof.nearbyNameFont = prof.nearbyNameFont or "Default"
+    if ddNearbyFont then
+      -- If the saved font is no longer offered, fall back to Default.
+      if type(fontChoices) == "table" then
+        local ok = false
+        for _, v in ipairs(fontChoices) do
+          if v == _pFont.nearbyNameFont then ok = true break end
+        end
+        if not ok then _pFont.nearbyNameFont = "Default" end
+      end
+      ddNearbyFont.selected = _pFont.nearbyNameFont
+      UIDropDownMenu_SetText(ddNearbyFont, ddNearbyFont.selected)
+      UIDropDownMenu_Refresh(ddNearbyFont)
+    end
+
+    if type(prof.nearbyNameFontSize) ~= "number" then prof.nearbyNameFontSize = 12 end
+    if sNearbyNameSize and sNearbyNameSize.SetValue then
+      sNearbyNameSize:SetValue(prof.nearbyNameFontSize)
+    end
+    if sizeValue and sizeValue.SetText then
+      sizeValue:SetText(tostring(prof.nearbyNameFontSize))
+    end
+
+    -- Ensure scroll size is correct if controls change height/layout.
+    if _UpdateOptionsScrollSizing then
+      _UpdateOptionsScrollSizing()
+    end
+  end
+
+
+
+
+
+  -- Sync visible widgets to current ActiveProfile() (no /reload needed)
+  function opt:_SyncFromProfile()
+    local w = self._kosWidgets or {}
+    local p = ActiveProfile()
+    self._kosSync = true
+
+    if w.cSound and w.cSound.SetChecked then w.cSound:SetChecked(p.enableSound) end
+    if w.cFlash and w.cFlash.SetChecked then w.cFlash:SetChecked(p.enableScreenFlash) end
+    if w.cNearby and w.cNearby.SetChecked then w.cNearby:SetChecked(p.showNearbyFrame ~= false) end
+
+    p.nearbyFrame = p.nearbyFrame or {}
+    if type(p.nearbyFrame.scale) ~= "number" then p.nearbyFrame.scale = 1.0 end
+    if w.sNearbyScale and w.sNearbyScale.SetValue then w.sNearbyScale:SetValue(p.nearbyFrame.scale) end
+    if w.scaleValue and w.scaleValue.SetText then w.scaleValue:SetText(string.format("(%.2f)", p.nearbyFrame.scale)) end
+
+    if type(p.nearbyFrame.bgAlpha) ~= "number" then
+      if type(p.nearbyAlpha) == "number" then p.nearbyFrame.bgAlpha = p.nearbyAlpha else p.nearbyFrame.bgAlpha = 0.60 end
+    end
+    if w.sNearbyBG and w.sNearbyBG.SetValue then w.sNearbyBG:SetValue(p.nearbyFrame.bgAlpha) end
+    if w.bgValue and w.bgValue.SetText then w.bgValue:SetText(string.format("(%d%%)", math.floor((p.nearbyFrame.bgAlpha*100)+0.5))) end
+
+    p.nearbyNameFont = p.nearbyNameFont or "Default"
+    if w.ddNearbyFont then
+      w.ddNearbyFont.selected = p.nearbyNameFont
+      UIDropDownMenu_SetText(w.ddNearbyFont, p.nearbyNameFont)
+      UIDropDownMenu_Refresh(w.ddNearbyFont)
+    end
+
+    if type(p.nearbyNameFontSize) ~= "number" then p.nearbyNameFontSize = 12 end
+    if w.sNearbyNameSize and w.sNearbyNameSize.SetValue then w.sNearbyNameSize:SetValue(p.nearbyNameFontSize) end
+    if w.sizeValue and w.sizeValue.SetText then w.sizeValue:SetText(tostring(p.nearbyNameFontSize)) end
+
+    self._kosSync = false
+  end
 
 -- Nearby window is always ultra-minimal (no toggle)
-prof.nearbyMinimal = true
+ActiveProfile().nearbyMinimal = true
 if KillOnSight_Nearby and KillOnSight_Nearby.ApplyMinimalMode then
   KillOnSight_Nearby:ApplyMinimalMode()
 end
 
-  cSound:SetScript("OnClick", function(self) prof.enableSound = self:GetChecked() end)
-  cFlash:SetScript("OnClick", function(self) prof.enableScreenFlash = self:GetChecked() end)
-  cInst:SetScript("OnClick", function(self) prof.notifyInInstances = self:GetChecked() end)
+  cSound:SetScript("OnClick", function(self)
+    local p = ActiveProfile()
+    p.enableSound = self:GetChecked()
+  end)
+  cFlash:SetScript("OnClick", function(self)
+    local p = ActiveProfile()
+    p.enableScreenFlash = self:GetChecked()
+  end)
   -- initialize tab visuals
   if frame.tabs then
     for i,t in ipairs(frame.tabs) do
@@ -1785,6 +2262,9 @@ end
   frame._attackersPanel = pAtk
   frame._statsPanel = pStats
 end
+
+
+
 
 function GUI:RefreshAll()
   if not frame then return end

@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimal nearby window"
 L.UI_NEARBY_ROWFADE = "Per-row fade timers"
 L.UI_NEARBY_ROWICONS = "Row icons (class/skull)"
 L.UI_NEARBY_SCALE = "Nearby window scale"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Nearby name font"
 L.UI_NEARBY_NAME_SIZE = "Nearby name size"
 L.UI_OPTIONS = "Options"
@@ -163,3 +164,20 @@ L.UI_NOTES = "Notes"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby is limited because Enemy Nameplates are OFF. Enable Enemy Nameplates (Interface > Names) for full detection. You can toggle them with the V key."
 L.TT_SPEC_LOADING = "Inspecting..."
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_EDIT = "Edit"
+L.UI_PROFILE_RENAME = "Rename profile:"
+L.UI_PROFILE_ERR_EMPTY = "Name can't be empty."
+L.UI_PROFILE_ERR_EXISTS = "A profile with that name already exists."
+L.UI_PROFILE_ERR_INVALID = "That name can't be used."
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Enter a name for the new profile:"

@@ -269,7 +269,15 @@ function Nearby:ApplyNameFont()
     defPath, defSize, defFlags = GameFontHighlight:GetFont()
   end
 
-  if not self.rows then return end
+  
+  -- Store last applied font info so per-row rendering can fall back for missing glyphs.
+  self._nearbyNameFontChoice = choice
+  self._nearbyNameFontPath = path
+  self._nearbyNameFontSize = sizeChoice
+  self._nearbyNameFontDefPath = defPath
+  self._nearbyNameFontDefSize = defSize
+  self._nearbyNameFontDefFlags = defFlags
+if not self.rows then return end
   for _,row in ipairs(self.rows) do
     if row and row.text and row.text.SetFont then
       local curPath, size, flags = row.text:GetFont()
@@ -376,15 +384,43 @@ end
     GameTooltip:AddLine(e.guild, 0.8, 0.8, 0.8)
   end
 
+
+  -- Realm resolution (handles cases where Blizzard shows Guild-Realm instead of Name-Realm)
+  if (not e.realm or e.realm == "") and e.guid then
+    -- Prefer live unit full name when available
+    local unit = self._FindUnitByGuid and self:_FindUnitByGuid(e.guid)
+    if unit and unit ~= "" and UnitExists and UnitExists(unit) and GetUnitFullNameSafe then
+      local fn, r = GetUnitFullNameSafe(unit)
+      if r and r ~= "" then
+        e.realm = r
+        e.fullName = (fn and fn ~= "" and (fn .. "-" .. r)) or (e.name and (e.name .. "-" .. r))
+      end
+    end
+  end
+  -- Fallback: sometimes tooltip provides guild as "Guild-Realm" while name lacks realm
+  if (not e.realm or e.realm == "") and e.guild and e.guild ~= "" then
+    local cand = e.guild:match(".*%-(.+)$")
+    if cand and cand ~= "" then
+      -- Basic sanity: realms are short and mostly letters/apostrophes
+      if #cand <= 32 and cand:match("[A-Za-z]") then
+        e.realm = cand
+        e.fullName = (e.name and (e.name .. "-" .. cand)) or e.fullName
+      end
+    end
+  end
+  -- Persist realm/fullName into Stats DB when we learn it
+  if e.realm and e.realm ~= "" and e.guid and GetDB then
+    local DB = GetDB()
+    if DB and DB.NoteEnemySeen then
+      DB:NoteEnemySeen(e.fullName or (e.name .. "-" .. e.realm), e.class, e.guild, e.guid, e.factionGroup)
+    end
+  end
+
   -- Realm
   if e.realm and e.realm ~= "" then
     GameTooltip:AddLine(e.realm, 0.8, 0.8, 0.8)
   end
 
-  -- Zone
-  if e.zone and e.zone ~= "" then
-    GameTooltip:AddLine(e.zone, 0.8, 0.8, 0.8)
-  end
 
   if e.kosType == L.KOS then
     GameTooltip:AddLine(L.TT_ON_KOS, 1,0.2,0.2)
@@ -532,8 +568,10 @@ local function NormalizeName(name)
              :gsub("|T.-|t", "")
              :gsub("^%s+", "")
              :gsub("%s+$", "")
-  -- Make names consistent with Spy: strip realm suffix and normalize capitalization input.
-  if _G.Ambiguate then
+  -- Make names consistent with Spy: strip realm suffix.
+  -- IMPORTANT: Avoid Ambiguate() on UTF-8 names with diacritics, as it can mangle multibyte sequences
+  -- on some clients, causing Nearby to display "weird characters" while Stats (raw UnitName) looks correct.
+  if _G.Ambiguate and not tostring(name):find("[\128-\255]") then
     name = Ambiguate(name, "short")
   else
     name = name:gsub("%-.+$", "")
@@ -617,6 +655,27 @@ function Nearby:ApplyPosition()
   self.frame:ClearAllPoints()
   self.frame:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER", p.x or 280, p.y or 80)
   self.frame:SetScale(p.scale or 1.0)
+  self:ApplyBackdrop()
+end
+
+
+function Nearby:ApplyBackdrop()
+  local DB = GetDB()
+  if not DB or not self.frame or not self.frame.SetBackdropColor then return end
+  local prof = DB:GetProfile()
+  prof.nearbyFrame = prof.nearbyFrame or {}
+
+  local a = prof.nearbyFrame.bgAlpha
+  if type(a) ~= "number" then a = 0.80 end
+  if a < 0 then a = 0 elseif a > 1 then a = 1 end
+  prof.nearbyFrame.bgAlpha = a
+
+  pcall(function()
+    self.frame:SetBackdropColor(0, 0, 0, a)
+    if self.frame.SetBackdropBorderColor then
+      self.frame:SetBackdropBorderColor(1, 1, 1, a)
+    end
+  end)
 end
 
 function Nearby:SavePosition()
@@ -749,8 +808,20 @@ function Nearby:ApplyMinimalMode()
   -- backdrop
   if self.frame.SetBackdrop then
     if minimal then
+      -- Ultra-minimal uses a flat texture. Use double slashes so Lua doesn't treat it as escape sequences.
       self.frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
-      self.frame:SetBackdropColor(0,0,0,0.35)
+      -- In ultra-minimal mode the backdrop texture is solid, but opacity should still
+      -- respect the user-configured background slider.
+      local a = 0.35
+      if prof and prof.nearbyFrame and type(prof.nearbyFrame.bgAlpha) == "number" then
+        a = prof.nearbyFrame.bgAlpha
+      elseif prof and type(prof.nearbyAlpha) == "number" then
+        a = prof.nearbyAlpha
+      end
+      if a < 0 then a = 0 elseif a > 1 then a = 1 end
+      if prof and prof.nearbyFrame then prof.nearbyFrame.bgAlpha = a end
+      if prof then prof.nearbyAlpha = a end
+      self.frame:SetBackdropColor(0,0,0,a)
     else
       self.frame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -758,7 +829,16 @@ function Nearby:ApplyMinimalMode()
         tile = true, tileSize = 32, edgeSize = 16,
         insets = { left = 4, right = 4, top = 4, bottom = 4 }
       })
-      self.frame:SetBackdropColor(0,0,0,0.80)
+      local a = 0.80
+      if prof and prof.nearbyFrame and type(prof.nearbyFrame.bgAlpha) == "number" then
+        a = prof.nearbyFrame.bgAlpha
+      end
+      if a < 0 then a = 0 elseif a > 1 then a = 1 end
+      if prof and prof.nearbyFrame then prof.nearbyFrame.bgAlpha = a end
+      self.frame:SetBackdropColor(0,0,0,a)
+      if self.frame.SetBackdropBorderColor then
+        self.frame:SetBackdropBorderColor(1,1,1,a)
+      end
     end
   end
 
@@ -827,10 +907,27 @@ function Nearby:ApplyAlpha()
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
-  self.baseAlpha = prof.nearbyAlpha or 0.80
-  if prof.nearbyFade == false then
-    self.frame:SetAlpha(self.baseAlpha)
+  prof.nearbyFrame = prof.nearbyFrame or {}
+
+  -- Background slider writes nearbyFrame.bgAlpha. Older builds used nearbyAlpha.
+  -- Keep them in sync so the window doesn't "snap back" when other code reapplies alpha.
+  local a = nil
+  if type(prof.nearbyFrame.bgAlpha) == "number" then
+    a = prof.nearbyFrame.bgAlpha
+  elseif type(prof.nearbyAlpha) == "number" then
+    a = prof.nearbyAlpha
+  else
+    a = 0.80
   end
+  if a < 0 then a = 0 elseif a > 1 then a = 1 end
+  prof.nearbyFrame.bgAlpha = a
+  prof.nearbyAlpha = a
+
+  -- NOTE: The background slider is *background* only. Setting frame alpha would also
+  -- fade the row text/entries (because alpha multiplies children). Keep frame alpha
+  -- at 1 here; backdrop opacity is handled by ApplyBackdrop()/ApplyMinimalMode().
+  self.baseAlpha = a
+  pcall(function() self.frame:SetAlpha(1) end)
 end
 
 function Nearby:FadeTo(targetAlpha, duration, hideOnDone)
@@ -1172,6 +1269,36 @@ local function RowLabel(e, tNow)
   return line
 end
 
+
+local function NeedsUnicodeFallback(s)
+  -- If the name contains non-ASCII bytes (UTF-8 multibyte), some custom fonts miss glyphs.
+  -- In that case we render with the default UI font to keep names accurate.
+  return type(s) == "string" and s:find("[\128-\255]") ~= nil
+end
+
+local function ApplyRowNameFontForText(self, row, labelText)
+  if not (self and row and row.text and row.text.SetFont) then return end
+
+  local defPath = self._nearbyNameFontDefPath or STANDARD_TEXT_FONT
+  local defSize = self._nearbyNameFontDefSize
+  local defFlags = self._nearbyNameFontDefFlags
+
+  local chosenPath = self._nearbyNameFontPath
+  local sizeChoice = self._nearbyNameFontSize
+
+  local curPath, curSize, curFlags = row.text:GetFont()
+  local size = sizeChoice or curSize or defSize or 12
+  local flags = curFlags or defFlags
+
+  local wantDefault = NeedsUnicodeFallback(labelText)
+  local wantPath = (wantDefault and defPath) or (chosenPath or defPath or curPath)
+
+  if wantPath and (curPath ~= wantPath or curSize ~= size or curFlags ~= flags) then
+    pcall(function() row.text:SetFont(wantPath, size, flags) end)
+  end
+end
+
+
 local function EnsureMenu(self)
   if self.menu then return end
   self.menu = CreateFrame("Frame", "KillOnSight_NearbyMenu", UIParent, "UIDropDownMenuTemplate")
@@ -1267,7 +1394,9 @@ local function UpdateScroll(self)
         end
       end
 
-      row.text:SetText(RowLabel(e, tNow))
+      local label = RowLabel(e, tNow)
+      ApplyRowNameFontForText(self, row, label)
+      row.text:SetText(label)
 
       -- Cache width for dynamic frame sizing
       if row.text and row.text.GetStringWidth then
@@ -1353,6 +1482,7 @@ function Nearby:Create()
   f:SetFrameStrata("MEDIUM")
   f:SetClampedToScreen(true)
   MakeBackdrop(f)
+  self:ApplyBackdrop()
 
   -- Auto-width measurer: an unconstrained FontString used to measure full text width.
   -- On some clients, GetStringWidth() on a constrained FontString can return a clamped value.
@@ -1735,6 +1865,16 @@ function Nearby:ClearAll(opts)
   end
   self._refreshTimer = nil
   self._nextAllowedRefresh = 0
+  -- Resolve active "seen encounter" sessions for any entries we are about to clear.
+  -- This ensures Stats "Seen" increments when the nearby list naturally expires or is manually cleared.
+  local Stats = _G.KillOnSight_MidnightStats
+  if Stats and Stats.ResolveEncounter and self.entries then
+    for _, e in pairs(self.entries) do
+      if e and e.guid and e.guid ~= "" then
+        pcall(function() Stats:ResolveEncounter(e.guid) end)
+      end
+    end
+  end
 
   self.entries = {}
   self.guidToKey = {}
@@ -2375,6 +2515,15 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
 
   e.fullName = rawName or e.fullName
   e.realm = ExtractRealm(rawName) or e.realm
+
+  -- If we have a live unit token, prefer UnitFullName for realm detection (titles/tooltip layout can hide it).
+  if unit and GetUnitFullNameSafe then
+    local fn, r = GetUnitFullNameSafe(unit)
+    if fn and r and r ~= "" then
+      e.fullName = fn .. "-" .. r
+      e.realm = r
+    end
+  end
   e.class = NormalizeClass(classFile) or e.class
   e.guild = guild or e.guild
 
@@ -2510,6 +2659,11 @@ function Nearby:Refresh()
 
     if now > inactiveExp then
       -- Remove expired entry and its identity mappings.
+      -- Count this nearby session as a completed encounter (Seen +1) before removal.
+      local Stats = _G.KillOnSight_MidnightStats
+      if Stats and Stats.ResolveEncounter and e and e.guid and e.guid ~= "" then
+        pcall(function() Stats:ResolveEncounter(e.guid) end)
+      end
       if e.guid and self.guidToKey[e.guid] == k then
         self.guidToKey[e.guid] = nil
       end
@@ -2553,8 +2707,10 @@ function Nearby:Refresh()
   end
 
   self:ApplyAlpha()
-  local target = self.baseAlpha or (prof.nearbyAlpha or 0.80)
-  self.frame:SetAlpha(target)
+  -- ApplyAlpha() owns the baseline frame alpha when fading is disabled.
+  -- When fading is enabled, FadeTo() controls alpha. Avoid reapplying alpha
+  -- here because it can override the just-changed slider value and cause a
+  -- visible "snap back".
 
   if self.minimized then return end
   UpdateScroll(self)

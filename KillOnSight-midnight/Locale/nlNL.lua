@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Ultra-minimaal nabij-venster"
 L.UI_NEARBY_ROWFADE = "Vervagtimers per rij"
 L.UI_NEARBY_ROWICONS = "Rijpictogrammen (klasse/schedel)"
 L.UI_NEARBY_SCALE = "Schaal van nabij-venster"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Lettertype van namen in de buurt"
 L.UI_NEARBY_NAME_SIZE = "Lettergrootte van namen in de buurt"
 L.UI_OPTIONS = "Options"
@@ -177,3 +178,13 @@ L.UI_NOTES = "Notities"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Dichtbij is beperkt omdat vijandelijke naamplaten UIT staan. Schakel vijandelijke naamplaten in (Interface > Namen) voor volledige detectie. Je kunt ze toggelen met de V-toets."
 L.TT_SPEC_LOADING = "Inspecteren…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Voer een naam in voor het nieuwe profiel:"

@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "超精簡附近視窗"
 L.UI_NEARBY_ROWFADE = "每列淡出計時"
 L.UI_NEARBY_ROWICONS = "列圖示 (職業/骷髏)"
 L.UI_NEARBY_SCALE = "附近視窗縮放"
+L.UI_NEARBY_BACKGROUND = "附近背景"
 L.UI_NEARBY_NAME_FONT = "附近名字字體"
 L.UI_NEARBY_NAME_SIZE = "附近名字字號"
 L.UI_OPTIONS = "選項"
@@ -145,3 +146,13 @@ L.UI_NOTES = "備註"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近偵測受限，因為敵方名條已關閉。請在「介面 > 名稱」中啟用敵方名條以獲得完整偵測。可按 V 鍵切換。"
 L.TT_SPEC_LOADING = "檢查中…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "輸入新設定檔名稱："

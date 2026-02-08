@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "Fenêtre Proches ultra-minimale"
 L.UI_NEARBY_ROWFADE = "Minuteries de fondu par ligne"
 L.UI_NEARBY_ROWICONS = "Icônes de ligne (classe/crâne)"
 L.UI_NEARBY_SCALE = "Échelle de la fenêtre"
+L.UI_NEARBY_BACKGROUND = "Arrière-plan (Proximité)"
 L.UI_NEARBY_NAME_FONT = "Police des noms à proximité"
 L.UI_NEARBY_NAME_SIZE = "Taille de police des noms à proximité"
 L.UI_OPTIONS = "Options"
@@ -176,3 +177,13 @@ L.UI_NOTES = "Notes"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "La détection Proximité est limitée car les barres de nom ennemies sont DÉSACTIVÉES. Activez les barres de nom ennemies (Interface > Noms) pour une détection complète. Vous pouvez les basculer avec la touche V."
 L.TT_SPEC_LOADING = "Inspection…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Entrez un nom pour le nouveau profil :"

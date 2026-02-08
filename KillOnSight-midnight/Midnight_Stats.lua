@@ -51,7 +51,8 @@ function Stats:TouchEncounter(guid, name, classFile, guild)
 
   -- Keep metadata fresh (do not increment seenCount here)
   if DB.NoteEnemySeen then
-    DB:NoteEnemySeen(cn, classFile, guild, guid)
+    local full = name or cn
+    DB:NoteEnemySeen(full, classFile, guild, guid)
   end
 
   local now = time()

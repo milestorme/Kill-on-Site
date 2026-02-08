@@ -454,7 +454,19 @@ function Detector:CheckUnit(unit, forceNearby)
 
   -- Stats note (does not increment encounters; just updates last seen/class/guild).
   if isEnemyPlayer and DB.NoteEnemySeen then
-    DB:NoteEnemySeen(name, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
+    local statsName = name
+    local fullName, realm = GetUnitFullNameSafe(unit)
+    if fullName and realm and realm ~= "" then
+      statsName = fullName .. "-" .. realm
+    end
+    DB:NoteEnemySeen(statsName, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
+
+    -- Encounter tracking: increment "Seen" only once per encounter (timeout-based).
+    -- This prevents spamming the counter from frequent UNIT/nameplate refreshes.
+    local Core = GetCore()
+    if Core and Core.TouchEncounter then
+      Core:TouchEncounter(guid, statsName, classFile, guild)
+    end
   end
 
   -- Retail: class/guild metadata can arrive late; ensure the Stats UI updates even when

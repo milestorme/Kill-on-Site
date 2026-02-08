@@ -67,6 +67,7 @@ L.UI_NEARBY_MINIMAL = "超简附近窗口"
 L.UI_NEARBY_ROWFADE = "每行淡出计时"
 L.UI_NEARBY_ROWICONS = "行图标（职业/骷髅）"
 L.UI_NEARBY_SCALE = "附近窗口缩放"
+L.UI_NEARBY_BACKGROUND = "附近背景"
 L.UI_NEARBY_NAME_FONT = "附近名字字体"
 L.UI_NEARBY_NAME_SIZE = "附近名字字号"
 L.UI_OPTIONS = "Options"
@@ -174,3 +175,13 @@ L.UI_NOTES = "备注"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近检测受限，因为敌方姓名版已关闭。请在“界面 > 名称”中启用敌方姓名版以获得完整检测。可按 V 键切换。"
 L.TT_SPEC_LOADING = "检查中…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "输入新配置文件名称："

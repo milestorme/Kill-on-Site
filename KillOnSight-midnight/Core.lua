@@ -662,7 +662,7 @@ local function HandleCombatLog()
 	    local cn = CleanName(dstName)
 	    if cn and not IsGroupOrSelfByName(cn) then
 	      pvpOutgoing[dstGUID] = { t = now, nameLower = cn:lower(), name = cn }
-	      Core:TouchEncounter(dstGUID, cn, nil, nil)
+	      Core:TouchEncounter(dstGUID, dstName or cn, nil, nil)
 	    end
 	  end
 	  -- enemy -> YOU (incoming)
@@ -670,7 +670,7 @@ local function HandleCombatLog()
 	    local cn = CleanName(srcName)
 	    if cn and not IsGroupOrSelfByName(cn) then
 	      pvpIncoming[srcGUID] = { t = now, nameLower = cn:lower(), name = cn }
-	      Core:TouchEncounter(srcGUID, cn, nil, nil)
+	      Core:TouchEncounter(srcGUID, srcName or cn, nil, nil)
 	    end
 	  end
 	end
@@ -709,7 +709,7 @@ local function HandleCombatLog()
       local cleanName = srcName and (srcName:match("^[^-]+") or srcName)
       if cleanName and not IsGroupOrSelfByName(cleanName) then
         if srcGUID then
-          Core:TouchEncounter(srcGUID, cleanName, nil, nil)
+          Core:TouchEncounter(srcGUID, srcName or cleanName, nil, nil)
         end
         local key = cleanName:lower()
         if ShouldCLNotify("cl:stealth:" .. key, now, 8) then

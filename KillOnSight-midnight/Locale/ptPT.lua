@@ -69,6 +69,7 @@ L.UI_NEARBY_MINIMAL = "Janela 'por perto' ultra-minimal"
 L.UI_NEARBY_ROWFADE = "Temporizadores de esbatimento por linha"
 L.UI_NEARBY_ROWICONS = "Ícones por linha (classe/caveira)"
 L.UI_NEARBY_SCALE = "Escala da janela 'por perto'"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Tipo de letra dos nomes próximos"
 L.UI_NEARBY_NAME_SIZE = "Tamanho do tipo de letra dos nomes próximos"
 L.UI_OPTIONS = "Opções"
@@ -145,3 +146,13 @@ L.UI_NOTES = "Notas"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "O modo Próximos é limitado porque as Placas de Nome inimigas estão DESLIGADAS. Ative as Placas de Nome inimigas (Interface > Nomes) para deteção completa. Pode alternar com a tecla V."
 L.TT_SPEC_LOADING = "A inspecionar…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Introduza um nome para o novo perfil:"
