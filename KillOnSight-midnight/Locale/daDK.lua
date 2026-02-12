@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "Skala for nær-vindue"
 L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Skrifttype for navne i nærheden"
 L.UI_NEARBY_NAME_SIZE = "Skriftstørrelse for navne i nærheden"
+L.UI_NEARBY_MAX_ROWS = "Maks. rækker i nærheden"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Indstillinger"

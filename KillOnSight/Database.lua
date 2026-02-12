@@ -86,10 +86,15 @@ nearbyAutoWidth = true,
 nearbyMinWidth = 216,
 nearbyMaxWidth = 450,
 
+    -- Clamp Nearby detection range on Classic clients where nameplate discovery is much longer-range
+    -- (TBC 2.5.5+ through MoP 5.5.3). Enabled by default on those clients.
+    nearbyRangeClampEnabled = nil,
+
 -- Stealth detection
 stealthDetectEnabled = true,
 stealthDetectChat = true,
 stealthDetectSound = true,
+    stealthDetectScreenFlash = false,
 stealthDetectCenterWarning = true,
 stealthDetectAddToNearby = true,
 stealthWarningHoldSeconds = 6.0,
@@ -206,6 +211,13 @@ function DB:Init()
   -- New option defaults (older SavedVariables won't have these)
   if realmDB.profile.nearbySound == nil then realmDB.profile.nearbySound = true end
   if realmDB.profile.disableInGoblinTowns == nil then realmDB.profile.disableInGoblinTowns = false end
+
+  -- Default the range clamp to ON for TBC 2.5.5+ through MoP 5.5.3, OFF otherwise.
+  if realmDB.profile.nearbyRangeClampEnabled == nil then
+    local toc = select(4, GetBuildInfo())
+    local clampDefault = (type(toc) == "number") and (toc >= 20505) and (toc <= 50503)
+    realmDB.profile.nearbyRangeClampEnabled = clampDefault
+  end
 
   -- prune very old change log if it grew huge
   local data = realmDB.data

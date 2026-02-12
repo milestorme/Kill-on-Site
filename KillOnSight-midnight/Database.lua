@@ -81,6 +81,8 @@ local DEFAULTS = {
     -- Font used for player names in the Nearby list (dropdown in Options)
     nearbyNameFont = "Default",
     nearbyNameFontSize = 12,
+    -- Max number of rows to show in Nearby before scrolling (Nearby pre-creates 20 rows)
+    nearbyMaxVisibleRows = 20,
 -- Stealth detection
 stealthDetectEnabled = true,
 stealthDetectChat = true,
@@ -306,6 +308,12 @@ function DB:Init()
       if pobj.nearbySound == nil then pobj.nearbySound = true end
       if pobj.nearbyNameFont == nil then pobj.nearbyNameFont = "Default" end
       if pobj.nearbyNameFontSize == nil then pobj.nearbyNameFontSize = 12 end
+      if pobj.nearbyMaxVisibleRows == nil then pobj.nearbyMaxVisibleRows = 20 end
+      -- Clamp to the available pre-created row pool (20)
+      if type(pobj.nearbyMaxVisibleRows) ~= "number" then pobj.nearbyMaxVisibleRows = 20 end
+      pobj.nearbyMaxVisibleRows = math.floor(pobj.nearbyMaxVisibleRows + 0.5)
+      if pobj.nearbyMaxVisibleRows < 1 then pobj.nearbyMaxVisibleRows = 1 end
+      if pobj.nearbyMaxVisibleRows > 20 then pobj.nearbyMaxVisibleRows = 20 end
       if pobj.disableInGoblinTowns == nil then pobj.disableInGoblinTowns = false end
       if pobj.stealthNotifyCooldownSeconds == nil then pobj.stealthNotifyCooldownSeconds = 8 end
     end

@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "Skalierung des Nah-Fensters"
 L.UI_NEARBY_BACKGROUND = "Hintergrund (Nähe)"
 L.UI_NEARBY_NAME_FONT = "Schriftart der Namen in der Nähe"
 L.UI_NEARBY_NAME_SIZE = "Schriftgröße der Namen in der Nähe"
+L.UI_NEARBY_MAX_ROWS = "Max. Zeilen in der Nähe"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Optionen"

@@ -524,7 +524,9 @@ function Notifier:NotifyHidden(name, spellName, guid)
     end
   end
 
-  self:Flash()
+  if prof.stealthDetectScreenFlash then
+    self:Flash()
+  end
 
   -- Add to Nearby list (pass class so row can be colored/iconed)
   if prof.stealthDetectAddToNearby ~= false then

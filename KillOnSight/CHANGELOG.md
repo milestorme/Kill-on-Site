@@ -1,5 +1,17 @@
 # KillOnSight – Changelog
 
+## 3.1.9
+
+### Added
+- Nearby: Optional detection range clamp for a more Classic-like feel (enabled by default on TBC 2.5.5 → MoP 5.5.3).
+- Nearby: Live list updates during combat while preserving targeting for already-visible rows.
+- Tooltip: Shows `Not targetable` for new entries that cannot be targeted during combat.
+
+## 3.1.8
+
+### Added
+- Nearby stealth detector screen flash disable/enable option
+
 ## 3.1.7
 
 ### Added

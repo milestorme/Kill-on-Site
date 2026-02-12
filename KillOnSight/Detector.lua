@@ -69,6 +69,33 @@ end
 local IS_RETAIL = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 local DEFAULT_RETAIL_NEARBY_MAX_YARDS = 60
 
+-- Classic expansions (TBC 2.5.5+ through MoP 5.5.3): nameplate discovery range is noticeably longer
+-- than Classic Era, so we optionally clamp "Nearby" population to a more Classic-feel distance.
+local _toc = select(4, GetBuildInfo())
+local IS_CLASSIC_CLAMP_CLIENT = (not IS_RETAIL) and (type(_toc) == "number") and (_toc >= 20505) and (_toc <= 50503)
+local CLASSIC_CLAMP_MAX_YARDS = 28 -- roughly CheckInteractDistance(unit, 4)
+
+local function IsWithinClassicClampRange(unit)
+  if not unit then return true end
+
+  -- Prefer a true yard distance if available.
+  if UnitDistanceSquared then
+    local d2 = UnitDistanceSquared(unit)
+    if d2 then
+      return d2 <= (CLASSIC_CLAMP_MAX_YARDS * CLASSIC_CLAMP_MAX_YARDS)
+    end
+  end
+
+  -- Fallback: interaction distance (index 4 ~ 28 yards). Returns true/false/nil.
+  if CheckInteractDistance then
+    local ok = CheckInteractDistance(unit, 4)
+    if ok ~= nil then return ok end
+  end
+
+  -- If the client can't answer, don't block detection.
+  return true
+end
+
 
 function Detector:CheckUnit(unit)
   local DB = GetDB()
@@ -78,7 +105,9 @@ function Detector:CheckUnit(unit)
   if not InAllowedContext() then return end
   if UnitIsUnit(unit, "player") then return end
 
-  -- Retail-only: gate Nearby list updates by distance (nameplates can be very long-range in 12.x).
+  local prof = DB:GetProfile()
+
+  -- Gate Nearby list updates by distance (varies by client).
   local withinNearbyRange = true
   if IS_RETAIL and UnitDistanceSquared then
     local distSq = UnitDistanceSquared(unit)
@@ -88,6 +117,11 @@ function Detector:CheckUnit(unit)
         withinNearbyRange = false
       end
     end
+  end
+
+  -- Classic expansion clamp (optional; enabled by default for 2.5.5+ through 5.5.3).
+  if withinNearbyRange and IS_CLASSIC_CLAMP_CLIENT and (prof.nearbyRangeClampEnabled ~= false) then
+    withinNearbyRange = IsWithinClassicClampRange(unit)
   end
 
 

@@ -1656,6 +1656,24 @@ if not IS_RETAIL then
   end)
   anchorBelowAutoHide = cGoblinTowns
   anchorOffset = -18
+
+  -- Clamp Nearby detection range to a more Classic-feel distance on Classic expansions
+  -- (TBC 2.5.5+ through MoP 5.5.3). Enabled by default on those clients.
+  local toc = select(4, GetBuildInfo())
+  local clampSupported = (type(toc) == "number") and (toc >= 20505) and (toc <= 50503)
+  if clampSupported then
+    local cRangeClamp = MakeCheck(opt, L.UI_NEARBY_RANGE_CLAMP or "Clamp Nearby detection range (Classic feel)")
+    cRangeClamp:SetPoint("TOPLEFT", cGoblinTowns, "BOTTOMLEFT", 0, -10)
+    cRangeClamp:SetChecked(prof.nearbyRangeClampEnabled ~= false)
+    cRangeClamp:SetScript("OnClick", function(self)
+      prof.nearbyRangeClampEnabled = self:GetChecked()
+      if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+        KillOnSight_Nearby:Refresh()
+      end
+    end)
+    anchorBelowAutoHide = cRangeClamp
+    anchorOffset = -18
+  end
 end
 
 
@@ -1843,8 +1861,17 @@ cStealthSound:SetScript("OnClick", function(self)
     if KillOnSight_Notifier and KillOnSight_Notifier.ApplyStealthSettings then KillOnSight_Notifier:ApplyStealthSettings() end
 end)
 
+
+local cStealthFlash = MakeCheck(opt, L.UI_STEALTH_FLASH)
+cStealthFlash:SetPoint("TOPLEFT", cStealthSound, "BOTTOMLEFT", 0, -8)
+cStealthFlash:SetChecked(prof.stealthDetectScreenFlash == true)
+cStealthFlash:SetScript("OnClick", function(self)
+  prof.stealthDetectScreenFlash = self:GetChecked()
+    if KillOnSight_Notifier and KillOnSight_Notifier.ApplyStealthSettings then KillOnSight_Notifier:ApplyStealthSettings() end
+end)
+
 local cStealthBanner = MakeCheck(opt, L.UI_STEALTH_BANNER)
-cStealthBanner:SetPoint("TOPLEFT", cStealthSound, "BOTTOMLEFT", 0, -8)
+cStealthBanner:SetPoint("TOPLEFT", cStealthFlash, "BOTTOMLEFT", 0, -8)
 cStealthBanner:SetChecked(prof.stealthDetectCenterWarning ~= false)
 cStealthBanner:SetScript("OnClick", function(self)
   prof.stealthDetectCenterWarning = self:GetChecked()

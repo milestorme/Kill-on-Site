@@ -403,6 +403,12 @@ function Nearby:QueueLayout()
   local ef = CreateFrame("Frame")
   ef:RegisterEvent("PLAYER_REGEN_ENABLED")
   ef:SetScript("OnEvent", function()
+    if event == "PLAYER_REGEN_DISABLED" then
+      Nearby._inCombat = true
+      if Nearby.SnapshotCombatRows then pcall(function() Nearby:SnapshotCombatRows() end) end
+      return
+    end
+    Nearby._inCombat = nil
     if not Nearby._pendingLayout then return end
     Nearby._pendingLayout = nil
     if Nearby._pendingShown ~= nil and Nearby.frame then
@@ -420,6 +426,20 @@ function Nearby:QueueLayout()
   self._combatEventFrame = ef
 end
 
+
+
+function Nearby:SnapshotCombatRows()
+  self._combatStableKeys = self._combatStableKeys or {}
+  -- Mark currently displayed row keys as stable (targetable) for duration of combat
+  wipe(self._combatStableKeys)
+  if not self.rows then return end
+  for _, row in ipairs(self.rows) do
+    if row and row._entryKey then
+      self._combatStableKeys[row._entryKey] = true
+      row._notTargetable = nil
+    end
+  end
+end
 
 function Nearby:StartTicker()
   if self.ticker then return end
@@ -950,7 +970,8 @@ end
 local function SortedEntries(self)
   local activeKoS, inactiveKoS, active, inactive = {}, {}, {}, {}
   local now = (GetTime and GetTime()) or 0
-  for _, e in pairs(self.entries) do
+  for lower, e in pairs(self.entries) do
+    if e and e._key ~= lower then e._key = lower end
     local skip = false
     if e._kosLayerFilteredUntil and now < e._kosLayerFilteredUntil then
       skip = true
@@ -1096,12 +1117,95 @@ local function UpdateScroll(self)
   -- If we keep trying to reassign row.entry + labels in combat (common in battlegrounds),
   -- the displayed name can diverge from the secure macro target, causing "sometimes" targeting.
   --
-  -- Strategy: while in combat, keep the row display stable and defer the full refresh
-  -- until PLAYER_REGEN_ENABLED (handled by QueueLayout's regen hook).
+  -- Strategy: during combat, do a *visual-only* refresh that never changes secure targeting
+  -- bindings for existing rows. Rows that were already displayed remain targetable.
+  -- New rows can be shown, but are not targetable until combat ends.
   if InCombatLockdown and InCombatLockdown() then
     self._pendingRefresh = true
     self:QueueLayout()
-  FauxScrollFrame_Update(self.scroll, total, visible, 22)
+
+    local stable = self._combatStableKeys
+    if not stable then
+      self:SnapshotCombatRows()
+      stable = self._combatStableKeys
+    end
+
+    -- Build a list of new keys (not already displayed) in current sort order.
+    local newKeys = {}
+    for _, e in ipairs(list) do
+      local k = e and e._key
+      if k and not stable[k] then
+        newKeys[#newKeys+1] = k
+      end
+    end
+
+    -- No scrolling in combat (changing visible rows would require re-binding secure attributes).
+    offset = 0
+    FauxScrollFrame_Update(self.scroll, total, visible, 22)
+
+    local j = 1
+    for i = 1, visible do
+      local row = self.rows[i]
+      local e
+
+      if row and row._entryKey and stable[row._entryKey] then
+        e = self.entries[row._entryKey]
+        row._notTargetable = nil
+      elseif row then
+        local k = newKeys[j]
+        j = j + 1
+        if k then
+          row._entryKey = k
+          e = self.entries[k]
+          row._notTargetable = true
+        else
+          row._entryKey = nil
+          row._notTargetable = nil
+        end
+      end
+
+      row.entry = e
+
+      if e then
+        row.text:SetText(RowLabel(e, tNow))
+        self._awDirty = true
+
+        local DB = GetDB()
+        local prof = DB and DB:GetProfile()
+
+        if prof and prof.nearbyRowIcons ~= false and row.icon then
+          if e.class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[e.class] then
+            row.icon:SetTexture("Interface\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES")
+            local c = CLASS_ICON_TCOORDS[e.class]
+            row.icon:SetTexCoord(c[1], c[2], c[3], c[4])
+            row.icon:Show()
+          else
+            row.icon:Hide()
+          end
+          if row.skull then
+            row.skull:SetShown(e.kosType == L.KOS or e.kosType == L.GUILD_KOS)
+          end
+        else
+          if row.icon then row.icon:Hide() end
+          if row.skull then row.skull:Hide() end
+        end
+
+        if e.state == "inactive" then
+          row:SetAlpha(0.60)
+        else
+          row:SetAlpha(1)
+        end
+        -- Do not call SafeEnableMouse / SetAttribute changes in combat; leave as-is.
+      else
+        if row then
+          row.text:SetText("")
+          row:SetAlpha(0)
+          if row.icon then row.icon:Hide() end
+          if row.skull then row.skull:Hide() end
+        end
+      end
+    end
+
     return
   end
 
@@ -1110,6 +1214,8 @@ local function UpdateScroll(self)
     local row = self.rows[i]
     local e = list[idx]
     row.entry = e
+    row._entryKey = e and e._key or nil
+    row._notTargetable = nil
 
     if e then
       -- Secure targeting: only set while out of combat (protected in combat).
@@ -1161,6 +1267,8 @@ local function UpdateScroll(self)
       -- Clear unused row
       row.text:SetText("")
       row.entry = nil
+      row._entryKey = nil
+      row._notTargetable = nil
       row:SetAlpha(0)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
@@ -1179,6 +1287,8 @@ local function UpdateScroll(self)
     local row = self.rows[i]
     if row then
       row.entry = nil
+      row._entryKey = nil
+      row._notTargetable = nil
       row.text:SetText("")
       row:SetAlpha(0)
       SafeEnableMouse(row, false)
@@ -1353,6 +1463,9 @@ self._awMeasureFS = meas
         GameTooltip:AddLine(L.TT_NOT_TARGETABLE or "Not targetable right now", 1,0.2,0.2)
       elseif e._kosNotTargetableUntil then
         e._kosNotTargetableUntil = nil
+      end
+            if btn._notTargetable and InCombatLockdown and InCombatLockdown() then
+        GameTooltip:AddLine(L.TT_NOT_TARGETABLE or "Not targetable right now", 1,0.2,0.2)
       end
       GameTooltip:Show()
     end

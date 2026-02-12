@@ -68,6 +68,7 @@ L.UI_NEARBY_ROWICONS = "Иконки строки (класс/череп)"
 L.UI_NEARBY_SCALE = "Масштаб окна рядом"
 L.UI_NEARBY_NAME_FONT = "Шрифт имён рядом"
 L.UI_NEARBY_NAME_SIZE = "Размер шрифта имён рядом"
+L.UI_NEARBY_RANGE_CLAMP = "Дальность обнаружения (как в Classic)"
 
 L.UI_OPTIONS = "Options"
 
@@ -81,6 +82,7 @@ L.UI_STEALTH_ENABLE = "Включить обнаружение скрытнос�
 L.UI_STEALTH_FADE = "Затухание баннера (сек.)"
 L.UI_STEALTH_HOLD = "Показ баннера (сек.)"
 L.UI_STEALTH_SOUND = "Звук скрытности"
+L.UI_STEALTH_FLASH = "Мигать экраном при скрытности"
 L.UI_SYNC = "Синхр. сейчас"
 L.UI_TAB_ATTACKERS = "Нападавшие"
 L.UI_TAB_GUILDS = "Гильдии"

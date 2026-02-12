@@ -1,8 +1,8 @@
 # Kill on Sight (KoS)
 
-##**Author:** Milestorme 
+### **Author:** Milestorme
 
-##**Contributor:** Minstrel
+### **Contributor** Minstrel
 
 Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list and alerts.
 

@@ -72,6 +72,7 @@ L.UI_NEARBY_SCALE = "Scala finestra vicinanze"
 L.UI_NEARBY_BACKGROUND = "Sfondo (Vicini)"
 L.UI_NEARBY_NAME_FONT = "Carattere dei nomi vicini"
 L.UI_NEARBY_NAME_SIZE = "Dimensione carattere dei nomi vicini"
+L.UI_NEARBY_MAX_ROWS = "Righe massime nei vicini"
 L.UI_OPTIONS = "Opzioni"
 
 L.UI_OPTIONS_TITLE = "Opzioni"

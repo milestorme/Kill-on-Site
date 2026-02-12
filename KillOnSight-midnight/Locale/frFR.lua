@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "Échelle de la fenêtre"
 L.UI_NEARBY_BACKGROUND = "Arrière-plan (Proximité)"
 L.UI_NEARBY_NAME_FONT = "Police des noms à proximité"
 L.UI_NEARBY_NAME_SIZE = "Taille de police des noms à proximité"
+L.UI_NEARBY_MAX_ROWS = "Lignes max. à proximité"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Options"

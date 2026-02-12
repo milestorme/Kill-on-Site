@@ -72,6 +72,7 @@ L.UI_NEARBY_SCALE = "付近ウィンドウの倍率"
 L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "近くの名前のフォント"
 L.UI_NEARBY_NAME_SIZE = "近くの名前のサイズ"
+L.UI_NEARBY_MAX_ROWS = "近くの最大行数"
 L.UI_OPTIONS = "オプション"
 
 L.UI_OPTIONS_TITLE = "オプション"

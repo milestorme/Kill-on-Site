@@ -72,6 +72,7 @@ L.UI_NEARBY_SCALE = "Nearby window scale"
 L.UI_NEARBY_BACKGROUND = "Nearby Background"
 L.UI_NEARBY_NAME_FONT = "Nearby name font"
 L.UI_NEARBY_NAME_SIZE = "Nearby name size"
+L.UI_NEARBY_MAX_ROWS = "Nearby max rows"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Options"

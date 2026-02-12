@@ -2121,6 +2121,52 @@ sNearbyNameSize:SetScript("OnValueChanged", function(self, val)
 end)
 
 
+-- Nearby max visible rows (before scrolling)
+local maxRowsLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+maxRowsLabel:SetPoint("TOPLEFT", sNearbyNameSize, "BOTTOMLEFT", 0, -18)
+maxRowsLabel:SetText(L.UI_NEARBY_MAX_ROWS or "Nearby max rows")
+
+local maxRowsValue = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+maxRowsValue:SetPoint("LEFT", maxRowsLabel, "RIGHT", 8, 0)
+
+local sNearbyMaxRows = CreateFrame("Slider", "KillOnSightNearbyMaxRowsSlider", opt, "OptionsSliderTemplate")
+  _W("sNearbyMaxRows", sNearbyMaxRows)
+  _W("maxRowsValue", maxRowsValue)
+
+sNearbyMaxRows:SetPoint("TOPLEFT", maxRowsLabel, "BOTTOMLEFT", 0, -6)
+sNearbyMaxRows:SetMinMaxValues(5, 20)
+sNearbyMaxRows:SetValueStep(1)
+sNearbyMaxRows:SetObeyStepOnDrag(true)
+_G[sNearbyMaxRows:GetName().."Low"]:SetText("5")
+_G[sNearbyMaxRows:GetName().."High"]:SetText("20")
+_G[sNearbyMaxRows:GetName().."Text"]:SetText("")
+
+do
+  local p = ActiveProfile()
+  if type(p.nearbyMaxVisibleRows) ~= "number" then p.nearbyMaxVisibleRows = 20 end
+  p.nearbyMaxVisibleRows = math.floor(p.nearbyMaxVisibleRows + 0.5)
+  if p.nearbyMaxVisibleRows < 5 then p.nearbyMaxVisibleRows = 5 end
+  if p.nearbyMaxVisibleRows > 20 then p.nearbyMaxVisibleRows = 20 end
+  sNearbyMaxRows:SetValue(p.nearbyMaxVisibleRows)
+  maxRowsValue:SetText(tostring(p.nearbyMaxVisibleRows))
+end
+
+sNearbyMaxRows:SetScript("OnValueChanged", function(self, val)
+  if opt._kosSync then return end
+  val = math.floor(val + 0.5)
+  if val < 5 then val = 5 end
+  if val > 20 then val = 20 end
+  local p = ActiveProfile()
+  p.nearbyMaxVisibleRows = val
+  maxRowsValue:SetText(tostring(val))
+  _G[self:GetName().."Text"]:SetText("")
+  if KillOnSight_Nearby and KillOnSight_Nearby.AutoFitHeight then
+    KillOnSight_Nearby:AutoFitHeight(KillOnSight_Nearby._lastCount or 1)
+    if KillOnSight_Nearby.Refresh then KillOnSight_Nearby:Refresh() end
+  end
+end)
+
+
   -- Refresh visible option controls from the currently active profile (so profile switching updates UI immediately).
   function opt:_RefreshOptionsFromProfile()
     prof = ActiveProfile()
@@ -2183,6 +2229,17 @@ end)
     end
     if sizeValue and sizeValue.SetText then
       sizeValue:SetText(tostring(prof.nearbyNameFontSize))
+    end
+
+    if type(prof.nearbyMaxVisibleRows) ~= "number" then prof.nearbyMaxVisibleRows = 20 end
+    prof.nearbyMaxVisibleRows = math.floor(prof.nearbyMaxVisibleRows + 0.5)
+    if prof.nearbyMaxVisibleRows < 5 then prof.nearbyMaxVisibleRows = 5 end
+    if prof.nearbyMaxVisibleRows > 20 then prof.nearbyMaxVisibleRows = 20 end
+    if sNearbyMaxRows and sNearbyMaxRows.SetValue then
+      sNearbyMaxRows:SetValue(prof.nearbyMaxVisibleRows)
+    end
+    if maxRowsValue and maxRowsValue.SetText then
+      maxRowsValue:SetText(tostring(prof.nearbyMaxVisibleRows))
     end
 
     -- Ensure scroll size is correct if controls change height/layout.

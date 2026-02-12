@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "Escala da janela de próximos"
 L.UI_NEARBY_BACKGROUND = "Fundo (Próximos)"
 L.UI_NEARBY_NAME_FONT = "Fonte dos nomes próximos"
 L.UI_NEARBY_NAME_SIZE = "Tamanho da fonte dos nomes próximos"
+L.UI_NEARBY_MAX_ROWS = "Máx. linhas em próximos"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Opções"

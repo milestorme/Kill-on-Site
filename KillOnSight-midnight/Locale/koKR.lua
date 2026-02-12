@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "근처 창 크기"
 L.UI_NEARBY_BACKGROUND = "근처 배경"
 L.UI_NEARBY_NAME_FONT = "근처 이름 글꼴"
 L.UI_NEARBY_NAME_SIZE = "근처 이름 크기"
+L.UI_NEARBY_MAX_ROWS = "근처 최대 행 수"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "옵션"

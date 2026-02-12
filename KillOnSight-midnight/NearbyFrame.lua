@@ -748,9 +748,17 @@ function Nearby:AutoFitHeight(visibleCount)
   local maxRows = (self.rows and #self.rows) or 0
   if maxRows <= 0 then return end
 
+  -- User-configurable cap for how many rows are visible before scrolling.
+  -- Note: the UI pre-creates 20 rows (see Create()), so we clamp to that pool.
+  local cap = tonumber(prof.nearbyMaxVisibleRows) or 20
+  cap = math.floor(cap + 0.5)
+  if cap < 1 then cap = 1 end
+  if cap > maxRows then cap = maxRows end
+
   local desired = tonumber(visibleCount) or 0
   if desired < 1 then desired = 1 end
   if desired > maxRows then desired = maxRows end
+  if desired > cap then desired = cap end
 
   self.visibleRows = desired
 

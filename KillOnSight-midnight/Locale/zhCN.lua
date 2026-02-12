@@ -70,6 +70,7 @@ L.UI_NEARBY_SCALE = "附近窗口缩放"
 L.UI_NEARBY_BACKGROUND = "附近背景"
 L.UI_NEARBY_NAME_FONT = "附近名字字体"
 L.UI_NEARBY_NAME_SIZE = "附近名字字号"
+L.UI_NEARBY_MAX_ROWS = "附近最大行数"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "选项"
