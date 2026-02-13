@@ -1,5 +1,13 @@
 # KillOnSight – Changelog
 
+## 3.2.0
+
+### Fixed
+- Legacy list migration now reliably maps into `data.players` / `data.guilds` so existing KoS/Guild entries are visible after upgrades.
+- Slash parsing now lowercases only the command token (arguments keep user-provided casing).
+- `/kos addguild` and `/kos removeguild` now support multi-word guild names.
+- `Util.lua` is now loaded in Classic, Wrath, and MoP TOCs for consistent tag rendering behavior.
+
 ## 3.1.9
 
 ### Added
