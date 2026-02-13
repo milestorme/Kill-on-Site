@@ -31,6 +31,7 @@ Locale/nlNL.lua
 Locale/daDK.lua
 Locale/plPL.lua
 Database.lua
+Util.lua
 Notifier.lua
 NearbyFrame.lua
 Detector.lua

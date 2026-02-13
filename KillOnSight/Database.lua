@@ -171,19 +171,42 @@ function DB:Init()
   local legacyKey = LegacyRealmKey()
   local legacy = KillOnSightDB.realms[legacyKey]
   if legacy and type(legacy) == "table" then
+    realmDB.data = realmDB.data or {}
+    realmDB.data.players = realmDB.data.players or {}
+    realmDB.data.guilds = realmDB.data.guilds or {}
+
+    -- Backfill from any previously misplaced top-level buckets (defensive migration).
+    if realmDB.players and type(realmDB.players) == "table" then
+      for k, v in pairs(realmDB.players) do
+        if realmDB.data.players[k] == nil then realmDB.data.players[k] = v end
+      end
+      realmDB.players = nil
+    end
+    if realmDB.guilds and type(realmDB.guilds) == "table" then
+      for k, v in pairs(realmDB.guilds) do
+        if realmDB.data.guilds[k] == nil then realmDB.data.guilds[k] = v end
+      end
+      realmDB.guilds = nil
+    end
+
     -- If current realmDB is basically empty, copy lists over.
-    local curPlayers = (realmDB.players and next(realmDB.players)) ~= nil
-    local curGuilds  = (realmDB.guilds and next(realmDB.guilds)) ~= nil
-    if (not curPlayers) and legacy.players and type(legacy.players) == "table" then
-      realmDB.players = realmDB.players or {}
-      for k,v in pairs(legacy.players) do
-        if realmDB.players[k] == nil then realmDB.players[k] = v end
+    local curPlayers = (realmDB.data.players and next(realmDB.data.players)) ~= nil
+    local curGuilds  = (realmDB.data.guilds and next(realmDB.data.guilds)) ~= nil
+    local legacyPlayers = (legacy.players and type(legacy.players) == "table" and legacy.players)
+      or (legacy.data and type(legacy.data) == "table" and type(legacy.data.players) == "table" and legacy.data.players)
+    local legacyGuilds = (legacy.guilds and type(legacy.guilds) == "table" and legacy.guilds)
+      or (legacy.data and type(legacy.data) == "table" and type(legacy.data.guilds) == "table" and legacy.data.guilds)
+
+    if (not curPlayers) and legacyPlayers then
+      realmDB.data.players = realmDB.data.players or {}
+      for k,v in pairs(legacyPlayers) do
+        if realmDB.data.players[k] == nil then realmDB.data.players[k] = v end
       end
     end
-    if (not curGuilds) and legacy.guilds and type(legacy.guilds) == "table" then
-      realmDB.guilds = realmDB.guilds or {}
-      for k,v in pairs(legacy.guilds) do
-        if realmDB.guilds[k] == nil then realmDB.guilds[k] = v end
+    if (not curGuilds) and legacyGuilds then
+      realmDB.data.guilds = realmDB.data.guilds or {}
+      for k,v in pairs(legacyGuilds) do
+        if realmDB.data.guilds[k] == nil then realmDB.data.guilds[k] = v end
       end
     end
     -- Profile migration: only copy when missing (keep current defaults/options)

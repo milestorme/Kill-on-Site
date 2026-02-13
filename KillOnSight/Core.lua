@@ -234,8 +234,8 @@ local function AddGuild(rest)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local guild = SplitFirst(rest or "")
-  if not guild then return Help() end
+  local guild = (rest or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if guild == "" then return Help() end
   if DB:HasGuild(guild) then return end
   DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
   Notifier:Chat(string.format(L.ADDED_GUILD, L.GUILD_KOS, guild))
@@ -248,8 +248,8 @@ local function RemoveGuild(rest)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local guild = SplitFirst(rest or "")
-  if not guild then return Help() end
+  local guild = (rest or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if guild == "" then return Help() end
   if DB:RemoveGuild(guild) then
     Notifier:Chat(string.format(L.REMOVED_GUILD, guild))
   else
@@ -275,8 +275,8 @@ end
 
 SLASH_KILLONSIGHT1 = "/kos"
 SlashCmdList["KILLONSIGHT"] = function(msg)
-  local cmd, rest = SplitFirst((msg or ""):lower())
-  cmd = cmd or ""
+  local cmd, rest = SplitFirst(msg or "")
+  cmd = (cmd or ""):lower()
 
   if cmd == "" or cmd == "show" then
     local GUI = GetGUI()
