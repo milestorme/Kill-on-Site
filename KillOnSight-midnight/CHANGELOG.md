@@ -1,5 +1,10 @@
 # KillOnSight – Changelog
 
+## v3.3.3
+
+### Fixed
+ - Update Sync funtion
+ 
 ## v3.3.2
 
 ### Added
