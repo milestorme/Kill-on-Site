@@ -15,9 +15,92 @@ local ADDON_VER = (GetAddOnMetadata and GetAddOnMetadata(ADDON_NAME, "Version"))
 -- Safety limits: if a peer is too far behind (or diff is huge), send a compact snapshot instead.
 local MAX_DIFF_CHANGES = 600
 local MAX_DIFF_BYTES = 28000 -- approx, across serialized lines before chunking
+local RX_SESSION_TIMEOUT = 12
 
 
 local peers = {} -- [sender] = { theirRev=0, theirSeq=0, lastHelloAt=0 }
+local rx = {} -- [sender] = { lines={} }
+local rxLong = {} -- [sender] = { [id] = { total = n, parts = {}, received = 0 } }
+local activeRx = nil -- { state, startedAt, peer, channel, resetSeen, backup }
+local rxSessionSeq = 0
+
+local ALLOWED_CHANNELS = {
+  GUILD = true,
+  PARTY = true,
+  RAID = true,
+  INSTANCE_CHAT = true,
+}
+
+local function ChannelAllowed(channel)
+  return channel and ALLOWED_CHANNELS[channel] == true
+end
+
+local function CopyTableShallow(src)
+  local out = {}
+  if type(src) ~= "table" then return out end
+  for k, v in pairs(src) do
+    out[k] = v
+  end
+  return out
+end
+
+local function IsSelfSender(sender)
+  local me = UnitName("player")
+  if not sender or sender == "" or not me or me == "" then return false end
+  if sender == me then return true end
+  if Ambiguate then
+    local short = Ambiguate(sender, "short")
+    if short and short == me then return true end
+  end
+  return false
+end
+
+local function BeginRxSession(channel)
+  activeRx = {
+    state = "requested",
+    startedAt = (GetTime and GetTime() or 0),
+    peer = nil,
+    channel = channel,
+    resetSeen = false,
+    backup = nil,
+    id = rxSessionSeq + 1,
+  }
+  rxSessionSeq = activeRx.id
+
+  if C_Timer and C_Timer.After then
+    local myId = activeRx.id
+    C_Timer.After(RX_SESSION_TIMEOUT, function()
+      if not activeRx or activeRx.id ~= myId then return end
+      if activeRx.resetSeen and activeRx.backup then
+        local d = DB:GetData()
+        d.players = CopyTableShallow(activeRx.backup.players)
+        d.guilds = CopyTableShallow(activeRx.backup.guilds)
+        Notifier:Chat("Sync timed out after RESET. Restored previous local data.")
+      end
+      activeRx = nil
+      rx = {}
+      rxLong = {}
+    end)
+  end
+end
+
+local function EndRxSession()
+  activeRx = nil
+end
+
+local function ValidateRxPacket(sender, channel)
+  if not activeRx then return false end
+  if not ChannelAllowed(channel) then return false end
+  if activeRx.channel and channel ~= activeRx.channel then return false end
+
+  if not activeRx.peer then
+    activeRx.peer = sender
+    activeRx.state = "receiving"
+  elseif activeRx.peer ~= sender then
+    return false
+  end
+  return true
+end
 
 local function CanSync() return IsInGuild() or IsInGroup() end
 local function BestChannel()
@@ -215,13 +298,11 @@ function Sync:RequestDiff()
   local ch = BestChannel()
   if not ch then Notifier:Chat(L.SYNC_DISABLED); return end
   local d = DB:GetData()
+  BeginRxSession(ch)
   Send(ch, ("REQ|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0)))
   nextSyncAllowedAt = (GetTime and GetTime() or 0) + (SYNC_COOLDOWN or 60)
   Notifier:Chat(L.SYNC_SENT)
 end
-
-local rx = {} -- [sender] = { lines={} }
-local rxLong = {} -- [sender] = { [id] = { total = n, parts = {}, received = 0 } }
 
 local function ApplyLines(sender, lines)
   local applied = 0
@@ -286,7 +367,8 @@ end
 
 function Sync:OnMessage(prefix, msg, channel, sender)
   if prefix ~= PREFIX then return end
-  if sender == UnitName("player") then return end
+  if IsSelfSender(sender) then return end
+  if not ChannelAllowed(channel) then return end
 
   local cmd, rest = strsplit("|", msg, 2)
   cmd = cmd or ""
@@ -301,8 +383,16 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "RESET" then
+    if not ValidateRxPacket(sender, channel) then return end
     -- Sender is providing a full snapshot; wipe local tables so state matches exactly.
     local d = DB:GetData()
+    if not activeRx.resetSeen then
+      activeRx.backup = {
+        players = CopyTableShallow(d.players or {}),
+        guilds = CopyTableShallow(d.guilds or {}),
+      }
+    end
+    activeRx.resetSeen = true
     d.players = {}
     d.guilds  = {}
     rx[sender] = nil
@@ -359,6 +449,7 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "D" then
+    if not ValidateRxPacket(sender, channel) then return end
     rx[sender] = rx[sender] or { lines = {} }
     local payload = rest or ""
     for line in payload:gmatch("([^\n]+)") do
@@ -370,6 +461,7 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "DL" then
+    if not ValidateRxPacket(sender, channel) then return end
     local lineId, part, total, chunk = strsplit("|", rest or "", 4)
     if not lineId or not part or not total or not chunk then return end
     part = tonumber(part) or 0
@@ -398,12 +490,14 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "END" then
+    if not ValidateRxPacket(sender, channel) then return end
     local bucket = rx[sender]
     if bucket and bucket.lines then
       ApplyLines(sender, bucket.lines)
     end
     rx[sender] = nil
     rxLong[sender] = nil
+    EndRxSession()
     return
   end
 end
