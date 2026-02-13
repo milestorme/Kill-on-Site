@@ -23,7 +23,7 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
   - Enemy statistics: first seen, last seen, seen count, wins/losses
   - Sorting and reset controls
 - **Sync**
-  - Sync KoS/Guild entries with party/raid/guild (when available)
+  - Sync KoS/Guild entries with guild (when available)
   - Changelog pruning to reduce SavedVariables bloat
 
 - **Notes (KoS)**
@@ -70,7 +70,7 @@ KillOnSight can import KoS entries from **Spy** if Spy has been enabled at least
    - Classic-era variants: <br>`World of Warcraft/_classic_/Interface/AddOns/` <br>
                            `World of Warcraft/_classic_era_/Interface/AddOns/`<br>
                            `World of Warcraft/_anniversary_/Interface/AddOns/` <br>
-3. Ensure the folder is **exactly**: `Interface/AddOns/KillOnSight_Midnight/`
+3. Ensure the folder is **exactly**: `Interface/AddOns/KillOnSight/`
 4. Restart WoW (or `/reload`).
 
 ## Localization
