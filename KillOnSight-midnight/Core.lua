@@ -23,8 +23,14 @@ local function IsInPvEInstance()
   if not IS_RETAIL then return false end
   if not IsInInstance then return false end
   local ok, inInstance, instType = pcall(IsInInstance)
-  if not ok then return false end
-  return (inInstance and (instType == "party" or instType == "raid" or instType == "scenario")) and true or false
+  if not ok or not inInstance then return false end
+
+  -- Retail: Blizzard can return new/unknown instance types (e.g. Delves).
+  -- We only want to keep KoS active in PvP/Arena; treat everything else as PvE suppression.
+  if instType == "pvp" or instType == "arena" then
+    return false
+  end
+  return true
 end
 
 local function ApplyPvEInstanceDisableState(isPvE)
@@ -869,6 +875,13 @@ Core:SetScript("OnEvent", function(self, event, ...)
 	  end
 
   if event == "PLAYER_TARGET_CHANGED" then
+    -- Keep PvE suppression accurate even if instance type changes (e.g. Delves).
+    if IsInPvEInstance() then
+      if not Core._instDisabled then ApplyPvEInstanceDisableState(true) end
+      return
+    elseif Core._instDisabled then
+      ApplyPvEInstanceDisableState(false)
+    end
     if Core._bgDisabled then return end
     if Detector and not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit("target") end
     if GUI then GUI:RefreshAll() end
@@ -876,6 +889,13 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "UPDATE_MOUSEOVER_UNIT" then
+    -- Keep PvE suppression accurate even if instance type changes (e.g. Delves).
+    if IsInPvEInstance() then
+      if not Core._instDisabled then ApplyPvEInstanceDisableState(true) end
+      return
+    elseif Core._instDisabled then
+      ApplyPvEInstanceDisableState(false)
+    end
     if Core._bgDisabled then return end
     if Detector and not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit("mouseover") end
     return
@@ -892,6 +912,13 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "NAME_PLATE_UNIT_ADDED" then
+    -- Keep PvE suppression accurate even if instance type changes (e.g. Delves).
+    if IsInPvEInstance() then
+      if not Core._instDisabled then ApplyPvEInstanceDisableState(true) end
+      return
+    elseif Core._instDisabled then
+      ApplyPvEInstanceDisableState(false)
+    end
     if Core._bgDisabled then return end
     local unit = ...
     if Detector and not Core._bgDisabled and not Core._instDisabled then if not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit(unit) end end
@@ -899,6 +926,13 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "NAME_PLATE_UNIT_REMOVED" then
+    -- Keep PvE suppression accurate even if instance type changes (e.g. Delves).
+    if IsInPvEInstance() then
+      if not Core._instDisabled then ApplyPvEInstanceDisableState(true) end
+      return
+    elseif Core._instDisabled then
+      ApplyPvEInstanceDisableState(false)
+    end
     if Core._bgDisabled then return end
     local unit = ...
     -- Nearby list is pruned by ticker; no hard remove needed here.

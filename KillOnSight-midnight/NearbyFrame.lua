@@ -1312,6 +1312,66 @@ local function EnsureMenu(self)
   self.menu = CreateFrame("Frame", "KillOnSight_NearbyMenu", UIParent, "UIDropDownMenuTemplate")
 end
 
+-- NOTE (Retail): AddOns cannot copy text to the OS clipboard programmatically.
+-- Instead we show a small edit box with the text selected so the user can press Ctrl+C.
+local function EnsureCopyBox(self)
+  if self._copyBox then return end
+
+  local f = CreateFrame("Frame", "KillOnSight_CopyBox", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  f:SetFrameStrata("TOOLTIP")
+  f:SetSize(360, 60)
+  f:SetPoint("CENTER")
+  f:Hide()
+  f:SetClampedToScreen(true)
+  f:SetMovable(true)
+  f:EnableMouse(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", function() f:StartMoving() end)
+  f:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+
+  if f.SetBackdrop then
+    f:SetBackdrop({
+      bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+      edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+      tile = true,
+      tileSize = 32,
+      edgeSize = 16,
+      insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+  end
+
+  local title = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+  title:SetPoint("TOP", 0, -8)
+  title:SetText(L.UI_COPY_NAME_TITLE or "Copy Name")
+
+  local hint = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  hint:SetPoint("BOTTOM", 0, 8)
+  hint:SetText(L.UI_COPY_NAME_HINT or "Press Ctrl+C to copy")
+
+  local eb = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+  eb:SetAutoFocus(true)
+  eb:SetSize(320, 24)
+  eb:SetPoint("CENTER", 0, -2)
+  eb:SetScript("OnEscapePressed", function() f:Hide() end)
+  eb:SetScript("OnEnterPressed", function() f:Hide() end)
+  eb:SetScript("OnEditFocusLost", function() f:Hide() end)
+  eb:SetScript("OnTextChanged", function() eb:HighlightText() end)
+
+  f.editBox = eb
+
+  self._copyBox = f
+end
+
+local function ShowCopyBox(self, text)
+  EnsureCopyBox(self)
+  local f = self._copyBox
+  if not f or not f.editBox then return end
+  f:Show()
+  f.editBox:SetText(text or "")
+  f.editBox:HighlightText()
+  f.editBox:SetFocus()
+end
+
 local function ShowMenuFor(self, e)
   if not e then return end
   local DB = GetDB()
@@ -1321,6 +1381,10 @@ local function ShowMenuFor(self, e)
   local has = (DB.LookupPlayer and DB:LookupPlayer(e.name)) and true or false
   local menu = {
     { text = e.name, isTitle = true, notCheckable = true },
+    { text = L.UI_COPY_NAME or "Copy Name", notCheckable = true, func = function()
+        ShowCopyBox(self, e.name)
+      end
+    },
     { text = L.UI_ADD_KOS, notCheckable = true, disabled = has, func = function()
         DB:AddPlayer(e.name)
         e.kosType = L.KOS

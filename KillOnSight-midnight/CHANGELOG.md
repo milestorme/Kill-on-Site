@@ -1,5 +1,16 @@
 # KillOnSight – Changelog
 
+## v3.3.4
+
+### Added
+- Nearby list right-click option **"Copy Name"**
+- Copy popup with auto-focus and pre-selected text for quick Ctrl+C copying
+
+### Retail
+- Improved PvE instance suppression to fully disable detector inside Delves
+- Prevented Retail secret-string errors when inside instanced PvE content
+
+
 ## v3.3.3
 
 ### Fixed
