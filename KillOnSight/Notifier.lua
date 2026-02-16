@@ -50,6 +50,34 @@ local function SuppressInGoblinTown()
   return prof and prof.disableInGoblinTowns and IsInGoblinTown() or false
 end
 
+
+local function IsInSanctuary()
+  -- Note: right after loading/teleporting, GetZonePVPInfo() can briefly return nil.
+  -- If we alert during that window, you can get a single "beep" before sanctuary suppression kicks in.
+  if GetZonePVPInfo then
+    local pvpType = GetZonePVPInfo()
+
+    -- Zone info not ready yet: suppress briefly to avoid one-shot alerts on spawn/teleport.
+    if pvpType == nil then
+      local now = (GetTime and GetTime()) or 0
+      Notifier._pvpNilSince = Notifier._pvpNilSince or now
+      if (now - Notifier._pvpNilSince) < 2.0 then
+        return true
+      end
+      return false
+    end
+
+    -- Zone info is ready again; clear the timer.
+    Notifier._pvpNilSince = nil
+
+    if pvpType == "sanctuary" then
+      return true
+    end
+  end
+  return false
+end
+
+
 local function ClassHex(classFile)
   if not classFile or not RAID_CLASS_COLORS or not RAID_CLASS_COLORS[classFile] then
     return nil
@@ -351,7 +379,7 @@ function Notifier:Flash()
 end
 
 function Notifier:NotifyPlayer(listType, name, reason)
-  if SuppressInGoblinTown() then return end
+  if SuppressInGoblinTown() or IsInSanctuary() then return end
   -- Always update the Nearby list first.
   local nearby = _G.KillOnSight_Nearby
   if nearby and nearby.Seen then
@@ -378,7 +406,7 @@ function Notifier:NotifyPlayer(listType, name, reason)
 end
 
 function Notifier:NotifyGuild(listType, name, guild, reason)
-  if SuppressInGoblinTown() then return end
+  if SuppressInGoblinTown() or IsInSanctuary() then return end
   -- Always update the Nearby list first.
   local nearby = _G.KillOnSight_Nearby
   if nearby and nearby.Seen then
@@ -491,7 +519,7 @@ function Notifier:CenterWarning(msg)
   end
 end
 function Notifier:NotifyHidden(name, spellName, guid)
-  if SuppressInGoblinTown() then return end
+  if SuppressInGoblinTown() or IsInSanctuary() then return end
   local prof = DB:GetProfile()
 
   -- Master stealth toggle (live)
@@ -537,7 +565,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
 end
 
 function Notifier:NotifyActivity(listType, name, activity, reason)
-  if SuppressInGoblinTown() then return end
+  if SuppressInGoblinTown() or IsInSanctuary() then return end
   local suffix = reason and (" - "..reason) or ""
   self:Chat(string.format(L.ACTIVITY, listType, name, activity, suffix))
   self:Sound()

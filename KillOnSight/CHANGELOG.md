@@ -1,5 +1,11 @@
 # KillOnSight – Changelog
 
+## 3.2.1
+
+### Fixed
+- Suppressed KoS and Guild alerts in Sanctuary zones (matches Nearby frame behavior)
+- Fixed one-time alert beep when hearthstoning/teleporting into Sanctuary cities
+
 ## 3.2.0
 
 ### Fixed
