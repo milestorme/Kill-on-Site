@@ -1,5 +1,34 @@
 # KillOnSight – Changelog
 
+## 3.2.2
+
+### Refactor & Cleanup
+
+### Bug Fixes
+- Fixed `IsGroupOrSelfByName` scoping bug where the function was called before its definition, silently skipping self/party filtering in encounter tracking
+- Removed duplicate `_ScheduleGUIRefresh` definition; unified into a single implementation with consistent 0.2s delay
+- Removed duplicate `local playerGUID` declaration inside `HandleCombatLog`
+
+### Performance
+- Moved `HandleName` closure out of `HandleCombatLog` to module level, preventing a new closure allocation on every `COMBAT_LOG_EVENT_UNFILTERED` fire
+- Fixed `_FlashWindow` leaking a new UI frame on every alert; overlay child is now created once and reused
+
+### Code Quality
+- `Notifier.lua`, `Sync.lua`: replaced early `local DB = KillOnSight_DB` / `local Notifier = KillOnSight_Notifier` bindings with lazy `GetDB()` / `GetNotifier()` getters to avoid stale references
+- `Database.lua`: extracted `_EnsureStatsEntry` helper to deduplicate identical boilerplate across `StatsAddSeenEncounter`, `StatsAddWin`, and `StatsAddLoss`
+- `Database.lua`: legacy migration block now guarded by `KillOnSightDB.legacyMigrated` flag; skipped after first run instead of executing every login
+- `Core.lua`: `ResolveGuildForGuid` now uses the module-level `CleanName` helper instead of a duplicate inner `Clean` function
+- `Core.lua`: removed undocumented `/kos statsprune max` alias; only `maxentries` accepted, matching help text
+- `Core.lua`: normalised indentation to consistent 2-space throughout
+
+### Retail/Mainline Removal *(addon is ClassicEra-only)*
+- Removed `IS_RETAIL` variable and all conditional branches from `Core.lua`, `Detector.lua`, and `GUI.lua`
+- Removed `EnemyNameplatesEnabled()` and `WarnIfEnemyNameplatesDisabled()` from `Core.lua`; `COMBAT_LOG_EVENT_UNFILTERED` now registered unconditionally
+- `Detector.lua`: removed Retail-only nameplate distance filter; simplified `IS_CLASSIC_CLAMP_CLIENT` check
+- `GUI.lua`: Attackers tab always shown; Goblin Towns and Range Clamp options always rendered
+- `Portrait.lua`: removed `IsRetailMainline()` and `RunRetail()` (~345 lines); Classic code now runs at module level directly (563 → 189 lines)
+- All 16 locale files: removed unused `RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF` key
+
 ## 3.2.1
 
 ### Fixed

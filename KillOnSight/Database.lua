@@ -76,29 +76,29 @@ local DEFAULTS = {
     nearbyMinimal = true,
     nearbyRowIcons = true,
 
--- Nearby name font (stored so it persists across /reload)
-nearbyNameFont = "Default",
-nearbyBackdropAlpha = 0.5,
-        nearbyNameFontSize = 12,
+    -- Nearby name font (stored so it persists across /reload)
+    nearbyNameFont = "Default",
+    nearbyBackdropAlpha = 0.5,
+    nearbyNameFontSize = 12,
 
--- Nearby dynamic width (auto-fit)
-nearbyAutoWidth = true,
-nearbyMinWidth = 216,
-nearbyMaxWidth = 450,
+    -- Nearby dynamic width (auto-fit)
+    nearbyAutoWidth = true,
+    nearbyMinWidth = 216,
+    nearbyMaxWidth = 450,
 
     -- Clamp Nearby detection range on Classic clients where nameplate discovery is much longer-range
     -- (TBC 2.5.5+ through MoP 5.5.3). Enabled by default on those clients.
     nearbyRangeClampEnabled = nil,
 
--- Stealth detection
-stealthDetectEnabled = true,
-stealthDetectChat = true,
-stealthDetectSound = true,
+    -- Stealth detection
+    stealthDetectEnabled = true,
+    stealthDetectChat = true,
+    stealthDetectSound = true,
     stealthDetectScreenFlash = false,
-stealthDetectCenterWarning = true,
-stealthDetectAddToNearby = true,
-stealthWarningHoldSeconds = 6.0,
-stealthWarningFadeSeconds = 1.2,
+    stealthDetectCenterWarning = true,
+    stealthDetectAddToNearby = true,
+    stealthWarningHoldSeconds = 6.0,
+    stealthWarningFadeSeconds = 1.2,
 
     -- Enemy stats pruning policy (enabled by default)
     statsPruneEnabled = true,
@@ -114,14 +114,14 @@ stealthWarningFadeSeconds = 1.2,
     changes = {},          -- [seq] = { op="upsert"/"delete", kind="P"/"G", key, entry, rev }
     lastAttackers = {},    -- array of {name, guid, zone, at}
 
-		-- Enemy encounter statistics (unbounded by default)
-		-- statsPlayers[lowerName] = {
-		--   name, classFile, guild,
-		--   firstSeenAt, lastSeenAt,
-		--   seenCount,
-		--   wins, loses,
-		-- }
-		statsPlayers = {},
+    -- Enemy encounter statistics (unbounded by default)
+    -- statsPlayers[lowerName] = {
+    --   name, classFile, guild,
+    --   firstSeenAt, lastSeenAt,
+    --   seenCount,
+    --   wins, loses,
+    -- }
+    statsPlayers = {},
   }
 }
 
@@ -167,9 +167,10 @@ function DB:Init()
   KillOnSightDB.realms[key] = KillOnSightDB.realms[key] or {}
   local realmDB = KillOnSightDB.realms[key]
 
-  -- migrate legacy per-realm data (no faction suffix) if present
+  -- migrate legacy per-realm data (no faction suffix) if present.
+  -- Guarded by a one-time flag so this block only runs once and is skipped every subsequent login.
   local legacyKey = LegacyRealmKey()
-  local legacy = KillOnSightDB.realms[legacyKey]
+  local legacy = (not KillOnSightDB.legacyMigrated) and KillOnSightDB.realms[legacyKey]
   if legacy and type(legacy) == "table" then
     realmDB.data = realmDB.data or {}
     realmDB.data.players = realmDB.data.players or {}
@@ -216,6 +217,8 @@ function DB:Init()
         if realmDB.profile[k] == nil then realmDB.profile[k] = v end
       end
     end
+    -- Mark migration complete so this block is skipped on every subsequent login.
+    KillOnSightDB.legacyMigrated = true
   end
 
   DeepCopy(realmDB, DEFAULTS)
@@ -539,20 +542,33 @@ function DB:NoteEnemySeen(name, classFile, guild, guid)
   end
 end
 
+-- Shared helper: get-or-create a statsPlayers entry and return it.
+-- Centralises the repeated boilerplate in StatsAddSeenEncounter/Win/Loss.
+local function _EnsureStatsEntry(statsPlayers, key, name, now)
+  local e = statsPlayers[key]
+  if not e then
+    e = {
+      name       = name:match("^[^-]+") or name,
+      firstSeenAt = now,
+      lastSeenAt  = now,
+      seenCount   = 0,
+    }
+    statsPlayers[key] = e
+    return e, true  -- entry, wasCreated
+  end
+  return e, false
+end
+
 -- Increment "seenCount" once per encounter resolution (win/loss/timeout).
 function DB:StatsAddSeenEncounter(name)
   local d = self:GetData(); d.statsPlayers = d.statsPlayers or {}
   local key = _StatsKey(name)
   if not key then return end
   local now = Now()
-  local e = d.statsPlayers[key]
-  if not e then
-    e = { name = name:match("^[^-]+") or name, firstSeenAt = now, lastSeenAt = now, seenCount = 0 }
-    d.statsPlayers[key] = e
-    self:_BumpStatsRevision()
-  end
+  local e, created = _EnsureStatsEntry(d.statsPlayers, key, name, now)
+  if created then self:_BumpStatsRevision() end
   e.lastSeenAt = now
-  e.seenCount = (tonumber(e.seenCount or 0) or 0) + 1
+  e.seenCount  = (tonumber(e.seenCount or 0) or 0) + 1
   self:_BumpStatsRevision()
 end
 
@@ -560,12 +576,8 @@ function DB:StatsAddWin(name)
   local d = self:GetData(); d.statsPlayers = d.statsPlayers or {}
   local key = _StatsKey(name)
   if not key then return end
-  local e = d.statsPlayers[key]
-  if not e then
-    e = { name = name:match("^[^-]+") or name, firstSeenAt = Now(), lastSeenAt = Now(), seenCount = 0 }
-    d.statsPlayers[key] = e
-    self:_BumpStatsRevision()
-  end
+  local e, created = _EnsureStatsEntry(d.statsPlayers, key, name, Now())
+  if created then self:_BumpStatsRevision() end
   e.wins = (tonumber(e.wins or 0) or 0) + 1
   self:_BumpStatsRevision()
 end
@@ -574,12 +586,8 @@ function DB:StatsAddLoss(name)
   local d = self:GetData(); d.statsPlayers = d.statsPlayers or {}
   local key = _StatsKey(name)
   if not key then return end
-  local e = d.statsPlayers[key]
-  if not e then
-    e = { name = name:match("^[^-]+") or name, firstSeenAt = Now(), lastSeenAt = Now(), seenCount = 0 }
-    d.statsPlayers[key] = e
-    self:_BumpStatsRevision()
-  end
+  local e, created = _EnsureStatsEntry(d.statsPlayers, key, name, Now())
+  if created then self:_BumpStatsRevision() end
   e.loses = (tonumber(e.loses or 0) or 0) + 1
   self:_BumpStatsRevision()
 end

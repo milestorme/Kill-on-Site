@@ -177,7 +177,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Notas"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Cercanos está limitado porque las placas de nombre enemigas están DESACTIVADAS. Activa las placas de nombre enemigas (Interfaz > Nombres) para detección completa. Puedes alternarlas con la tecla V."
 
 L["TT_NOT_TARGETABLE"] = "No se puede seleccionar ahora"
 

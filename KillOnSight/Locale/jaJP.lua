@@ -148,7 +148,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "メモ"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "近くの検知は敵のネームプレートがOFFのため制限されています。完全な検知には敵ネームプレート（インターフェース > 名前）を有効にしてください。Vキーで切り替えできます。"
 
 L["TT_NOT_TARGETABLE"] = "現在ターゲット不可"
 

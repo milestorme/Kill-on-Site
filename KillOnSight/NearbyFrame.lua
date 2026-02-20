@@ -1077,7 +1077,6 @@ local function ShowMenuFor(self, e)
     },
     { text = L.UI_REMOVE_KOS, notCheckable = true, disabled = not has, func = function()
         DB:RemovePlayer(e.name)
-        if e.kosType == L.KOS then e.kosType = nil end
         self:ScheduleRefresh()
       end
     },
@@ -1167,6 +1166,23 @@ local function UpdateScroll(self)
       row.entry = e
 
       if e then
+        local DB = GetDB()
+        local prof = DB and DB:GetProfile()
+
+        -- Re-evaluate KoS/Guild status from the live DB before rendering.
+        if DB then
+          local playerKoS = DB.HasPlayer and DB:HasPlayer(e.name)
+          local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
+                            and DB.HasGuild and DB:HasGuild(e.guild)
+          if playerKoS then
+            e.kosType = L.KOS
+          elseif guildKoS then
+            e.kosType = L.GUILD_KOS
+          elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
+            e.kosType = nil
+          end
+        end
+
         row.text:SetText(RowLabel(e, tNow))
         self._awDirty = true
 
@@ -1226,6 +1242,25 @@ local function UpdateScroll(self)
         local tname = MacroTargetNameForEntry(e)
         row:SetAttribute("macrotext1", "/targetexact " .. tname)
         row:SetAttribute("macrotext",  "/targetexact " .. tname)
+      end
+
+      local DB = GetDB()
+      local prof = DB and DB:GetProfile()
+
+      -- Re-evaluate KoS/Guild status from the live DB before rendering.
+      -- This ensures the tag and skull disappear immediately when a player or
+      -- guild is removed from the list, regardless of what triggered the Refresh.
+      if DB then
+        local playerKoS = DB.HasPlayer and DB:HasPlayer(e.name)
+        local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
+                          and DB.HasGuild and DB:HasGuild(e.guild)
+        if playerKoS then
+          e.kosType = L.KOS
+        elseif guildKoS then
+          e.kosType = L.GUILD_KOS
+        elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
+          e.kosType = nil
+        end
       end
 
       row.text:SetText(RowLabel(e, tNow))

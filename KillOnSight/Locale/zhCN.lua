@@ -177,7 +177,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "备注"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近检测受限，因为敌方姓名版已关闭。请在“界面 > 名称”中启用敌方姓名版以获得完整检测。可按 V 键切换。"
 
 L["TT_NOT_TARGETABLE"] = "当前无法选为目标"
 

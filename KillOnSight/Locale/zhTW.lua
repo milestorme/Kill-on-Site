@@ -148,7 +148,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "備註"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近偵測受限，因為敵方名條已關閉。請在「介面 > 名稱」中啟用敵方名條以獲得完整偵測。可按 V 鍵切換。"
 
 L["TT_NOT_TARGETABLE"] = "目前無法選為目標"
 

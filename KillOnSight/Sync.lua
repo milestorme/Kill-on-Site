@@ -2,15 +2,17 @@
 -- Diff-based sync using changeSeq/revision.
 local ADDON_NAME = ...
 local L = KillOnSight_L
-local DB = KillOnSight_DB
-local Notifier = KillOnSight_Notifier
+
+-- Lazy getters: DB and Notifier are initialised after file load.
+local function GetDB()       return _G.KillOnSight_DB       end
+local function GetNotifier() return _G.KillOnSight_Notifier end
 
 local Sync = {}
 
 local SYNC_COOLDOWN = 60
 local nextSyncAllowedAt = 0
 local PREFIX = "KOS2"
-local ADDON_VER = "3.2.1"
+local ADDON_VER = (GetAddOnMetadata and GetAddOnMetadata(ADDON_NAME, "Version")) or "0.0.0"
 
 -- Safety limits: if a peer is too far behind (or diff is huge), send a compact snapshot instead.
 local MAX_DIFF_CHANGES = 600
@@ -23,6 +25,7 @@ local function CanSync() return IsInGuild() end
 
 local syncDisabledWarned = false
 local function WarnSyncDisabledOnce()
+  local Notifier = GetNotifier()
   -- Only print this once per session to avoid chat spam when zoning/entering instances.
   -- Reset automatically when the player becomes eligible to sync again.
   if CanSync() then syncDisabledWarned = false; return false end
@@ -184,11 +187,15 @@ function Sync:Hello()
   end
   local ch = BestChannel()
   if not ch then WarnSyncDisabledOnce(); return end
+  local DB = GetDB()
+  if not DB then return end
   local d = DB:GetData()
   Send(ch, ("HELLO|%s|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0), ADDON_VER))
 end
 
 function Sync:RequestDiff()
+  local DB = GetDB()
+  local Notifier = GetNotifier()
   local now = GetTime and GetTime() or 0
   if now < (nextSyncAllowedAt or 0) then
     local remain = math.ceil((nextSyncAllowedAt or 0) - now)
@@ -209,6 +216,9 @@ end
 local rx = {} -- [sender] = { lines={} }
 
 local function ApplyLines(sender, lines)
+  local DB       = GetDB()
+  local Notifier = GetNotifier()
+  if not DB or not Notifier then return end
   local d = DB:GetData()
   local stats = {
     p_added = 0, p_updated = 0,
@@ -258,6 +268,8 @@ local function ApplyLines(sender, lines)
 end
 
 local function BuildDiffSince(seq)
+  local DB = GetDB()
+  if not DB then return {} end
   local d = DB:GetData()
   local out = {}
   local changes = d.changes or {}
@@ -271,7 +283,9 @@ local function BuildDiffSince(seq)
 end
 
 local function GetOldestSeq()
-  if DB and DB.GetOldestChangeSeq then
+  local DB = GetDB()
+  if not DB then return 0 end
+  if DB.GetOldestChangeSeq then
     return DB:GetOldestChangeSeq() or 0
   end
   -- fallback: compute from table
@@ -286,6 +300,8 @@ local function GetOldestSeq()
 end
 
 local function BuildSnapshotLines()
+  local DB = GetDB()
+  if not DB then return {} end
   local d = DB:GetData()
   local lines = {}
 
@@ -304,6 +320,10 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   if sender == UnitName("player") then return end
   if channel ~= "GUILD" then return end
   if not IsInGuild() then return end
+
+  local DB       = GetDB()
+  local Notifier = GetNotifier()
+  if not DB then return end
 
 
   local cmd, rest = strsplit("|", msg, 2)
@@ -385,6 +405,10 @@ function Sync:OnMessage(prefix, msg, channel, sender)
       if line and line ~= "" then
         table.insert(rx[sender].lines, line)
       end
+    end
+    -- Safety cap: discard runaway receive buckets (peer crashed/disconnected mid-send)
+    if #rx[sender].lines > 5000 then
+      rx[sender] = nil
     end
     return
   end

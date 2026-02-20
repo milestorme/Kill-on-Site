@@ -148,7 +148,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Note"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Vicini è limitato perché le barre dei nomi nemiche sono DISATTIVATE. Abilita le barre dei nomi nemiche (Interfaccia > Nomi) per il rilevamento completo. Puoi alternarle con il tasto V."
 
 L["TT_NOT_TARGETABLE"] = "Non bersagliabile ora"
 

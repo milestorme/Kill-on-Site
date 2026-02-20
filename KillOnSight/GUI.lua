@@ -1,10 +1,10 @@
 -- GUI.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
-local DB = KillOnSight_DB
 
--- Retail (Mainline) gating
-local IS_RETAIL = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+-- Database.lua is listed before GUI.lua in the TOC, so KillOnSight_DB is already set
+-- by the time this file is parsed. Parse-time capture is safe here.
+local DB = KillOnSight_DB
 
 local GUI = {}
 local frame
@@ -908,10 +908,6 @@ end
   end
 
   frame.ShowTab = function(self, id)
-    -- Retail: Attackers tab is intentionally hidden/disabled.
-    if IS_RETAIL and id == 3 then
-      id = 4
-    end
     -- Resize for certain tabs so they have room to breathe.
     if id == 4 then
       if not self._wasSize then
@@ -968,10 +964,6 @@ end
   local t3 = MakeTab(frame, 3, L.UI_TAB_ATTACKERS)
   local t4 = MakeTab(frame, 4, (L.UI_TAB_STATS or "Stats"))
   local t5 = MakeTab(frame, 5, L.UI_OPTIONS)
-
-  if IS_RETAIL and t3 then
-    t3:Hide()
-  end
 
   -- Tab layout: place tabs BELOW the frame (so they don't overlap the window content)
   local tabs = {t1, t2, t3, t4, t5}
@@ -1077,6 +1069,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     pPlayers._selected = nil
     if pPlayers._list then pPlayers._list.selectedKey = nil end
     nameBox:SetText("")
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
     UpdateAddState()
     UpdateAddState()
@@ -1148,6 +1143,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     pGuilds._selected = nil
     if pGuilds._list then pGuilds._list.selectedKey = nil end
     guildBox:SetText("")
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
   end)
 
@@ -1644,36 +1642,35 @@ end)
 -- Classic/TBC-friendly town suppression: Booty Bay / Gadgetzan.
 local anchorBelowAutoHide = cAutoHide
 local anchorOffset = -10
-if not IS_RETAIL then
-  local cGoblinTowns = MakeCheck(opt, L.UI_DISABLE_GOBLIN_TOWNS)
-  cGoblinTowns:SetPoint("TOPLEFT", cAutoHide, "BOTTOMLEFT", 0, -10)
-  cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true)
-  cGoblinTowns:SetScript("OnClick", function(self)
-    prof.disableInGoblinTowns = self:GetChecked()
-    if KillOnSight_Nearby and KillOnSight_Nearby.ClearAll then
-      KillOnSight_Nearby:ClearAll({ keepShown = false })
+
+local cGoblinTowns = MakeCheck(opt, L.UI_DISABLE_GOBLIN_TOWNS)
+cGoblinTowns:SetPoint("TOPLEFT", cAutoHide, "BOTTOMLEFT", 0, -10)
+cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true)
+cGoblinTowns:SetScript("OnClick", function(self)
+  prof.disableInGoblinTowns = self:GetChecked()
+  if KillOnSight_Nearby and KillOnSight_Nearby.ClearAll then
+    KillOnSight_Nearby:ClearAll({ keepShown = false })
+  end
+end)
+anchorBelowAutoHide = cGoblinTowns
+anchorOffset = -18
+
+-- Clamp Nearby detection range to a more Classic-feel distance on Classic expansions
+-- (TBC 2.5.5+ through MoP 5.5.3). Enabled by default on those clients.
+local toc = select(4, GetBuildInfo())
+local clampSupported = (type(toc) == "number") and (toc >= 20505) and (toc <= 50503)
+if clampSupported then
+  local cRangeClamp = MakeCheck(opt, L.UI_NEARBY_RANGE_CLAMP or "Clamp Nearby detection range (Classic feel)")
+  cRangeClamp:SetPoint("TOPLEFT", cGoblinTowns, "BOTTOMLEFT", 0, -10)
+  cRangeClamp:SetChecked(prof.nearbyRangeClampEnabled ~= false)
+  cRangeClamp:SetScript("OnClick", function(self)
+    prof.nearbyRangeClampEnabled = self:GetChecked()
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
     end
   end)
-  anchorBelowAutoHide = cGoblinTowns
+  anchorBelowAutoHide = cRangeClamp
   anchorOffset = -18
-
-  -- Clamp Nearby detection range to a more Classic-feel distance on Classic expansions
-  -- (TBC 2.5.5+ through MoP 5.5.3). Enabled by default on those clients.
-  local toc = select(4, GetBuildInfo())
-  local clampSupported = (type(toc) == "number") and (toc >= 20505) and (toc <= 50503)
-  if clampSupported then
-    local cRangeClamp = MakeCheck(opt, L.UI_NEARBY_RANGE_CLAMP or "Clamp Nearby detection range (Classic feel)")
-    cRangeClamp:SetPoint("TOPLEFT", cGoblinTowns, "BOTTOMLEFT", 0, -10)
-    cRangeClamp:SetChecked(prof.nearbyRangeClampEnabled ~= false)
-    cRangeClamp:SetScript("OnClick", function(self)
-      prof.nearbyRangeClampEnabled = self:GetChecked()
-      if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
-        KillOnSight_Nearby:Refresh()
-      end
-    end)
-    anchorBelowAutoHide = cRangeClamp
-    anchorOffset = -18
-  end
 end
 
 

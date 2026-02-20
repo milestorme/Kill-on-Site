@@ -180,7 +180,6 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Notizen"
 
-L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "In der Nähe ist eingeschränkt, weil gegnerische Namensplaketten AUS sind. Aktiviere gegnerische Namensplaketten (Interface > Namen) für volle Erkennung. Umschalten mit der Taste V."
 
 L["TT_NOT_TARGETABLE"] = "Derzeit nicht anvisierbar"
 

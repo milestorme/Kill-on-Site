@@ -4,21 +4,19 @@ local L = KillOnSight_L
 
 local Core = CreateFrame("Frame")
 
--- Project detection (Retail vs Classic variants)
-local IS_RETAIL = (WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) or false
-
 local band = (bit and bit.band) or (bit32 and bit32.band)
 
-local function GetDB() return _G.KillOnSight_DB end
+local function GetDB()       return _G.KillOnSight_DB       end
 local function GetDetector() return _G.KillOnSight_Detector end
 local function GetActivity() return _G.KillOnSight_Activity end
-local function GetSync() return _G.KillOnSight_Sync end
-local function GetGUI() return _G.KillOnSight_GUI end
-local function GetMinimap() return _G.KillOnSight_Minimap end
+local function GetSync()     return _G.KillOnSight_Sync     end
+local function GetGUI()      return _G.KillOnSight_GUI      end
+local function GetMinimap()  return _G.KillOnSight_Minimap  end
 local function GetNotifier() return _G.KillOnSight_Notifier end
-local function GetNearby() return _G.KillOnSight_Nearby end
+local function GetNearby()   return _G.KillOnSight_Nearby   end
 
-local LocaleSanityCheck -- forward
+local LocaleSanityCheck   -- forward (assigned at bottom)
+local IsGroupOrSelfByName -- forward (used in TouchEncounter before its definition)
 
 -- -------------------------------------------------------
 -- Encounter tracking (Spy-style)
@@ -43,7 +41,7 @@ local function TouchEncounter(guid, name, classFile, guild)
   if not DB then return end
   local cn = CleanName(name)
   if not cn then return end
-  if IsGroupOrSelfByName and IsGroupOrSelfByName(cn) then return end
+  if IsGroupOrSelfByName(cn) then return end
 
   local now = time()
   local key = cn:lower()
@@ -63,17 +61,17 @@ local function TouchEncounter(guid, name, classFile, guild)
   end
 end
 
--- Debounced GUI refresh (safe to call from anywhere)
-local _guiRefreshQueued = false
+-- Debounced GUI refresh (safe to call from anywhere).
+-- Single implementation: 0.2s delay, guards against concurrent calls.
+local _pendingGUIRefresh = false
 local function _ScheduleGUIRefresh()
-  if _guiRefreshQueued then return end
-  _guiRefreshQueued = true
-  C_Timer.After(0, function()
-    _guiRefreshQueued = false
-    if KillOnSight and KillOnSight.GUI and KillOnSight.GUI.RefreshAll then
-      pcall(KillOnSight.GUI.RefreshAll)
-    elseif KillOnSight and KillOnSight.RefreshGUI then
-      pcall(KillOnSight.RefreshGUI)
+  if _pendingGUIRefresh then return end
+  _pendingGUIRefresh = true
+  C_Timer.After(0.2, function()
+    _pendingGUIRefresh = false
+    local GUI = GetGUI()
+    if GUI and GUI.RefreshAll then
+      GUI:RefreshAll()
     end
   end)
 end
@@ -114,44 +112,13 @@ function Core:TouchEncounter(guid, name, classFile, guild)
   TouchEncounter(guid, name, classFile, guild)
 end
 
--- Expose a safe, debounced GUI refresh hook for other modules (e.g., when guild info resolves later).
+-- Expose a safe, debounced GUI refresh hook for other modules.
 function Core:_ScheduleGUIRefresh()
   _ScheduleGUIRefresh()
 end
 
 local function Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..L.ADDON_PREFIX..":|r "..msg)
-end
-
--- Nearby list population relies heavily on enemy nameplates (NAME_PLATE_* events / C_NamePlate).
--- If enemy nameplates are disabled, we can only see players when you target/mouseover them.
-local function EnemyNameplatesEnabled()
-  if not IS_RETAIL then return true end
-  if not GetCVarBool then return true end
-
-  -- CVars vary slightly by client; check the common ones.
-  if GetCVarBool("nameplateShowEnemies") == false then return false end
-  if GetCVarBool("nameplateShowEnemyPlayers") == false then return false end
-
-  return true
-end
-
-local function WarnIfEnemyNameplatesDisabled()
-  if not IS_RETAIL then return end
-  local enabled = EnemyNameplatesEnabled()
-
-  -- Export a simple flag other modules can check.
-  _G.KillOnSight_RetailNearbyLimited = (not enabled) or nil
-
-  if enabled then return end
-
-  -- Warn once per session. (Deliberately not saved to DB; users may toggle nameplates mid-session.)
-  if _G.KillOnSight_NameplatesWarned then return end
-  _G.KillOnSight_NameplatesWarned = true
-
-  local prefix = (L and L.ADDON_PREFIX) or "KILLONSIGHT"
-  local msg = (L and L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF) or "Retail: Nearby is limited because enemy nameplates are disabled. Enable Enemy Nameplates in Interface > Names (press V)."
-  DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..msg)
 end
 
 local nearbyTicker
@@ -284,27 +251,29 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
     return
   end
 
-  if cmd == "help" then return Help() end
-  if cmd == "add" then return AddPlayer(rest) end
-  if cmd == "remove" or cmd == "del" then return RemovePlayer(rest) end
-  if cmd == "addguild" then return AddGuild(rest) end
-  if cmd == "removeguild" then return RemoveGuild(rest) end
-  if cmd == "list" then return List() end
-	if cmd == "stats" then return List() end
-	if cmd == "importspy" then
-	  local imp = _G.KillOnSight_SpyImport
-	  if imp and imp.Run then
-	    imp:Run()
-	  else
-	    Print("Spy import is unavailable (module not loaded).")
-	  end
-	  return
-	end
-  if cmd == 'localesanity' then
+  if cmd == "help"                    then return Help()            end
+  if cmd == "add"                     then return AddPlayer(rest)   end
+  if cmd == "remove" or cmd == "del"  then return RemovePlayer(rest) end
+  if cmd == "addguild"                then return AddGuild(rest)    end
+  if cmd == "removeguild"             then return RemoveGuild(rest) end
+  if cmd == "list" or cmd == "stats"  then return List()            end
+
+  if cmd == "importspy" then
+    local imp = _G.KillOnSight_SpyImport
+    if imp and imp.Run then
+      imp:Run()
+    else
+      Print("Spy import is unavailable (module not loaded).")
+    end
+    return
+  end
+
+  if cmd == "localesanity" then
     LocaleSanityCheck()
     return
   end
-  if cmd == 'statsprune' then
+
+  if cmd == "statsprune" then
     local DB = GetDB()
     if not DB then return end
     local prof = DB.GetProfile and DB:GetProfile() or {}
@@ -317,10 +286,10 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
         ", maxEntries=" .. tostring(prof.statsPruneMaxEntries or "-") .. ")|r")
       return
     end
-    if sub == "on" then prof.statsPruneEnabled = true; Print("Stats prune enabled."); return end
-    if sub == "off" then prof.statsPruneEnabled = false; Print("Stats prune disabled."); return end
-    if sub == "maxdays" and tonumber(arg) then prof.statsPruneMaxDays = tonumber(arg); Print("Stats prune maxDays set to "..arg); return end
-    if (sub == "max" or sub == "maxentries") and tonumber(arg) then prof.statsPruneMaxEntries = tonumber(arg); Print("Stats prune maxEntries set to "..arg); return end
+    if sub == "on"         then prof.statsPruneEnabled  = true;              Print("Stats prune enabled.");                         return end
+    if sub == "off"        then prof.statsPruneEnabled  = false;             Print("Stats prune disabled.");                        return end
+    if sub == "maxdays"    and tonumber(arg) then prof.statsPruneMaxDays    = tonumber(arg); Print("Stats prune maxDays set to "    ..arg); return end
+    if sub == "maxentries" and tonumber(arg) then prof.statsPruneMaxEntries = tonumber(arg); Print("Stats prune maxEntries set to " ..arg); return end
     if sub == "now" then
       local removed = DB.PruneStatsPlayers and DB:PruneStatsPlayers() or 0
       Print("Stats prune removed " .. tostring(removed) .. " entries.")
@@ -329,6 +298,7 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
     Print("Usage: /kos statsprune on|off|maxdays N|maxentries N|now")
     return
   end
+
   if cmd == "sync" then
     local Sync = GetSync()
     if Sync then
@@ -341,30 +311,29 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
   Help()
 end
 
-local clSeenAt = {}      -- [nameLower] = GetTime()
-local clNotifyAt = {}    -- [key] = GetTime()
+local clSeenAt    = {}  -- [nameLower] = GetTime()
+local clNotifyAt  = {}  -- [key] = GetTime()
 local clCleanupAt = 0
 local CL_CLEANUP_INTERVAL = 600  -- seconds
-local CL_CACHE_TTL = 900         -- seconds (must be >= max notify cooldown)
+local CL_CACHE_TTL         = 900  -- seconds (must be >= max notify cooldown)
 
 -- PvP outcome tracking (Spy-style):
 -- - If YOU damage an enemy and they die within 60s => +1 win for that enemy
 -- - If an enemy damages YOU and you die within 60s => +1 loss for that enemy
--- These timers are kept in-memory only; the resulting counters are stored in SavedVariables (DB.statsPlayers).
-local pvpOutgoing = {} -- [enemyGUID] = { t=GetTime(), nameLower="foo" }
-local pvpIncoming = {} -- [enemyGUID] = { t=GetTime(), nameLower="foo" }
-local PVP_WINDOW = 60
+-- These timers are in-memory only; resulting counters are stored in SavedVariables.
+local pvpOutgoing = {} -- [enemyGUID] = { t=GetTime(), nameLower="foo", name="Foo" }
+local pvpIncoming = {} -- [enemyGUID] = { t=GetTime(), nameLower="foo", name="Foo" }
+local PVP_WINDOW  = 60
 
 local function CleanupCLCaches(now)
   if (now - (clCleanupAt or 0)) < CL_CLEANUP_INTERVAL then return end
   clCleanupAt = now
-  for k,t in pairs(clNotifyAt) do
+  for k, t in pairs(clNotifyAt) do
     if (not t) or (now - t) > CL_CACHE_TTL then clNotifyAt[k] = nil end
   end
-  for k,t in pairs(clSeenAt) do
+  for k, t in pairs(clSeenAt) do
     if (not t) or (now - t) > 10.0 then clSeenAt[k] = nil end
   end
-
   -- PvP timer cleanup (prevents unbounded growth in long sessions)
   for guid, e in pairs(pvpOutgoing) do
     if not e or not e.t or (now - e.t) > PVP_WINDOW then pvpOutgoing[guid] = nil end
@@ -374,11 +343,10 @@ local function CleanupCLCaches(now)
   end
 end
 
-
--- Guild resolve cache (prevents expensive ResolveGuildForGuid scans on every combat log tick)
-local guildCache = {} -- [guid] = { guild = "name", t = GetTime(), lastTry = GetTime() }
-local GUILD_CACHE_TTL = 60          -- seconds to keep a resolved guild
-local GUILD_RESOLVE_TRY_COOLDOWN = 10 -- seconds between expensive resolve attempts per GUID
+-- Guild resolve cache (prevents expensive ResolveGuildForGuid scans on every CLEU tick)
+local guildCache = {}  -- [guid] = { guild="name", t=time(), lastTry=time() }
+local GUILD_CACHE_TTL            = 60  -- seconds to keep a resolved guild
+local GUILD_RESOLVE_TRY_COOLDOWN = 10  -- seconds between expensive resolve attempts per GUID
 
 local function GetCachedGuild(guid, now)
   local e = guid and guildCache[guid]
@@ -409,68 +377,42 @@ local function SetCachedGuild(guid, guild, now)
   guildCache[guid] = { guild = guild, t = now }
 end
 
--- Debounced GUI refresh (used by deferred guild resolution)
-local _pendingGUIRefresh = false
-local function _ScheduleGUIRefresh()
-  if _pendingGUIRefresh then return end
-  _pendingGUIRefresh = true
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0.2, function()
-      _pendingGUIRefresh = false
-      local GUI = GetGUI()
-      if GUI and GUI.RefreshAll then
-        GUI:RefreshAll()
-      end
-    end)
-  else
-    _pendingGUIRefresh = false
-    local GUI = GetGUI()
-    if GUI and GUI.RefreshAll then
-      GUI:RefreshAll()
-    end
-  end
-end
-
-
 local function IsFlagPlayer(flags)
   if not band then return false end
   return band(flags or 0, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0
 end
 
 local function IsFlagHostileSpy(flags)
-  -- Spy-style: only treat units as hostile if the HOSTILE reaction bit is set.
-  -- This avoids same-faction/friendly entries showing up from certain combat log flag combinations.
+  -- Only treat units as hostile if the HOSTILE reaction bit is set.
+  -- Avoids same-faction/friendly entries from certain combat log flag combinations.
   if not band then return false end
   local f = flags or 0
   return COMBATLOG_OBJECT_REACTION_HOSTILE
      and band(f, COMBATLOG_OBJECT_REACTION_HOSTILE) == COMBATLOG_OBJECT_REACTION_HOSTILE
 end
 
+-- Reuses module-level CleanName; avoids a duplicate inner Clean() function.
 local function ResolveGuildForGuid(name, guid)
-  local function Clean(n)
-    if not n then return nil end
-    return (n:match('^[^-]+') or n)
-  end
-  local cleanName = Clean(name)
+  local cleanName = CleanName(name)
   local function GuildFromUnit(unit)
     if not unit or not UnitExists or not UnitExists(unit) then return nil end
     if guid and UnitGUID and UnitGUID(unit) ~= guid then return nil end
     if (not guid) and cleanName and UnitName then
       local un = UnitName(unit)
-      if not un or Clean(un) ~= cleanName then return nil end
+      if not un or CleanName(un) ~= cleanName then return nil end
     end
     local g = GetGuildInfo and GetGuildInfo(unit)
-    if g and g ~= '' then return g end
+    if g and g ~= "" then return g end
     return nil
   end
   -- Quick checks
-  local g = GuildFromUnit('target') or GuildFromUnit('mouseover') or GuildFromUnit('focus')
+  local g = GuildFromUnit("target") or GuildFromUnit("mouseover") or GuildFromUnit("focus")
   if g then return g end
   -- Nameplates (most reliable for enemies)
   if C_NamePlate and C_NamePlate.GetNamePlates then
     local plates = C_NamePlate.GetNamePlates()
     if plates then
-      for i=1,#plates do
+      for i = 1, #plates do
         local unit = plates[i] and plates[i].namePlateUnitToken
         g = GuildFromUnit(unit)
         if g then return g end
@@ -481,13 +423,13 @@ local function ResolveGuildForGuid(name, guid)
   if IsInGroup and IsInGroup() then
     if IsInRaid and IsInRaid() then
       local n = GetNumGroupMembers and GetNumGroupMembers() or 0
-      for i=1,n do
-        g = GuildFromUnit('raid'..i)
+      for i = 1, n do
+        g = GuildFromUnit("raid"..i)
         if g then return g end
       end
     else
-      for i=1,4 do
-        g = GuildFromUnit('party'..i)
+      for i = 1, 4 do
+        g = GuildFromUnit("party"..i)
         if g then return g end
       end
     end
@@ -495,8 +437,8 @@ local function ResolveGuildForGuid(name, guid)
   return nil
 end
 
--- Deferred guild resolution (Spy-style): guild data is often unavailable from combat log alone.
--- We retry periodically and enrich existing entries (Attackers/Stats) when guild becomes available.
+-- Deferred guild resolution: guild data is often unavailable from combat log alone.
+-- Retries periodically and enriches Attackers/Stats entries when guild becomes available.
 local guildResolveTicker
 local function ResolvePendingGuilds()
   local DB = GetDB()
@@ -517,7 +459,6 @@ local function ResolvePendingGuilds()
         if resolved and resolved ~= "" then
           e.guild = resolved
           SetCachedGuild(e.guid, resolved, now)
-          -- Keep stats metadata enriched too
           if DB.NoteEnemySeen then
             DB:NoteEnemySeen(e.name, e.class, resolved, e.guid)
           end
@@ -540,39 +481,24 @@ local function StartDeferredGuildResolveTicker()
   guildResolveTicker = C_Timer.NewTicker(1.0, ResolvePendingGuilds)
 end
 
-local function IsFlagHostileOrNeutral(flags)
-  if not band then return false end
-  local f = flags or 0
-  -- Prefer outsider affiliation when available (avoids listing party/raid/friendly units from combat log).
-  if COMBATLOG_OBJECT_AFFILIATION_OUTSIDER then
-    if band(f, COMBATLOG_OBJECT_AFFILIATION_OUTSIDER) == 0 then return false end
-  end
-  -- Exclude friendly reaction explicitly (some subevents can carry mixed flags).
-  if COMBATLOG_OBJECT_REACTION_FRIENDLY and band(f, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 then
-    return false
-  end
-  return (COMBATLOG_OBJECT_REACTION_HOSTILE and band(f, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0)
-      or (COMBATLOG_OBJECT_REACTION_NEUTRAL and band(f, COMBATLOG_OBJECT_REACTION_NEUTRAL) ~= 0)
-end
-
-
-local function IsGroupOrSelfByName(name)
+-- Forward declaration resolved here.
+IsGroupOrSelfByName = function(name)
   if not name or name == "" then return true end
   local clean = name:match("^[^-]+") or name
   local playerName = UnitName and UnitName("player")
   if playerName and clean == (playerName:match("^[^-]+") or playerName) then
     return true
   end
-  -- Party (includes player at index 0 via "party1..4")
+  -- Party/Raid members
   if IsInGroup and IsInGroup() then
     if IsInRaid and IsInRaid() then
       local n = GetNumGroupMembers and GetNumGroupMembers() or 0
-      for i=1,n do
+      for i = 1, n do
         local rn = UnitName("raid"..i)
         if rn and (rn:match("^[^-]+") or rn) == clean then return true end
       end
     else
-      for i=1,4 do
+      for i = 1, 4 do
         local pn = UnitName("party"..i)
         if pn and (pn:match("^[^-]+") or pn) == clean then return true end
       end
@@ -596,31 +522,76 @@ local function ShouldCLNotify(key, now, cooldown)
 end
 
 local STEALTH_SPELL_IDS = {
-  [1784] = true,  -- Rogue: Stealth
-  [5215] = true,  -- Druid: Prowl
-  [1856] = true,  -- Rogue: Vanish (often logged as aura)
-  [102547] = true, -- Druid: Prowl (some modern combat log variants)
-  [11327] = true,  -- Rogue: Vanish (legacy/rank variant)
-  [20580] = true, -- Night Elf: Shadowmeld
+  [1784]   = true, -- Rogue: Stealth
+  [5215]   = true, -- Druid: Prowl
+  [1856]   = true, -- Rogue: Vanish (often logged as aura)
+  [102547] = true, -- Druid: Prowl (some combat log variants)
+  [11327]  = true, -- Rogue: Vanish (legacy/rank variant)
+  [20580]  = true, -- Night Elf: Shadowmeld
 }
 
 local STEALTH_SPELL_NAMES = {
-  ["Stealth"] = true,
-  ["Prowl"] = true,
-  ["Vanish"] = true,
+  ["Stealth"]    = true,
+  ["Prowl"]      = true,
+  ["Vanish"]     = true,
   ["Shadowmeld"] = true,
 }
 
 local function IsStealthAura(spellId, spellName)
-  if spellId and STEALTH_SPELL_IDS[spellId] then return true end
+  if spellId   and STEALTH_SPELL_IDS[spellId]     then return true end
   if spellName and STEALTH_SPELL_NAMES[spellName] then return true end
   return false
 end
 
+-- HandleCLName: processes a single source/dest entry from a CLEU event.
+-- Defined at module level (not inside HandleCombatLog) to avoid a new closure allocation
+-- on every COMBAT_LOG_EVENT_UNFILTERED fire.
+local function HandleCLName(name, flags, guid, now, DB, Notifier, Nearby)
+  if not name or name == "" then return end
+  if not IsFlagPlayer(flags) then return end
+  if not IsFlagHostileSpy(flags) then return end
+
+  local cleanName = CleanName(name)
+  if not cleanName then return end
+  local key = cleanName:lower()
+
+  -- Never add yourself or party/raid members from combat log.
+  if IsGroupOrSelfByName(cleanName) then return end
+
+  -- Try to resolve class from GUID. May be nil on some clients.
+  local classFile
+  if guid and GetPlayerInfoByGUID then
+    local _, cls = GetPlayerInfoByGUID(guid)
+    classFile = cls
+  end
+
+  -- Feed Nearby list (even when we only know the name from combat log)
+  if Nearby and Nearby.Seen and ShouldCLSeen(key, now) then
+    local kosType = nil
+    if DB.LookupPlayer then
+      local pe = DB:LookupPlayer(cleanName)
+      if pe then kosType = pe.type or L.KOS end
+    end
+    Nearby:Seen(cleanName, classFile, nil, kosType, nil)
+  end
+
+  -- If this hostile player is on KoS, alert
+  if Notifier and DB.LookupPlayer then
+    local pe = DB:LookupPlayer(cleanName)
+    if pe then
+      local nk = "cl:p:" .. key
+      if ShouldCLNotify(nk, now, 15) then
+        DB:MarkSeenPlayer(cleanName)
+        Notifier:NotifyPlayer(pe.type or L.KOS, cleanName, pe.reason)
+      end
+    end
+  end
+end
+
 local function HandleCombatLog()
-  local DB = GetDB()
-  local Notifier = GetNotifier and GetNotifier() or _G.KillOnSight_Notifier
-  local Nearby = GetNearby()
+  local DB       = GetDB()
+  local Notifier = GetNotifier()
+  local Nearby   = GetNearby()
   if not DB then return end
   if not CombatLogGetCurrentEventInfo then return end
 
@@ -632,67 +603,65 @@ local function HandleCombatLog()
   local now = (GetTime and GetTime()) or 0
   CleanupCLCaches(now)
 
-	-- PvP outcome tracking (wins/losses + encounter resolution)
-	local playerGUID = UnitGUID and UnitGUID("player")
-	local isDamage = (subevent and subevent:find("_DAMAGE")) or subevent == "SWING_DAMAGE" or subevent == "RANGE_DAMAGE"
-	if playerGUID and isDamage then
-	  -- YOU -> enemy (outgoing)
-	  if srcGUID == playerGUID and dstGUID and IsFlagPlayer(dstFlags) and IsFlagHostileSpy(dstFlags) then
-	    local cn = CleanName(dstName)
-	    if cn and not IsGroupOrSelfByName(cn) then
-	      pvpOutgoing[dstGUID] = { t = now, nameLower = cn:lower(), name = cn }
-	      TouchEncounter(dstGUID, cn, nil, nil)
-	    end
-	  end
-	  -- enemy -> YOU (incoming)
-	  if dstGUID == playerGUID and srcGUID and IsFlagPlayer(srcFlags) and IsFlagHostileSpy(srcFlags) then
-	    local cn = CleanName(srcName)
-	    if cn and not IsGroupOrSelfByName(cn) then
-	      pvpIncoming[srcGUID] = { t = now, nameLower = cn:lower(), name = cn }
-	      TouchEncounter(srcGUID, cn, nil, nil)
-	    end
-	  end
-	end
+  -- PvP outcome tracking (wins/losses + encounter resolution)
+  local playerGUID = UnitGUID and UnitGUID("player")
+  local isDamage = (subevent and subevent:find("_DAMAGE")) or subevent == "SWING_DAMAGE" or subevent == "RANGE_DAMAGE"
+  if playerGUID and isDamage then
+    -- YOU -> enemy (outgoing)
+    if srcGUID == playerGUID and dstGUID and IsFlagPlayer(dstFlags) and IsFlagHostileSpy(dstFlags) then
+      local cn = CleanName(dstName)
+      if cn and not IsGroupOrSelfByName(cn) then
+        pvpOutgoing[dstGUID] = { t = now, nameLower = cn:lower(), name = cn }
+        TouchEncounter(dstGUID, cn, nil, nil)
+      end
+    end
+    -- enemy -> YOU (incoming)
+    if dstGUID == playerGUID and srcGUID and IsFlagPlayer(srcFlags) and IsFlagHostileSpy(srcFlags) then
+      local cn = CleanName(srcName)
+      if cn and not IsGroupOrSelfByName(cn) then
+        pvpIncoming[srcGUID] = { t = now, nameLower = cn:lower(), name = cn }
+        TouchEncounter(srcGUID, cn, nil, nil)
+      end
+    end
+  end
 
-	-- Death events credit wins/losses to recently involved enemies
-	if playerGUID and subevent == "UNIT_DIED" then
-	  -- You died -> every recent attacker gets a "loss" credit
-	  if dstGUID == playerGUID then
-	    for guid, e in pairs(pvpIncoming) do
-	      if e and e.t and (now - e.t) <= PVP_WINDOW then
-	        if DB and DB.StatsAddLoss then DB:StatsAddLoss(e.nameLower or (e.name and e.name:lower()) or "") end
-	        ResolveEncounter(guid)
-	        pvpIncoming[guid] = nil
-	        pvpOutgoing[guid] = nil
-	      end
-	    end
-	  else
-	    -- Enemy died -> if you hit them recently, you get a "win" credit
-	    if dstGUID and IsFlagPlayer(dstFlags) and IsFlagHostileSpy(dstFlags) then
-	      local e = pvpOutgoing[dstGUID]
-	      if e and e.t and (now - e.t) <= PVP_WINDOW then
-	        if DB and DB.StatsAddWin then DB:StatsAddWin(e.nameLower or (e.name and e.name:lower()) or "") end
-	        ResolveEncounter(dstGUID)
-	      end
-	      pvpOutgoing[dstGUID] = nil
-	      pvpIncoming[dstGUID] = nil
-	    end
-	  end
-	end
+  -- Death events credit wins/losses to recently involved enemies
+  if playerGUID and subevent == "UNIT_DIED" then
+    if dstGUID == playerGUID then
+      -- You died -> every recent attacker gets a "loss" credit
+      for guid, e in pairs(pvpIncoming) do
+        if e and e.t and (now - e.t) <= PVP_WINDOW then
+          if DB.StatsAddLoss then DB:StatsAddLoss(e.nameLower or (e.name and e.name:lower()) or "") end
+          ResolveEncounter(guid)
+          pvpIncoming[guid] = nil
+          pvpOutgoing[guid] = nil
+        end
+      end
+    else
+      -- Enemy died -> if you hit them recently, you get a "win" credit
+      if dstGUID and IsFlagPlayer(dstFlags) and IsFlagHostileSpy(dstFlags) then
+        local e = pvpOutgoing[dstGUID]
+        if e and e.t and (now - e.t) <= PVP_WINDOW then
+          if DB.StatsAddWin then DB:StatsAddWin(e.nameLower or (e.name and e.name:lower()) or "") end
+          ResolveEncounter(dstGUID)
+        end
+        pvpOutgoing[dstGUID] = nil
+        pvpIncoming[dstGUID] = nil
+      end
+    end
+  end
 
-  -- Stealth detection (Spy-style): alert on ANY hostile player entering stealth/prowl/shadowmeld.
+  -- Stealth detection: alert on ANY hostile player entering stealth/prowl/shadowmeld.
   -- Some clients log these as SPELL_CAST_SUCCESS (especially Vanish/Prowl), so include that too.
   if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" or subevent == "SPELL_CAST_SUCCESS" then
-    -- spellId/spellName were captured from the initial CombatLogGetCurrentEventInfo() call
     if IsFlagPlayer(srcFlags) and IsFlagHostileSpy(srcFlags) and IsStealthAura(spellId, spellName) then
-      local cleanName = srcName and (srcName:match("^[^-]+") or srcName)
+      local cleanName = CleanName(srcName)
       if cleanName and not IsGroupOrSelfByName(cleanName) then
         if srcGUID then
           TouchEncounter(srcGUID, cleanName, nil, nil)
         end
         local key = cleanName:lower()
         if ShouldCLNotify("cl:stealth:" .. key, now, 8) then
-          -- Add to Nearby as "Hidden"
           if Nearby and Nearby.Seen then
             local classFile
             if srcGUID and GetPlayerInfoByGUID then
@@ -701,66 +670,22 @@ local function HandleCombatLog()
             end
             Nearby:Seen(cleanName, classFile, nil, L.HIDDEN, nil)
           end
-
           if Notifier and Notifier.NotifyHidden then
             local prof = DB and DB:GetProfile()
-      if prof and prof.stealthDetectEnabled ~= false then
-        Notifier:NotifyHidden(cleanName, spellName, srcGUID)
-      end
+            if prof and prof.stealthDetectEnabled ~= false then
+              Notifier:NotifyHidden(cleanName, spellName, srcGUID)
+            end
           end
         end
       end
     end
   end
 
+  HandleCLName(srcName, srcFlags, srcGUID, now, DB, Notifier, Nearby)
+  HandleCLName(dstName, dstFlags, dstGUID, now, DB, Notifier, Nearby)
 
-  local function HandleName(name, flags, guid)
-    if not name or name == "" then return end
-    if not IsFlagPlayer(flags) then return end
-    if not IsFlagHostileSpy(flags) then return end
-
-    local cleanName = name:match("^[^-]+") or name
-    local key = cleanName:lower()
-
-    -- Never add yourself or party/raid members from combat log.
-    if IsGroupOrSelfByName(cleanName) then return end
-
-    -- Try to resolve class from GUID (Spy-style). This may be nil if unavailable.
-    local classFile
-    if guid and GetPlayerInfoByGUID then
-      local _, cls = GetPlayerInfoByGUID(guid)
-      classFile = cls
-    end
-
-    -- Feed Nearby list (even when we only know the name from combat log)
-    if Nearby and Nearby.Seen and ShouldCLSeen(key, now) then
-      local kosType = nil
-      if DB.LookupPlayer then
-        local pe = DB:LookupPlayer(cleanName)
-        if pe then kosType = pe.type or L.KOS end
-      end
-      Nearby:Seen(cleanName, classFile, nil, kosType, nil)
-    end
-
-    -- If this hostile player is on KoS, alert (Spy-like behaviour)
-    if Notifier and DB.LookupPlayer then
-      local pe = DB:LookupPlayer(cleanName)
-      if pe then
-        local nk = "cl:p:" .. key
-        if ShouldCLNotify(nk, now, 15) then
-          DB:MarkSeenPlayer(cleanName)
-          Notifier:NotifyPlayer(pe.type or L.KOS, cleanName, pe.reason)
-        end
-      end
-    end
-  end
-
-  HandleName(srcName, srcFlags, srcGUID)
-  HandleName(dstName, dstFlags, dstGUID)
-
-  -- Keep the old "Last attackers" tracking, but ONLY when an enemy actually attacked YOU.
-  -- (Not just seen/nearby; must be a hostile action targeted at the player.)
-  local playerGUID = UnitGUID("player")
+  -- Last attackers tracking: ONLY when an enemy actually attacked YOU
+  -- (not just seen/nearby; must be a hostile action targeted at the player).
   if not playerGUID or dstGUID ~= playerGUID then return end
   if not srcName or srcName == "" then return end
   if not IsFlagPlayer(srcFlags) then return end
@@ -773,7 +698,7 @@ local function HandleCombatLog()
     -- Attacks that miss/dodge/parry/immune/etc still count as an attack on you.
     isAttack = true
   elseif subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" or subevent == "SPELL_AURA_APPLIED_DOSE" then
-    -- Count hostile debuffs/CC on the player as an attack (e.g., Sap/Cheap Shot), even if no damage event fires.
+    -- Hostile debuffs/CC on the player count as an attack (e.g. Sap/Cheap Shot).
     isAttack = true
   end
 
@@ -796,9 +721,9 @@ end
 
 Core:SetScript("OnEvent", function(self, event, ...)
   local Detector = GetDetector()
-  local Sync = GetSync()
-  local GUI = GetGUI()
-  local Minimap = GetMinimap()
+  local Sync     = GetSync()
+  local GUI      = GetGUI()
+  local Minimap  = GetMinimap()
   local Activity = GetActivity()
 
   if event == "ADDON_LOADED" then
@@ -806,7 +731,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     if addon ~= ADDON_NAME then return end
     local DB = GetDB()
     if DB then DB:Init() end
-    -- Periodic stats pruning (optional; off by default)
+    -- Periodic stats pruning (optional; controlled by profile.statsPruneEnabled)
     if DB and DB.PruneStatsPlayers and C_Timer and C_Timer.NewTicker then
       if not Core._statsPruneTicker then
         Core._statsPruneTicker = C_Timer.NewTicker(1800, function()
@@ -834,14 +759,12 @@ Core:SetScript("OnEvent", function(self, event, ...)
     return
   end
 
-	  if event == "PLAYER_ENTERING_WORLD" then
-	    if Detector then Detector:CheckUnit("target") end
-	    if GUI then GUI:RefreshAll() end
-	    -- Print sync warning first (if any), then the Retail nameplate limitation warning.
-	    if Sync then Sync:Hello() end
-	    WarnIfEnemyNameplatesDisabled()
-	    return
-	  end
+  if event == "PLAYER_ENTERING_WORLD" then
+    if Detector then Detector:CheckUnit("target") end
+    if GUI then GUI:RefreshAll() end
+    if Sync then Sync:Hello() end
+    return
+  end
 
   if event == "PLAYER_TARGET_CHANGED" then
     if Detector then Detector:CheckUnit("target") end
@@ -865,16 +788,16 @@ Core:SetScript("OnEvent", function(self, event, ...)
     return
   end
 
-  if event == "UNIT_AURA" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_SUCCEEDED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
+  if event == "UNIT_AURA" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP"
+  or event == "UNIT_SPELLCAST_SUCCEEDED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
     local unit = ...
-    if unit and (unit == "target" or unit == "mouseover" or unit:match('^nameplate')) then
+    if unit and (unit == "target" or unit == "mouseover" or unit:match("^nameplate")) then
       if Detector then Detector:CheckUnit(unit) end
     end
     return
   end
 
   if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-    if IS_RETAIL then return end
     HandleCombatLog()
     if Activity and Activity.OnCombatLog then Activity:OnCombatLog() end
     return
@@ -887,16 +810,8 @@ Core:RegisterEvent("PLAYER_ENTERING_WORLD")
 Core:RegisterEvent("PLAYER_TARGET_CHANGED")
 Core:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 Core:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-
 Core:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-
--- Retail 12.x: avoid CLEU (can cause repeated forbidden/blocked actions).
--- Classic-era clients: keep CLEU for full attacker/combat attribution.
-if not IS_RETAIL then
-  Core:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-end
-
--- Unit-scoped alternatives (Retail-friendly)
+Core:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 Core:RegisterEvent("UNIT_AURA")
 Core:RegisterEvent("UNIT_SPELLCAST_START")
 Core:RegisterEvent("UNIT_SPELLCAST_STOP")
@@ -906,30 +821,26 @@ Core:RegisterEvent("UNIT_SPELLCAST_FAILED")
 
 -- Export for other modules.
 _G.KillOnSight_Core = Core
+_G.KillOnSight_Core._ScheduleGUIRefresh = _ScheduleGUIRefresh
 
 -- Locale sanity checker: warns about keys defined in locales but never read by the UI/code.
 LocaleSanityCheck = function()
   if not KillOnSight_L_data or not KillOnSight_L_used then return end
 
-  -- User can disable by setting KillOnSightDB.localeSanity = false
+  -- Disable by setting KillOnSightDB.localeSanity = false
   if KillOnSightDB and KillOnSightDB.localeSanity == false then return end
 
   local unused = {}
   for k in pairs(KillOnSight_L_data) do
-    -- ignore internal/proxy marker
-    if k ~= '__kos_proxy' and not KillOnSight_L_used[k] then
+    if k ~= "__kos_proxy" and not KillOnSight_L_used[k] then
       unused[#unused+1] = k
     end
   end
 
   if #unused > 0 then
     table.sort(unused)
-    local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or 'KILLONSIGHT'
-    DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r Locale sanity: '..#unused..' key(s) defined but unused. Set KillOnSightDB.localeSanity=false to silence.')
-    DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r '..table.concat(unused, ', '))
+    local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or "KILLONSIGHT"
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r Locale sanity: "..#unused.." key(s) defined but unused. Set KillOnSightDB.localeSanity=false to silence.")
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..table.concat(unused, ", "))
   end
 end
-
--- Expose for other modules
-_G.KillOnSight_Core = _G.KillOnSight_Core or Core
-_G.KillOnSight_Core._ScheduleGUIRefresh = _ScheduleGUIRefresh

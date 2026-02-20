@@ -1,7 +1,9 @@
 -- Notifier.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
-local DB = KillOnSight_DB
+
+-- Lazy getter: DB is initialised after file load so we must not capture it at parse time.
+local function GetDB() return _G.KillOnSight_DB end
 
 local Notifier = {}
 
@@ -45,6 +47,7 @@ local function IsInGoblinTown()
 end
 
 local function SuppressInGoblinTown()
+  local DB = GetDB()
   if not DB or not DB.GetProfile then return false end
   local prof = DB:GetProfile()
   return prof and prof.disableInGoblinTowns and IsInGoblinTown() or false
@@ -96,6 +99,7 @@ local function ColorizeName(name, classFile)
 end
 
 function Notifier:GetStealthTiming()
+  local DB = GetDB()
   local prof = DB:GetProfile()
   local hold = tonumber(prof.stealthWarningHoldSeconds) or 6.0
   local fade = tonumber(prof.stealthWarningFadeSeconds) or 1.2
@@ -105,6 +109,7 @@ function Notifier:GetStealthTiming()
 end
 
 function Notifier:ApplyStealthSettings()
+  local DB = GetDB()
   local prof = DB:GetProfile()
   if prof.stealthDetectCenterWarning == false then
     if self.warningFrame then
@@ -254,9 +259,15 @@ end
 local function _FlashWindow(f)
   if not f then return end
   _FlashStopWindow(f)
-  local flash = CreateFrame("Frame", nil, f)
-  flash:SetAllPoints(f)
-  flash:Hide()
+
+  -- Reuse a cached overlay child to avoid leaking a new frame on every alert.
+  if not f._kosFlashChild then
+    local flash = CreateFrame("Frame", nil, f)
+    flash:SetAllPoints(f)
+    flash:Hide()
+    f._kosFlashChild = flash
+  end
+  local flash = f._kosFlashChild
   flash:SetAlpha(0.65)
   flash.elapsed = 0
   flash:SetScript("OnUpdate", function(self, dt)
@@ -350,18 +361,21 @@ end
 -- Spy-style Stealth Alert Frame (Classic-safe)
 -------------------------------------------------
 function Notifier:Chat(msg)
-  if DB:GetProfile().printToChat then
+  local DB = GetDB()
+  if DB and DB.GetProfile and DB:GetProfile().printToChat then
     _Print(msg)
   end
 end
 
 function Notifier:Sound()
-  if not DB:GetProfile().enableSound then return end
+  local DB = GetDB()
+  if not DB or not DB.GetProfile or not DB:GetProfile().enableSound then return end
   PlaySound(SOUNDKIT.RAID_WARNING, "Master")
 end
 
 function Notifier:Flash()
-  if not DB:GetProfile().enableScreenFlash then return end
+  local DB = GetDB()
+  if not DB or not DB.GetProfile or not DB:GetProfile().enableScreenFlash then return end
   EnsureFlashFrame()
   flashFrame:Show()
   flashFrame:SetAlpha(0.65)
@@ -520,7 +534,8 @@ function Notifier:CenterWarning(msg)
 end
 function Notifier:NotifyHidden(name, spellName, guid)
   if SuppressInGoblinTown() or IsInSanctuary() then return end
-  local prof = DB:GetProfile()
+  local DB = GetDB()
+  local prof = DB and DB.GetProfile and DB:GetProfile() or {}
 
   -- Master stealth toggle (live)
   if prof.stealthDetectEnabled == false then

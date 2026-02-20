@@ -2,6 +2,8 @@
 -- This is the "Auto Junk Destroyer" proven pattern for perfect minimap alignment + saved position.
 local ADDON_NAME = ...
 local L = KillOnSight_L
+-- Database.lua is listed before Minimap.lua in the TOC, so KillOnSight_DB is already set
+-- by the time this file is parsed. Parse-time capture is safe here.
 local DB = KillOnSight_DB
 
 local Minimap = {}
