@@ -21,6 +21,27 @@ local MAX_DIFF_BYTES = 28000 -- approx, across serialized lines before chunking
 
 local peers = {} -- [sender] = { theirRev=0, theirSeq=0, lastHelloAt=0 }
 
+local function StripRealm(name)
+  if not name or name == "" then return nil end
+  return name:match("^[^-]+") or name
+end
+
+local function PlayerNames()
+  local short = UnitName and UnitName("player") or nil
+  local full = nil
+  if UnitFullName then
+    local n, r = UnitFullName("player")
+    if n and n ~= "" then
+      if r and r ~= "" then
+        full = n .. "-" .. r
+      else
+        full = n
+      end
+    end
+  end
+  return short, full
+end
+
 local function CanSync() return IsInGuild() end
 
 local syncDisabledWarned = false
@@ -54,7 +75,11 @@ end
 local function Unescape(s)
   s = tostring(s or "")
   s = s:gsub("%%(%x%x)", function(hex)
-    return string.char(tonumber(hex, 16))
+    local n = tonumber(hex, 16)
+    if not n then
+      return "%" .. hex
+    end
+    return string.char(n)
   end)
   return s
 end
@@ -163,16 +188,34 @@ end
 
 local function SendChunks(channel, lines)
   local buf = ""
-  for _,line in ipairs(lines) do
-    if #buf + #line + 1 > 220 then
+  local maxPayload = 220
+
+  local function Flush()
+    if buf ~= "" then
       Send(channel, "D|"..buf)
       buf = ""
     end
-    buf = buf .. line .. "\n"
   end
-  if buf ~= "" then
-    Send(channel, "D|"..buf)
+
+  local function PushChunk(chunk)
+    if #buf + #chunk > maxPayload then
+      Flush()
+    end
+    buf = buf .. chunk
   end
+
+  for _,line in ipairs(lines) do
+    local chunk = (line or "") .. "\n"
+    -- If one serialized line is oversized (e.g., very long reason text), split it safely.
+    while #chunk > maxPayload do
+      PushChunk(chunk:sub(1, maxPayload))
+      Flush()
+      chunk = chunk:sub(maxPayload + 1)
+    end
+    PushChunk(chunk)
+  end
+
+  Flush()
 end
 
 function Sync:Init()
@@ -319,7 +362,15 @@ end
 
 function Sync:OnMessage(prefix, msg, channel, sender)
   if prefix ~= PREFIX then return end
-  if sender == UnitName("player") then return end
+  -- Sender can arrive as "Name" or "Name-Realm". Ignore only true self messages.
+  local meShort, meFull = PlayerNames()
+  local senderShort = StripRealm(sender)
+  if meFull and sender and sender:lower() == meFull:lower() then
+    return
+  end
+  if (not sender or not sender:find("-", 1, true)) and senderShort and meShort and senderShort:lower() == meShort:lower() then
+    return
+  end
   if channel ~= "GUILD" then return end
   if not IsInGuild() then return end
 
@@ -401,15 +452,22 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "D" then
-    rx[sender] = rx[sender] or { lines = {} }
-    local payload = rest or ""
-    for line in payload:gmatch("([^\n]+)") do
-      if line and line ~= "" then
-        table.insert(rx[sender].lines, line)
+    rx[sender] = rx[sender] or { lines = {}, partial = "" }
+    local bucket = rx[sender]
+    local payload = (bucket.partial or "") .. (rest or "")
+    local start = 1
+    while true do
+      local nl = payload:find("\n", start, true)
+      if not nl then break end
+      local line = payload:sub(start, nl - 1)
+      if line ~= "" then
+        table.insert(bucket.lines, line)
       end
+      start = nl + 1
     end
+    bucket.partial = payload:sub(start)
     -- Safety cap: discard runaway receive buckets (peer crashed/disconnected mid-send)
-    if #rx[sender].lines > 5000 then
+    if #bucket.lines > 5000 then
       rx[sender] = nil
     end
     return
@@ -418,6 +476,10 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   if cmd == "END" then
     local bucket = rx[sender]
     if bucket and bucket.lines then
+      if bucket.partial and bucket.partial ~= "" then
+        table.insert(bucket.lines, bucket.partial)
+        bucket.partial = ""
+      end
       ApplyLines(sender, bucket.lines)
     end
     rx[sender] = nil

@@ -95,6 +95,11 @@ function Notifier:ApplyStealthSettings()
   local DB = GetDB()
   local prof = DB and DB:GetProfile() or {}
   if prof.stealthDetectCenterWarning == false then
+    -- Stealth center warning uses the shared Spy warning frame.
+    -- Keep backward compatibility with any legacy field name.
+    if self._spyFrame then
+      self._spyFrame:Hide()
+    end
     if self.warningFrame then
       self.warningFrame:Hide()
     end
