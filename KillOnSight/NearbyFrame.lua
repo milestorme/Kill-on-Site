@@ -110,6 +110,10 @@ function Nearby:IsSuppressed(prof)
   return false, nil
 end
 
+function Nearby:IsShown()
+  return self.frame and self.frame.IsShown and self.frame:IsShown() or false
+end
+
 function Nearby:HandleSuppressionChange()
   if not self.frame then return end
   local DB = GetDB()
@@ -177,20 +181,17 @@ end
 -- 1) Include a handful of common UI font objects (when present).
 -- 2) If LibSharedMedia-3.0 is installed, include its registered fonts.
 local function BuildNearbyNameFontMap(self)
--- Re-apply when LibSharedMedia registers fonts (prevents "font not loaded yet" edge cases)
-if not self._lsmCallbackRegistered and LSM and LSM.RegisterCallback then
-  self._lsmCallbackRegistered = true
-  pcall(function()
-    LSM:RegisterCallback(self, "LibSharedMedia_Registered", function()
-      if Nearby and Nearby.ApplyNameFont then Nearby:ApplyNameFont(true) end
-    end)
-  end)
-end
+  local lsm
+  if _G.LibStub then
+    lsm = _G.LibStub("LibSharedMedia-3.0", true)
+  end
+  local hasLSM = lsm and lsm.List and lsm.Fetch
 
+  -- Keep cached map, but allow one rebuild when LSM becomes available later.
   if self._nearbyNameFontMap and self._nearbyNameFontChoices then
-    -- Font packs can register fonts after login. If LibSharedMedia is present, we
-    -- keep the cache but also listen for new registrations and invalidate.
-    return
+    if self._nearbyNameFontMapIncludesLSM or (not hasLSM) then
+      return
+    end
   end
 
   local map = {}
@@ -224,11 +225,20 @@ end
 
   -- LibSharedMedia fonts (if present). This is the easiest way for users to get lots of fonts
   -- without us shipping any assets.
-  local lsm
-  if _G.LibStub then
-    lsm = _G.LibStub("LibSharedMedia-3.0", true)
-  end
-  if lsm and lsm.List and lsm.Fetch then
+  if hasLSM then
+    -- Re-apply currently selected font when LSM registers media later in the session.
+    -- This fixes "custom font selected but rows stay default until reopening/reload".
+    if lsm.RegisterCallback and not self._lsmCallbackRegistered then
+      self._lsmCallbackRegistered = true
+      pcall(function()
+        lsm:RegisterCallback(self, "LibSharedMedia_Registered", function(_, mediaType)
+          if mediaType == "font" and Nearby and Nearby.ApplyNameFont then
+            Nearby:ApplyNameFont(true)
+          end
+        end)
+      end)
+    end
+
     -- Invalidate cached lists when new fonts are registered (font packs often load later).
     if lsm.RegisterCallback and not self._lsmFontCallbackRegistered then
       self._lsmFontCallbackRegistered = true
@@ -268,6 +278,7 @@ end
 
   self._nearbyNameFontMap = map
   self._nearbyNameFontChoices = choices
+  self._nearbyNameFontMapIncludesLSM = not not hasLSM
 end
 
 function Nearby:GetNameFontChoices()
@@ -1899,5 +1910,4 @@ function Nearby:Init()
 end
 
 KillOnSight_Nearby = Nearby
-
 
