@@ -14,24 +14,7 @@ local function _Print(msg)
   end
 end
 
-
-
-
-
-
--- Additional anti-spam for KoS / Guild alerts across all detection sources (detector + combat log).
--- This prevents duplicate warnings when multiple systems detect the same player close together.
-Notifier._lastKosAlertAt = Notifier._lastKosAlertAt or {}
-
-local function ShouldAlertOnce(key, cooldownSeconds)
-  local now = GetTime()
-  local last = Notifier._lastKosAlertAt[key]
-  if last and (now - last) < cooldownSeconds then
-    return false
-  end
-  Notifier._lastKosAlertAt[key] = now
-  return true
-end
+-- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
 
 -- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
 local function IsInGoblinTown()
@@ -100,7 +83,7 @@ end
 
 function Notifier:GetStealthTiming()
   local DB = GetDB()
-  local prof = DB:GetProfile()
+  local prof = DB and DB:GetProfile() or {}
   local hold = tonumber(prof.stealthWarningHoldSeconds) or 6.0
   local fade = tonumber(prof.stealthWarningFadeSeconds) or 1.2
   if hold < 0 then hold = 0 end
@@ -110,7 +93,7 @@ end
 
 function Notifier:ApplyStealthSettings()
   local DB = GetDB()
-  local prof = DB:GetProfile()
+  local prof = DB and DB:GetProfile() or {}
   if prof.stealthDetectCenterWarning == false then
     if self.warningFrame then
       self.warningFrame:Hide()
@@ -126,8 +109,6 @@ function Notifier:ApplyStealthSettings()
   end
 end
 
-local CENTER_WARNING_HOLD = 2.0   -- seconds fully visible
-local CENTER_WARNING_FADE = 1.2   -- seconds smooth fade out
 local CENTER_WARNING_YOFF = 180   -- vertical offset from center
 -- Spy-style center warning frame (custom, reliable across client branches)
 local function EnsureSpyWarningFrame()

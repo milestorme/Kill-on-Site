@@ -26,12 +26,10 @@ local function CanSync() return IsInGuild() end
 local syncDisabledWarned = false
 local function WarnSyncDisabledOnce()
   local Notifier = GetNotifier()
-  -- Only print this once per session to avoid chat spam when zoning/entering instances.
-  -- Reset automatically when the player becomes eligible to sync again.
   if CanSync() then syncDisabledWarned = false; return false end
   if syncDisabledWarned then return true end
   syncDisabledWarned = true
-  Notifier:Chat(L.SYNC_DISABLED)
+  if Notifier then Notifier:Chat(L.SYNC_DISABLED) end
   return true
 end
 
@@ -196,6 +194,7 @@ end
 function Sync:RequestDiff()
   local DB = GetDB()
   local Notifier = GetNotifier()
+  if not DB or not Notifier then return end
   local now = GetTime and GetTime() or 0
   if now < (nextSyncAllowedAt or 0) then
     local remain = math.ceil((nextSyncAllowedAt or 0) - now)
@@ -264,6 +263,9 @@ local function ApplyLines(sender, lines)
 
   if KillOnSight_GUI and KillOnSight_GUI.RefreshAll then
     KillOnSight_GUI:RefreshAll()
+  end
+  if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+    KillOnSight_Nearby:Refresh()
   end
 end
 

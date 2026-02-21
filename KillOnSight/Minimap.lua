@@ -72,12 +72,20 @@ function dataobj:OnClick(btn)
           if KillOnSight_Notifier and KillOnSight_Notifier.Chat then
             KillOnSight_Notifier:Chat(string.format(L.ADDED_PLAYER, L.KOS, name))
           end
+          if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+            KillOnSight_Nearby:Refresh()
+          end
           if KillOnSight_GUI and KillOnSight_GUI.RefreshAll then
             KillOnSight_GUI:RefreshAll()
           end
         end
       },
-      { text = L.UI_SYNC, notCheckable = true, func = function() KillOnSight_Sync:RequestDiff() end },
+      { text = L.UI_SYNC, notCheckable = true, func = function()
+          if KillOnSight_Sync and KillOnSight_Sync.RequestDiff then
+            KillOnSight_Sync:RequestDiff()
+          end
+        end
+      },
       { text = L.UI_CLOSE, notCheckable = true, func = function() if KillOnSight_GUI then KillOnSight_GUI:Hide() end end },
     }
     ShowDropdown(menu)

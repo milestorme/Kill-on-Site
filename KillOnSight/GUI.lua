@@ -886,18 +886,18 @@ end
         -- no-op
       else
         t:ClearAllPoints()
-	        if not cur then
-	          t:SetPoint("TOPLEFT", self, "BOTTOMLEFT", xPad, yRow1)
+        if not cur then
+          t:SetPoint("TOPLEFT", self, "BOTTOMLEFT", xPad, yRow1)
           cur = t
         else
-	          t:SetPoint("LEFT", cur, "RIGHT", gap, 0)
+          t:SetPoint("LEFT", cur, "RIGHT", gap, 0)
 
         local right = (t:GetRight() or 0)
         local frameRight = (self:GetRight() or 0)
 
         if frameRight > 0 and right > 0 and right > (frameRight - 10) and row == 1 then
           t:ClearAllPoints()
-	          t:SetPoint("TOPLEFT", self, "BOTTOMLEFT", xPad, yRow2)
+          t:SetPoint("TOPLEFT", self, "BOTTOMLEFT", xPad, yRow2)
           row = 2
         end
 
@@ -1052,8 +1052,10 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     if ((DB.HasPlayer and DB:HasPlayer(name)) or (DB.LookupPlayer and DB:LookupPlayer(name) ~= nil) or false) then UpdateAddState(); return end
     DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
     nameBox:SetText("")
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
-    UpdateAddState()
     UpdateAddState()
   end)
 
@@ -1073,7 +1075,6 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       KillOnSight_Nearby:Refresh()
     end
     GUI:RefreshAll()
-    UpdateAddState()
     UpdateAddState()
   end)
 
@@ -1128,6 +1129,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   gAddBtn:SetScript("OnClick", function()
     DB:AddGuild(guildBox:GetText(), L.GUILD_KOS, nil, UnitName("player"))
     guildBox:SetText("")
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
   end)
 
@@ -1263,6 +1267,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       return
     end
     DB:AddPlayer(e.name, L.KOS, nil, UnitName("player"), _NormalizeClass(e.class, e.realm, e.fullName, e.guild) or _GuessClassFor(e.name, e.guid))
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
     UpdateAtkButtons()
   end)
@@ -1279,6 +1286,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       return
     end
     DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
+    if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+      KillOnSight_Nearby:Refresh()
+    end
     GUI:RefreshAll()
     UpdateAtkButtons()
   end)
@@ -1434,6 +1444,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     btnAdd:SetScript("OnClick", function()
       if name and name ~= "" and DB.AddPlayer and not DB:HasPlayer(name) then
         DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
+        if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+          KillOnSight_Nearby:Refresh()
+        end
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
         if RefreshStatsList then RefreshStatsList() end
         RefreshDetail(keyLower)
@@ -1443,6 +1456,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     btnRem:SetScript("OnClick", function()
       if name and name ~= "" and DB.RemovePlayer and DB:HasPlayer(name) then
         DB:RemovePlayer(name)
+        if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+          KillOnSight_Nearby:Refresh()
+        end
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
         if RefreshStatsList then RefreshStatsList() end
         RefreshDetail(keyLower)

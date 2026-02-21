@@ -158,7 +158,6 @@ function Detector:CheckUnit(unit)
       end
       if guild and guild ~= "" and DB.UpdateLastAttackerGuild then
         DB:UpdateLastAttackerGuild(name, guild)
-        local Core = GetCore()
         if Core and Core._ScheduleGUIRefresh then
           Core:_ScheduleGUIRefresh()
         end

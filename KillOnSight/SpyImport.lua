@@ -82,6 +82,10 @@ function Import:Run()
   if gui and gui.RefreshAll then
     gui:RefreshAll()
   end
+  local nearby = _G.KillOnSight_Nearby
+  if nearby and nearby.Refresh then
+    nearby:Refresh()
+  end
 end
 
 _G.KillOnSight_SpyImport = Import

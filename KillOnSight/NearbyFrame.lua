@@ -402,7 +402,8 @@ function Nearby:QueueLayout()
   if self._combatEventFrame then return end
   local ef = CreateFrame("Frame")
   ef:RegisterEvent("PLAYER_REGEN_ENABLED")
-  ef:SetScript("OnEvent", function()
+  ef:RegisterEvent("PLAYER_REGEN_DISABLED")
+  ef:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
       Nearby._inCombat = true
       if Nearby.SnapshotCombatRows then pcall(function() Nearby:SnapshotCombatRows() end) end
@@ -906,7 +907,6 @@ function Nearby:AlertNewEnemy(e)
   local prof = DB and DB:GetProfile()
   if not prof then return end
 
-  local L = GetLocale()
   local t = e.kosType
 
   -- KoS / Guild-KoS: keep the strong alert behavior (sound + flash) exactly as before.
@@ -939,10 +939,9 @@ end
 -- Returns two booleans: doChat, doStrong (sound/flash).
 function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
   if not name or name == "" then return false, false end
-  local Lc = GetLocale()
   local isKoS = false
   if listType then
-    if (Lc and Lc.KOS and listType == Lc.KOS) or (Lc and Lc.GUILD_KOS and listType == Lc.GUILD_KOS) or listType == "KoS" or listType == "Guild-KoS" then
+    if (L.KOS and listType == L.KOS) or (L.GUILD_KOS and listType == L.GUILD_KOS) then
       isKoS = true
     end
   end
@@ -970,6 +969,7 @@ end
 local function SortedEntries(self)
   local activeKoS, inactiveKoS, active, inactive = {}, {}, {}, {}
   local now = (GetTime and GetTime()) or 0
+  local DB = GetDB()
   for lower, e in pairs(self.entries) do
     if e and e._key ~= lower then e._key = lower end
     local skip = false
@@ -979,6 +979,20 @@ local function SortedEntries(self)
       e._kosLayerFilteredUntil = nil
     end
     if not skip then
+      -- Re-evaluate kosType from live DB so add/remove from any UI path is
+      -- reflected immediately without needing the player to be re-detected.
+      if DB then
+        local playerKoS = DB.HasPlayer and DB:HasPlayer(e.name)
+        local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
+                          and DB.HasGuild and DB:HasGuild(e.guild)
+        if playerKoS then
+          e.kosType = L.KOS
+        elseif guildKoS then
+          e.kosType = L.GUILD_KOS
+        elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
+          e.kosType = nil
+        end
+      end
       if e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
         if e.state == "inactive" then
           inactiveKoS[#inactiveKoS+1] = e
@@ -1169,25 +1183,8 @@ local function UpdateScroll(self)
         local DB = GetDB()
         local prof = DB and DB:GetProfile()
 
-        -- Re-evaluate KoS/Guild status from the live DB before rendering.
-        if DB then
-          local playerKoS = DB.HasPlayer and DB:HasPlayer(e.name)
-          local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
-                            and DB.HasGuild and DB:HasGuild(e.guild)
-          if playerKoS then
-            e.kosType = L.KOS
-          elseif guildKoS then
-            e.kosType = L.GUILD_KOS
-          elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
-            e.kosType = nil
-          end
-        end
-
         row.text:SetText(RowLabel(e, tNow))
         self._awDirty = true
-
-        local DB = GetDB()
-        local prof = DB and DB:GetProfile()
 
         if prof and prof.nearbyRowIcons ~= false and row.icon then
           if e.class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[e.class] then
@@ -1247,29 +1244,9 @@ local function UpdateScroll(self)
       local DB = GetDB()
       local prof = DB and DB:GetProfile()
 
-      -- Re-evaluate KoS/Guild status from the live DB before rendering.
-      -- This ensures the tag and skull disappear immediately when a player or
-      -- guild is removed from the list, regardless of what triggered the Refresh.
-      if DB then
-        local playerKoS = DB.HasPlayer and DB:HasPlayer(e.name)
-        local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
-                          and DB.HasGuild and DB:HasGuild(e.guild)
-        if playerKoS then
-          e.kosType = L.KOS
-        elseif guildKoS then
-          e.kosType = L.GUILD_KOS
-        elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
-          e.kosType = nil
-        end
-      end
-
       row.text:SetText(RowLabel(e, tNow))
       -- Dynamic width: recompute after rows are populated (fast, single pass).
       self._awDirty = true
-
-
-      local DB = GetDB()
-      local prof = DB and DB:GetProfile()
 
       -- Row icons (class + skull for KoS/Guild)
       if prof and prof.nearbyRowIcons ~= false and row.icon then
@@ -1385,7 +1362,6 @@ self._awMeasureFS = meas
 
   -- Header bar
   local header = CreateFrame("Frame", nil, f, "BackdropTemplate")
-  self.headerFrame = header
   self.headerFrame = header
   header:SetHeight(18)
   header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
@@ -1618,11 +1594,11 @@ end
 b:SetScript("OnEnter", function(selfBtn)
       selfBtn.bg:Show()
       BuildNearbyTooltip(selfBtn)
-      _G._G.StartNearbyTooltipTicker(selfBtn)
+      StartNearbyTooltipTicker(selfBtn)
     end)
     b:SetScript("OnLeave", function(selfBtn)
       selfBtn.bg:Hide()
-      _G._G.StopNearbyTooltipTicker(selfBtn)
+      StopNearbyTooltipTicker(selfBtn)
       GameTooltip:Hide()
     end)
 
@@ -1637,7 +1613,7 @@ b:SetScript("OnEnter", function(selfBtn)
           C_Timer.After(0.18, function()
             if not entry then return end
             local now = (GetTime and GetTime()) or 0
-            local tn, tr = (UnitName and UnitName("target"))
+            local tn, tr = UnitName("target")
             if not tn or tn == "" then
               entry._kosNotTargetableUntil = now + 30
               RefreshNearbyTooltip(selfBtn)
@@ -1875,23 +1851,23 @@ function Nearby:Refresh()
   local count = 0
 
   -- manage expirations (Spy-like): active -> inactive -> remove
-for k, e in pairs(self.entries) do
-  local activeExp = e.activeExpiresAt or ((e.lastSeen or now) + ACTIVE_TTL)
-  local inactiveExp = e.inactiveExpiresAt or (activeExp + INACTIVE_TTL)
+  for k, e in pairs(self.entries) do
+    local activeExp = e.activeExpiresAt or ((e.lastSeen or now) + ACTIVE_TTL)
+    local inactiveExp = e.inactiveExpiresAt or (activeExp + INACTIVE_TTL)
 
-  if now > inactiveExp then
-    self.entries[k] = nil
-    self.alerted[k] = nil
-    self.strongAlerted[k] = nil
-    self.announceAlerted[k] = nil
-  elseif now > activeExp then
-    e.state = "inactive"
-    count = count + 1
-  else
-    e.state = "active"
-    count = count + 1
+    if now > inactiveExp then
+      self.entries[k] = nil
+      self.alerted[k] = nil
+      self.strongAlerted[k] = nil
+      self.announceAlerted[k] = nil
+    elseif now > activeExp then
+      e.state = "inactive"
+      count = count + 1
+    else
+      e.state = "active"
+      count = count + 1
+    end
   end
-end
 
   self._lastCount = count
   self:AutoFitHeight(count)

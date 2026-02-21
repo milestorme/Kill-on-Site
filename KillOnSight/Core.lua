@@ -178,6 +178,8 @@ local function AddPlayer(rest)
   Notifier:Chat(string.format(L.ADDED_PLAYER, L.KOS, name))
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
+  local Nearby = GetNearby()
+  if Nearby and Nearby.Refresh then Nearby:Refresh() end
 end
 
 local function RemovePlayer(rest)
@@ -194,6 +196,8 @@ local function RemovePlayer(rest)
   end
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
+  local Nearby = GetNearby()
+  if Nearby and Nearby.Refresh then Nearby:Refresh() end
 end
 
 local function AddGuild(rest)
@@ -208,6 +212,8 @@ local function AddGuild(rest)
   Notifier:Chat(string.format(L.ADDED_GUILD, L.GUILD_KOS, guild))
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
+  local Nearby = GetNearby()
+  if Nearby and Nearby.Refresh then Nearby:Refresh() end
 end
 
 local function RemoveGuild(rest)
@@ -224,6 +230,8 @@ local function RemoveGuild(rest)
   end
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
+  local Nearby = GetNearby()
+  if Nearby and Nearby.Refresh then Nearby:Refresh() end
 end
 
 local function List()
@@ -567,12 +575,13 @@ local function HandleCLName(name, flags, guid, now, DB, Notifier, Nearby)
 
   -- Feed Nearby list (even when we only know the name from combat log)
   if Nearby and Nearby.Seen and ShouldCLSeen(key, now) then
+    local cachedGuild = guid and GetCachedGuild(guid, now) or nil
     local kosType = nil
     if DB.LookupPlayer then
       local pe = DB:LookupPlayer(cleanName)
       if pe then kosType = pe.type or L.KOS end
     end
-    Nearby:Seen(cleanName, classFile, nil, kosType, nil)
+    Nearby:Seen(cleanName, classFile, cachedGuild, kosType, nil)
   end
 
   -- If this hostile player is on KoS, alert

@@ -652,7 +652,7 @@ function DB:AddLastAttacker(name, guid, zone, guild, classFile)
   end
 
   -- cap
-	while #d.lastAttackers > 200 do
+  while #d.lastAttackers > 200 do
     table.remove(d.lastAttackers)
   end
 end
