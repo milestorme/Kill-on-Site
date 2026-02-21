@@ -54,7 +54,11 @@ end
 local function Unescape(s)
   s = tostring(s or "")
   s = s:gsub("%%(%x%x)", function(hex)
-    return string.char(tonumber(hex, 16))
+    local n = tonumber(hex, 16)
+    if not n then
+      return "%" .. hex
+    end
+    return string.char(n)
   end)
   return s
 end
@@ -163,16 +167,34 @@ end
 
 local function SendChunks(channel, lines)
   local buf = ""
-  for _,line in ipairs(lines) do
-    if #buf + #line + 1 > 220 then
+  local maxPayload = 220
+
+  local function Flush()
+    if buf ~= "" then
       Send(channel, "D|"..buf)
       buf = ""
     end
-    buf = buf .. line .. "\n"
   end
-  if buf ~= "" then
-    Send(channel, "D|"..buf)
+
+  local function PushChunk(chunk)
+    if #buf + #chunk > maxPayload then
+      Flush()
+    end
+    buf = buf .. chunk
   end
+
+  for _,line in ipairs(lines) do
+    local chunk = (line or "") .. "\n"
+    -- If one serialized line is oversized (e.g., very long reason text), split it safely.
+    while #chunk > maxPayload do
+      PushChunk(chunk:sub(1, maxPayload))
+      Flush()
+      chunk = chunk:sub(maxPayload + 1)
+    end
+    PushChunk(chunk)
+  end
+
+  Flush()
 end
 
 function Sync:Init()
