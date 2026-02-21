@@ -423,15 +423,22 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   end
 
   if cmd == "D" then
-    rx[sender] = rx[sender] or { lines = {} }
-    local payload = rest or ""
-    for line in payload:gmatch("([^\n]+)") do
-      if line and line ~= "" then
-        table.insert(rx[sender].lines, line)
+    rx[sender] = rx[sender] or { lines = {}, partial = "" }
+    local bucket = rx[sender]
+    local payload = (bucket.partial or "") .. (rest or "")
+    local start = 1
+    while true do
+      local nl = payload:find("\n", start, true)
+      if not nl then break end
+      local line = payload:sub(start, nl - 1)
+      if line ~= "" then
+        table.insert(bucket.lines, line)
       end
+      start = nl + 1
     end
+    bucket.partial = payload:sub(start)
     -- Safety cap: discard runaway receive buckets (peer crashed/disconnected mid-send)
-    if #rx[sender].lines > 5000 then
+    if #bucket.lines > 5000 then
       rx[sender] = nil
     end
     return
@@ -440,6 +447,10 @@ function Sync:OnMessage(prefix, msg, channel, sender)
   if cmd == "END" then
     local bucket = rx[sender]
     if bucket and bucket.lines then
+      if bucket.partial and bucket.partial ~= "" then
+        table.insert(bucket.lines, bucket.partial)
+        bucket.partial = ""
+      end
       ApplyLines(sender, bucket.lines)
     end
     rx[sender] = nil
