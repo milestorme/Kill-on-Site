@@ -21,6 +21,27 @@ local MAX_DIFF_BYTES = 28000 -- approx, across serialized lines before chunking
 
 local peers = {} -- [sender] = { theirRev=0, theirSeq=0, lastHelloAt=0 }
 
+local function StripRealm(name)
+  if not name or name == "" then return nil end
+  return name:match("^[^-]+") or name
+end
+
+local function PlayerNames()
+  local short = UnitName and UnitName("player") or nil
+  local full = nil
+  if UnitFullName then
+    local n, r = UnitFullName("player")
+    if n and n ~= "" then
+      if r and r ~= "" then
+        full = n .. "-" .. r
+      else
+        full = n
+      end
+    end
+  end
+  return short, full
+end
+
 local function CanSync() return IsInGuild() end
 
 local syncDisabledWarned = false
@@ -341,7 +362,15 @@ end
 
 function Sync:OnMessage(prefix, msg, channel, sender)
   if prefix ~= PREFIX then return end
-  if sender == UnitName("player") then return end
+  -- Sender can arrive as "Name" or "Name-Realm". Ignore only true self messages.
+  local meShort, meFull = PlayerNames()
+  local senderShort = StripRealm(sender)
+  if meFull and sender and sender:lower() == meFull:lower() then
+    return
+  end
+  if (not sender or not sender:find("-", 1, true)) and senderShort and meShort and senderShort:lower() == meShort:lower() then
+    return
+  end
   if channel ~= "GUILD" then return end
   if not IsInGuild() then return end
 
