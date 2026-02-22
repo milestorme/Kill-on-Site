@@ -1,15 +1,11 @@
 -- NearbyFrame.lua
 -- Spy-like nearby enemies window (small, scrollable, clickable)
+-- Retail / Midnight only.
 local ADDON_NAME = ...
 local L = KillOnSight_L
 
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
-
--- Project detection (Retail vs Classic-era). On Retail, players can PvP in "resting" areas (War Mode,
--- city skirmishes, etc.). Treating IsResting() as a sanctuary signal on Retail would incorrectly
--- disable Nearby population.
-local IS_RETAIL = (WOW_PROJECT_ID and WOW_PROJECT_MAINLINE and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE) or false
 
 -- Retail can return protected/"secret" GUID values in certain PvP/instance contexts.
 -- Never use non-string GUIDs as table keys or in comparisons.
@@ -25,7 +21,6 @@ local function _ValidPlayerGUID(guid)
 end
 
 local function _InspectEnabled()
-  if not IS_RETAIL then return false end
   if IsInInstance then
     local inInst, instType = IsInInstance()
     if inInst and instType and instType ~= "none" then
@@ -37,17 +32,13 @@ end
 
 
 -- Sanctuary detection: prevent Nearby population and clear the list in safe "sanctuary" areas.
--- Prefer GetZonePVPInfo() which can return "sanctuary"; fall back to IsResting() in versions/zones
--- where that is the only reliable signal.
 local function IsInSanctuary()
   local pvpType = (GetZonePVPInfo and GetZonePVPInfo())
   if pvpType == "sanctuary" then return true end
-  -- Classic-era fallback only.
-  if (not IS_RETAIL) and IsResting and IsResting() then return true end
   return false
 end
 
--- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
+-- Optional town-level suppression: Booty Bay / Gadgetzan.
 -- These are *not* sanctuary zones, so we rely on subzone/minimap zone text.
 local function IsInGoblinTown()
   local sub = (GetSubZoneText and GetSubZoneText()) or ""
@@ -304,7 +295,8 @@ if not self.rows then return end
           if choice ~= "Default" and not self._badFontsWarned[choice] then
             self._badFontsWarned[choice] = true
             if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-              DEFAULT_CHAT_FRAME:AddMessage("")
+              local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or "KILLONSIGHT"
+              DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff" .. prefix .. ":|r Nearby font '" .. tostring(choice) .. "' could not be applied; falling back to default.")
             end
           end
         end
@@ -368,8 +360,7 @@ end
   -- Spec (Retail inspect; present when known)
   if e.spec and e.spec ~= "" then
     GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
-  elseif IS_RETAIL and e.guid then
-  elseif IS_RETAIL and e.guid then
+  elseif e.guid then
     -- Only show "Inspecting..." if we actually have an active request queued/pending for this GUID.
     local mgr = self._inspectMgr
     local isPending = mgr and mgr.pending and mgr.pending.guid == e.guid
@@ -893,7 +884,7 @@ function Nearby:ApplyLocked()
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
-  local locked = prof.nearbyLocked == true
+  local locked = prof.nearbyFrameLocked == true
   self.frame:SetMovable(true)
   SafeEnableMouse(self.frame, true)
   if locked then
@@ -952,14 +943,14 @@ function Nearby:AlertNewEnemy(e)
   local prof = DB and DB:GetProfile()
   if not prof then return end
 
-  local L = GetLocale()
+  local Lk = KillOnSight_L
   local t = e.kosType
 
   -- KoS / Guild-KoS: keep the strong alert behavior (sound + flash) exactly as before.
-  -- NOTE: We *must not* rely on (t == L.KOS) if locale keys are missing (nil), so we guard with t.
+  -- NOTE: We *must not* rely on (t == Lk.KOS) if locale keys are missing (nil), so we guard with t.
   local isKoS = false
   if t then
-    if (L and L.KOS and t == L.KOS) or (L and L.GUILD_KOS and t == L.GUILD_KOS) or t == "KoS" or t == "Guild-KoS" then
+    if (Lk and Lk.KOS and t == Lk.KOS) or (Lk and Lk.GUILD_KOS and t == Lk.GUILD_KOS) or t == "KoS" or t == "Guild-KoS" then
       isKoS = true
     end
   end
@@ -986,10 +977,10 @@ end
 -- Returns two booleans: doChat, doStrong (sound/flash).
 function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
   if not name or name == "" then return false, false end
-  local Lc = GetLocale()
+  local Lk = KillOnSight_L
   local isKoS = false
   if listType then
-    if (Lc and Lc.KOS and listType == Lc.KOS) or (Lc and Lc.GUILD_KOS and listType == Lc.GUILD_KOS) or listType == "KoS" or listType == "Guild-KoS" then
+    if (Lk and Lk.KOS and listType == Lk.KOS) or (Lk and Lk.GUILD_KOS and listType == Lk.GUILD_KOS) or listType == "KoS" or listType == "Guild-KoS" then
       isKoS = true
     end
   end
@@ -1448,7 +1439,7 @@ local function UpdateScroll(self)
     local e = list[idx]
     row.entry = e
 
-    if e then      -- Secure targeting (Classic): cannot update macro attributes in combat.
+    if e then      -- Secure targeting: cannot update macro attributes in combat.
       if row.SetAttribute then
         if not (InCombatLockdown and InCombatLockdown()) then
           local tname = BuildTargetName(e)
@@ -1636,7 +1627,7 @@ function Nearby:Create()
 
   -- Rows
   for i=1,20 do
-    local b    -- Retail 12.x + Classic/TBC: Spy-style secure button targeting (out of combat) via macro attributes.
+    local b    -- Spy-style secure button targeting (out of combat) via macro attributes.
     -- Left-click targets using /targetexact (hardware event). Right-click opens the context menu.
     b = CreateFrame("Button", nil, f, "SecureActionButtonTemplate")
     b:RegisterForClicks("AnyDown", "AnyUp")
@@ -1716,7 +1707,7 @@ function Nearby:Create()
       self._tooltipGuid = e.guid
 
       -- If spec is not known yet, try to request inspect for the unit currently under mouse/target/focus.
-      if IS_RETAIL and (not e.spec or e.spec == "") and e.guid and not InCombatLockdown() then
+      if (not e.spec or e.spec == "") and e.guid and not InCombatLockdown() then
         local unit = nil
         if UnitGUID then
           if UnitExists and UnitExists("mouseover") and UnitGUID("mouseover") == e.guid then unit = "mouseover"
@@ -1797,7 +1788,7 @@ function Nearby:Create()
   -- Important: On Retail you can only inspect via a live unit token (target/mouseover/nameplate),
   -- so we listen for nameplate/target/mouseover changes and immediately queue an inspect when a
   -- nameplate appears for a Nearby GUID.
-  if IS_RETAIL and not self._inspectEventFrame then
+  if not self._inspectEventFrame then
     local inf = CreateFrame("Frame")
     inf:RegisterEvent("INSPECT_READY")
     inf:RegisterEvent("NAME_PLATE_UNIT_ADDED")
@@ -1903,7 +1894,7 @@ function Nearby:RescanVisibleUnits()
     end
   end
 
-  -- Nameplates: modern API (works on many Classic clients too).
+  -- Nameplates
   if C_NamePlate and C_NamePlate.GetNamePlates then
     local plates = C_NamePlate.GetNamePlates()
     if plates then
@@ -2141,9 +2132,6 @@ local _SPEC_NAME_SET
 local function _BuildSpecNameSet()
   if _SPEC_NAME_SET then return _SPEC_NAME_SET end
   local set = {}
-  if not IS_RETAIL then _SPEC_NAME_SET = set; return set end
-
-  -- Retail APIs (guarded)
   if GetNumClasses and GetClassInfo and GetNumSpecializationsForClassID and GetSpecializationInfoForClassID then
     local n = GetNumClasses()
     for i = 1, n do
@@ -2175,7 +2163,7 @@ end
 
 -- Retail: If Blizzard tooltip already shows specialization, pick it up immediately (works in War Mode where NotifyInspect is blocked).
 function Nearby:_TryResolveSpecFromTooltip(unit)
-  if not IS_RETAIL then return nil end
+  -- Retail spec detection
   if not unit or unit == "" or not UnitExists or not UnitExists(unit) then return nil end
   if not C_TooltipInfo or not C_TooltipInfo.GetUnit then return nil end
 
@@ -2223,7 +2211,7 @@ end
 
 
 function Nearby:_TryResolveSpecFromUnit(unit)
-  if not IS_RETAIL then return nil end
+  -- Retail spec detection
   if not unit or unit == "" then return nil end
   if not UnitExists or not UnitExists(unit) then return nil end
   if not GetInspectSpecialization or not GetSpecializationInfoByID then return nil end
@@ -2244,7 +2232,7 @@ function Nearby:_RequestSpecForGuid(guid, unit)
   if not _InspectEnabled() then return end
   guid = _ValidPlayerGUID(guid)
   if not guid then return end
-  if not IS_RETAIL then return end
+  -- Retail-only spec/inspect logic
   if not guid then return end
   self:_EnsureInspect()
 
@@ -2318,7 +2306,7 @@ end
 -- Called when a new Nearby entry is created (pre-warm).
 function Nearby:_PrewarmSpecForEntry(entry, unit)
   if not _InspectEnabled() then return end
-  if not IS_RETAIL then return end
+  -- Retail-only spec/inspect logic
   if not entry or not entry.guid then return end
   if entry.spec and entry.spec ~= "" then
     -- keep cache consistent
@@ -2330,7 +2318,7 @@ end
 
 function Nearby:_ProcessInspectQueue()
   if not _InspectEnabled() then return end
-  if not IS_RETAIL then return end
+  -- Retail-only spec/inspect logic
   self:_EnsureInspect()
   local mgr = self._inspectMgr
   -- Fail-safe: sometimes INSPECT_READY never returns (out of range, phased, other addons/Blizzard inspect races).
@@ -2419,7 +2407,7 @@ function Nearby:_ProcessInspectQueue()
 end
 
 function Nearby:_OnInspectReady(eventGuid)
-  if not IS_RETAIL then return end
+  -- Retail-only spec/inspect logic
   if not eventGuid then return end
   self:_EnsureInspect()
   local mgr = self._inspectMgr
@@ -2622,7 +2610,7 @@ if (not e.factionGroup or e.factionGroup == "") and GetDB then
   end
 end
     -- Retail-only: pre-warm / learn specialization (cached + throttled).
-  if IS_RETAIL and playerGuid then
+  if playerGuid then
     if e.spec and e.spec ~= "" then
       self:_SpecCacheSet(playerGuid, e.spec)
     elseif unit and (not e.spec or e.spec == "") then

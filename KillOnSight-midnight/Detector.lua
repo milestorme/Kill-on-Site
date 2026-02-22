@@ -1,14 +1,12 @@
 -- Detector.lua
--- Unit-based detection and notification routing.
--- Retail (Midnight+): no CLEU dependency; relies on nameplates/target/mouseover/unit-scoped events.
--- Classic-era clients: remains compatible; this file does not remove CLEU functionality elsewhere.
+-- Unit-based detection and notification routing (Retail / Midnight only).
+-- No CLEU dependency; relies on nameplates/target/mouseover/unit-scoped events.
 
 local ADDON_NAME = ...
 local L = KillOnSight_L
 
-local IS_RETAIL = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
-local DEFAULT_RETAIL_NEARBY_MAX_YARDS = 60
-local RETAIL_FORCE_NEARBY_MAX_MULT = 1.5 -- allow a bit more distance for "high confidence" promotions
+local DEFAULT_NEARBY_MAX_YARDS = 60
+local FORCE_NEARBY_MAX_MULT = 1.5 -- allow a bit more distance for "high confidence" promotions
 
 local function Now() return time() end
 
@@ -17,7 +15,7 @@ local function GetNotifier() return _G.KillOnSight_Notifier end
 local function GetCore() return _G.KillOnSight_Core end
 local function GetNearby() return _G.KillOnSight_Nearby end
 
--- Retail stealth/vanish detection (no CLEU): driven by UNIT_AURA on target/mouseover/nameplates.
+-- Stealth/vanish detection via UNIT_AURA on target/mouseover/nameplates.
 -- We use spellIDs to avoid localization issues.
 local STEALTH_AURA_SPELLIDS = {
   1784,   -- Rogue: Stealth
@@ -74,10 +72,8 @@ local function ShouldNotifyStealth(nameLower)
 end
 
 local function UnitHasStealthAura(unit)
-  if not IS_RETAIL then return false end
   if not unit or unit == "" then return false end
 
-  -- Fast path: Dragonflight+ C_UnitAuras helper.
   if C_UnitAuras and C_UnitAuras.GetAuraDataBySpellID then
     for i = 1, #STEALTH_AURA_SPELLIDS do
       local id = STEALTH_AURA_SPELLIDS[i]
@@ -86,30 +82,14 @@ local function UnitHasStealthAura(unit)
         return true, (aura.name or (GetSpellInfo and GetSpellInfo(id))) or "Stealth"
       end
     end
-    return false
   end
 
-  -- Fallback: scan buffs (Classic-era only). Retail UnitAura can surface protected values.
-  if not IS_RETAIL and UnitAura then
-    for i = 1, 40 do
-      local name, _, _, _, _, _, _, _, _, spellId = UnitAura(unit, i, "HELPFUL")
-      if not name then break end
-      if spellId then
-        for j = 1, #STEALTH_AURA_SPELLIDS do
-          if spellId == STEALTH_AURA_SPELLIDS[j] then
-            return true, name
-          end
-        end
-      end
-    end
-  end
   return false
 end
 
--- Retail reality: enemy stealth auras are not always queryable via UnitAuras for hostile units.
+-- Enemy stealth auras are not always queryable via UnitAuras for hostile units.
 -- As a fallback, infer "hidden" transitions via UnitIsVisible()/nameplate removal while recently engaged.
 local function UnitIsActuallyVisible(unit)
-  if not IS_RETAIL then return true end
   if UnitIsVisible then
     local ok = UnitIsVisible(unit)
     if ok ~= nil then return ok end
@@ -118,7 +98,6 @@ local function UnitIsActuallyVisible(unit)
 end
 
 local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
-  if not IS_RETAIL then return end
   if not guid or not name or name == "" then return end
 
   local now = Now()
@@ -157,7 +136,6 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
 
     local keyLower = name:lower()
     if ShouldNotifyStealth(keyLower) then
-      -- Optionally add/update Nearby as Hidden.
       if (not prof) or prof.stealthDetectAddToNearby ~= false then
         local Nearby = GetNearby()
         if Nearby and Nearby.Seen then
@@ -207,7 +185,6 @@ local function GetUnitFullNameSafe(unit)
   return name, realm
 end
 
--- Retail-safe: avoid UnitTarget() (can be nil/tainted in some clients); use unit token instead.
 local function UnitTargetsPlayer(unit)
   if not unit or unit == "" then return false end
   if not UnitExists or not UnitIsUnit then return false end
@@ -233,20 +210,20 @@ local function ShouldNotify(key)
   return true
 end
 
--- Retail: combat-entry correlation window (short-lived confidence boost).
+-- Combat-entry correlation window (short-lived confidence boost).
 local combatWindowUntil = 0
 local function InCombatWindow()
-  if not IS_RETAIL or not GetTime then return false end
+  if not GetTime then return false end
   local ok, t = pcall(GetTime)
   if not ok or type(t) ~= "number" then return false end
   return (t < combatWindowUntil) and true or false
 end
 
--- Retail: track recent hostile engagements for BG win attribution (best-effort, no CLEU).
+-- Track recent hostile engagements for win attribution (best-effort, no CLEU).
 local recentEngagements = {}
 local ENGAGE_WINDOW = 20 -- seconds
 local function TrackEngagement(name, classFile, guild, guid)
-  if not IS_RETAIL or not GetTime then return end
+  if not GetTime then return end
   if not name or name == "" then return end
 
   local okLower, key = pcall(string.lower, name)
@@ -267,9 +244,7 @@ local Detector = {}
 -- When a recently engaged enemy player's nameplate disappears abruptly (common for Vanish/Prowl),
 -- infer a hidden transition to keep stealth/prowl announcements working without CLEU.
 function Detector:OnNameplateRemoved(unit)
-  if not IS_RETAIL then return end
   if not unit or unit == "" then return end
-  -- If Core has disabled detection (BG/Arena or PvE instances), ignore nameplate events entirely.
   if _G.KillOnSight_Core and (_G.KillOnSight_Core._bgDisabled or _G.KillOnSight_Core._instDisabled) then return end
   if not UnitGUID or not UnitName then return end
 
@@ -283,7 +258,7 @@ function Detector:OnNameplateRemoved(unit)
   local okN, name = pcall(UnitName, unit)
   if not okN or name == nil then return end
 
-  -- Some Retail/Midnight builds return protected "secret values" that can throw on compare or string ops.
+  -- Some Midnight builds return protected "secret values" that can throw on compare or string ops.
   local okEmpty, isEmpty = pcall(function() return name == "" end)
   if not okEmpty or isEmpty then return end
 
@@ -299,13 +274,13 @@ function Detector:OnNameplateRemoved(unit)
   local age = GetTime() - e.t
   if age > 5 then return end
 
-  -- Only notify if we haven't already marked them as stealthed.
   pcall(function()
     CheckStealthTransition(unit, name, nil, nil, guid, true)
   end)
 end
+
 function Detector:PopMostRecentEngagement(maxAge)
-  if not IS_RETAIL or not GetTime then return nil end
+  if not GetTime then return nil end
   local now = GetTime()
   local window = maxAge or ENGAGE_WINDOW
   local bestKey, bestT, bestEntry = nil, 0, nil
@@ -325,7 +300,6 @@ function Detector:PopMostRecentEngagement(maxAge)
 end
 
 function Detector:PopEngagementForName(name)
-  if not IS_RETAIL then return nil end
   if not name or name == "" then return nil end
   local clean = name:match("^[^-]+") or name
   local okLower, key = pcall(string.lower, clean)
@@ -338,29 +312,26 @@ function Detector:PopEngagementForName(name)
   return (e.name or clean), e.classFile, e.guild, e.guid
 end
 
--- Clear the Retail engagement queue (used for best-effort win/loss attribution).
+-- Clear the engagement queue (used for best-effort win/loss attribution).
 -- Called by Midnight_Stats on Reset Stats so old engagements can't repopulate.
 function Detector:ResetEngagementQueue()
-  if not IS_RETAIL then return end
   for k in pairs(recentEngagements) do
     recentEngagements[k] = nil
   end
 end
 
--- Lightweight internal event hook (Retail only) for combat window timing.
+-- Combat window timing.
 do
-  if IS_RETAIL and CreateFrame then
-    local f = CreateFrame("Frame")
-    f:RegisterEvent("PLAYER_REGEN_DISABLED")
-    f:RegisterEvent("PLAYER_REGEN_ENABLED")
-    f:SetScript("OnEvent", function(_, event)
-      if event == "PLAYER_REGEN_DISABLED" then
-        combatWindowUntil = (GetTime and GetTime() or 0) + 2
-      elseif event == "PLAYER_REGEN_ENABLED" then
-        combatWindowUntil = 0
-      end
-    end)
-  end
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_REGEN_DISABLED")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  f:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+      combatWindowUntil = (GetTime and GetTime() or 0) + 2
+    elseif event == "PLAYER_REGEN_ENABLED" then
+      combatWindowUntil = 0
+    end
+  end)
 end
 
 -- Debounced GUI refresh (provided by Core)
@@ -373,18 +344,17 @@ local function ScheduleGUIRefresh()
   end
 end
 
--- Determine whether a unit is within Nearby range (Retail only). On non-Retail, returns true.
+-- Determine whether a unit is within Nearby range.
 local function IsWithinNearbyRange(unit, forceNearby)
-  if not IS_RETAIL then return true end
   if not UnitDistanceSquared then
     return true -- no API, can't filter
   end
   local distSq = UnitDistanceSquared(unit)
   if not distSq then return true end
 
-  local maxYards = DEFAULT_RETAIL_NEARBY_MAX_YARDS
+  local maxYards = DEFAULT_NEARBY_MAX_YARDS
   if forceNearby then
-    maxYards = maxYards * RETAIL_FORCE_NEARBY_MAX_MULT
+    maxYards = maxYards * FORCE_NEARBY_MAX_MULT
   end
 
   return distSq <= (maxYards * maxYards)
@@ -403,14 +373,12 @@ function Detector:CheckUnit(unit, forceNearby)
   local name = GetUnitNameSafe(unit)
   if not name then return end
 
-  -- Retail nameplates include NPCs, pets and totems (Fire Elemental, Earthgrab Totem, etc).
-  -- We must only track *enemy players* for Stats and Nearby tagging.
+  -- Nameplates include NPCs, pets and totems. We must only track *enemy players*.
   local isPlayerUnit = (UnitIsPlayer and UnitIsPlayer(unit)) or false
   local isPlayerGUID = (guid and guid:match('^Player%-')) ~= nil
 
   -- Retail can briefly report hostile nameplate units as not-attackable (UnitCanAttack false)
-  -- right as the nameplate appears. That causes Nearby to lag by several seconds until another
-  -- event retriggers detection. Prefer friend/enemy APIs and fall back to GUID-based assumptions.
+  -- right as the nameplate appears. Prefer friend/enemy APIs and fall back to GUID-based assumptions.
   local isHostile = nil
   if UnitIsEnemy then
     isHostile = UnitIsEnemy('player', unit)
@@ -423,31 +391,22 @@ function Detector:CheckUnit(unit, forceNearby)
     local ca = UnitCanAttack('player', unit)
     if ca ~= nil then isHostile = ca end
   end
-  -- As a last resort: if it's a Player GUID and a nameplate unit token, treat as hostile.
   if isHostile == nil and isPlayerGUID and tostring(unit):match('^nameplate') then
     isHostile = true
   end
 
   local isEnemyPlayer = (isPlayerUnit or isPlayerGUID) and (isHostile == true)
 
-  -- Confidence promotions (Retail only)
-  if IS_RETAIL then
-    if forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() then
-      forceNearby = true
-    end
+  -- Confidence promotions
+  if forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() then
+    forceNearby = true
   end
 
   local classFile = isPlayerUnit and (select(2, UnitClass(unit))) or nil
   local guild = GetUnitGuild(unit)
 
-  -- Retail: class info may not be available immediately on NAME_PLATE_UNIT_ADDED.
-  if IS_RETAIL and (isPlayerUnit or isPlayerGUID) and (not classFile or classFile == "") and guid then
-    ScheduleClassRetry(unit, guid, 0, forceNearby)
-  end
-
-  -- Retail stealth detection without CLEU: detect transitions via UNIT_AURA on target/mouseover/nameplates.
-  -- This catches Vanish/Stealth/Prowl/Shadowmeld even when the player is already on-screen.
-  if IS_RETAIL and isEnemyPlayer then
+  -- Stealth detection via UNIT_AURA on target/mouseover/nameplates.
+  if isEnemyPlayer then
     local highConfidence = forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or (unit == "target")
     CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
   end
@@ -462,20 +421,18 @@ function Detector:CheckUnit(unit, forceNearby)
     DB:NoteEnemySeen(statsName, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
 
     -- Encounter tracking: increment "Seen" only once per encounter (timeout-based).
-    -- This prevents spamming the counter from frequent UNIT/nameplate refreshes.
     local Core = GetCore()
     if Core and Core.TouchEncounter then
       Core:TouchEncounter(guid, statsName, classFile, guild)
     end
   end
 
-  -- Retail: class/guild metadata can arrive late; ensure the Stats UI updates even when
-  -- this enemy isn't KoS/Guild. Core refresh is debounced.
-  if IS_RETAIL and isEnemyPlayer then
+  -- Class/guild metadata can arrive late; ensure the Stats UI updates.
+  if isEnemyPlayer then
     ScheduleGUIRefresh()
   end
 
-  -- Maintain guild->guid mapping for attacker UI (Classic/TBC still use this in some paths).
+  -- Maintain guild->guid mapping for attacker UI.
   if guid and guild and DB.UpdateLastAttackerGuildByGUID then
     DB:UpdateLastAttackerGuildByGUID(guid, guild)
   elseif name and guild and DB.UpdateLastAttackerGuild then
@@ -509,14 +466,10 @@ function Detector:CheckUnit(unit, forceNearby)
       end
     end
 
-    -- Engagement tracking for Retail win attribution (best-effort).
-    -- Include target/mouseover so open-world wins/losses credit even when the enemy
-    -- never targets you (common for ranged kills or quick skirmishes).
-    if IS_RETAIL then
-      local isDirectUnit = (unit == "target" or unit == "mouseover")
-      if (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or isDirectUnit) then
-        TrackEngagement(name, classFile, guild, guid)
-      end
+    -- Engagement tracking for win attribution (best-effort).
+    local isDirectUnit = (unit == "target" or unit == "mouseover")
+    if (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or isDirectUnit) then
+      TrackEngagement(name, classFile, guild, guid)
     end
   end
 

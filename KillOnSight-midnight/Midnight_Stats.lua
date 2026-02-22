@@ -34,6 +34,30 @@ local function CleanName(n)
   return (n:match("^[^-]+") or n)
 end
 
+local function IsGroupOrSelfByName(name)
+  if not name or name == "" then return true end
+  local clean = name:match("^[^-]+") or name
+  local playerName = UnitName and UnitName("player")
+  if playerName and clean == (playerName:match("^[^-]+") or playerName) then
+    return true
+  end
+  if IsInGroup and IsInGroup() then
+    if IsInRaid and IsInRaid() then
+      local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+      for i = 1, n do
+        local rn = UnitName("raid"..i)
+        if rn and (rn:match("^[^-]+") or rn) == clean then return true end
+      end
+    else
+      for i = 1, 4 do
+        local pn = UnitName("party"..i)
+        if pn and (pn:match("^[^-]+") or pn) == clean then return true end
+      end
+    end
+  end
+  return false
+end
+
 -- --------------------------------------------------
 -- Encounter tracking
 -- --------------------------------------------------
@@ -44,7 +68,7 @@ function Stats:TouchEncounter(guid, name, classFile, guild)
 
   local cn = CleanName(name)
   if not cn then return end
-  if IsGroupOrSelfByName and IsGroupOrSelfByName(cn) then return end
+  if IsGroupOrSelfByName(cn) then return end
 
   local DB = GetDB()
   if not DB then return end

@@ -981,7 +981,7 @@ function DB:ClearStatsPlayers()
 end
 
 function DB:PruneStatsPlayers()
-  local p = (self.realmDB and self.realmDB.profile) or {}
+  local p = self:GetProfile()
   if not p.statsPruneEnabled then return 0 end
 
   local maxDays = tonumber(p.statsPruneMaxDays or 0) or 0
