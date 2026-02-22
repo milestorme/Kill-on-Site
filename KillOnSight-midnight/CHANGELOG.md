@@ -1,4 +1,21 @@
 # KillOnSight – Changelog
+All notable changes to this project will be documented in this file.
+
+---
+
+## v3.3.5
+
+### Changed
+- Midnight version is now **Retail-only (Mainline)**.
+- Removed all Classic-era compatibility code and conditional branches.
+- Simplified multiple modules by eliminating `IS_RETAIL` checks and fallback logic.
+- Replaced dependency on Core helper with a local `IsGroupOrSelfByName()` implementation in `Midnight_Stats.lua`.
+
+### Fixed
+- Fixed **Nearby frame lock state not persisting** due to incorrect saved variable key.
+- Fixed **Options UI lock checkbox** not matching actual lock variable (`nearbyFrameLocked`).
+- Fixed **localization bug** caused by `GetLocale()` shadowing locale table (affected KoS/Guild-KoS detection).
+- Improved **font fallback handling** to prevent empty chat messages and provide proper warning output.
 
 ## v3.3.4
 
