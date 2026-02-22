@@ -17,7 +17,7 @@ end
 
 
 
--- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
+-- Optional town-level suppression: Booty Bay / Gadgetzan.
 local function IsInGoblinTown()
   local sub = (GetSubZoneText and GetSubZoneText()) or ""
   local mini = (GetMinimapZoneText and GetMinimapZoneText()) or ""
@@ -305,7 +305,7 @@ end
 
 
 -------------------------------------------------
--- Spy-style Stealth Alert Frame (Classic-safe)
+-- Spy-style Stealth Alert Frame
 -------------------------------------------------
 function Notifier:Chat(msg)
   if DB:GetProfile().printToChat then

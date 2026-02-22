@@ -1,10 +1,7 @@
--- GUI.lua
+-- GUI.lua (Retail / Midnight only)
 local ADDON_NAME = ...
 local L = KillOnSight_L
 local DB = KillOnSight_DB
-
--- Retail (Mainline) gating
-local IS_RETAIL = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 
 local GUI = {}
 local frame
@@ -38,7 +35,6 @@ local function _ApplyClassIcon(tex, classFile)
 end
 
 local function CreateBackdrop(f)
-  -- Classic uses BackdropTemplate for SetBackdrop
   if not f.SetBackdrop and BackdropTemplateMixin then
     Mixin(f, BackdropTemplateMixin)
   end
@@ -763,8 +759,6 @@ local function CreateDropdown(parent, values)
 end
 
 local function MakeTab(parent, idx, text)
-  -- Classic compatibility:
-  -- Avoid PanelTabButtonTemplate / PanelTemplates_* which can reference missing atlases on some Classic clients.
   local tab = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
   tab:SetID(idx)
   tab:SetText(text)
@@ -901,7 +895,7 @@ end
 
   frame.ShowTab = function(self, id)
     -- Retail: Attackers tab is intentionally hidden/disabled.
-    if IS_RETAIL and id == 3 then
+    if id == 3 then
       id = 4
     end
     -- Resize for certain tabs so they have room to breathe.
@@ -961,7 +955,7 @@ end
   local t4 = MakeTab(frame, 4, (L.UI_TAB_STATS or "Stats"))
   local t5 = MakeTab(frame, 5, L.UI_OPTIONS)
 
-  if IS_RETAIL and t3 then
+  if t3 then
     t3:Hide()
   end
 
@@ -1913,23 +1907,8 @@ cAutoHide:SetScript("OnClick", function(self)
   end
 end)
 
--- Classic/TBC-friendly town suppression: Booty Bay / Gadgetzan.
 local anchorBelowAutoHide = cAutoHide
 local anchorOffset = -10
-if not IS_RETAIL then
-  local cGoblinTowns = MakeCheck(opt, L.UI_DISABLE_GOBLIN_TOWNS)
-  cGoblinTowns:SetPoint("TOPLEFT", cAutoHide, "BOTTOMLEFT", 0, -10)
-  cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true)
-  cGoblinTowns:SetScript("OnClick", function(self)
-    local p = ActiveProfile()
-    p.disableInGoblinTowns = self:GetChecked()
-    if KillOnSight_Nearby and KillOnSight_Nearby.ClearAll then
-      KillOnSight_Nearby:ClearAll({ keepShown = false })
-    end
-  end)
-  anchorBelowAutoHide = cGoblinTowns
-  anchorOffset = -18
-end
 
 
 -- Nearby window scale
