@@ -22,7 +22,7 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
   - Enemy statistics: first seen, last seen, seen count, wins/losses
   - Sorting and reset controls
 - **Sync**
-  - Sync KoS/Guild entries with party/raid/guild (when available)
+  - Sync KoS/Guild entries with guild (when available)
   - Changelog pruning to reduce SavedVariables bloat
 
 - **Notes (KoS)**
