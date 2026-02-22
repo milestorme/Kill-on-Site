@@ -89,20 +89,7 @@ local function UnitHasStealthAura(unit)
     return false
   end
 
-  -- Fallback: scan buffs (Classic-era only). Retail UnitAura can surface protected values.
-  if not IS_RETAIL and UnitAura then
-    for i = 1, 40 do
-      local name, _, _, _, _, _, _, _, _, spellId = UnitAura(unit, i, "HELPFUL")
-      if not name then break end
-      if spellId then
-        for j = 1, #STEALTH_AURA_SPELLIDS do
-          if spellId == STEALTH_AURA_SPELLIDS[j] then
-            return true, name
-          end
-        end
-      end
-    end
-  end
+  -- C_UnitAuras was not available and IS_RETAIL is true; cannot query enemy stealth auras.
   return false
 end
 
@@ -441,9 +428,7 @@ function Detector:CheckUnit(unit, forceNearby)
   local guild = GetUnitGuild(unit)
 
   -- Retail: class info may not be available immediately on NAME_PLATE_UNIT_ADDED.
-  if IS_RETAIL and (isPlayerUnit or isPlayerGUID) and (not classFile or classFile == "") and guid then
-    ScheduleClassRetry(unit, guid, 0, forceNearby)
-  end
+  -- ScheduleClassRetry is not implemented; class is resolved via GetPlayerInfoByGUID on next tick naturally.
 
   -- Retail stealth detection without CLEU: detect transitions via UNIT_AURA on target/mouseover/nameplates.
   -- This catches Vanish/Stealth/Prowl/Shadowmeld even when the player is already on-screen.

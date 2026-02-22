@@ -650,6 +650,10 @@ local function HandleCombatLog()
   local Nearby = GetNearby()
   if not DB then return end
   if not CombatLogGetCurrentEventInfo then return end
+  local function CleanName(n)
+    if not n or n == "" then return nil end
+    return (n:match("^[^-]+") or n)
+  end
 
   local timestamp, subevent, hideCaster,
     srcGUID, srcName, srcFlags, srcRaidFlags,
@@ -787,7 +791,7 @@ local function HandleCombatLog()
 
   -- Keep the old "Last attackers" tracking, but ONLY when an enemy actually attacked YOU.
   -- (Not just seen/nearby; must be a hostile action targeted at the player.)
-  local playerGUID = UnitGUID("player")
+  -- playerGUID is already declared above; reuse it here (nil-guarded).
   if not playerGUID or dstGUID ~= playerGUID then return end
   if not srcName or srcName == "" then return end
   if not IsFlagPlayer(srcFlags) then return end
@@ -903,7 +907,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
 
   -- Retail-only: best-effort PvP outcome tracking without CLEU.
   -- Delegated to Midnight_Stats.lua so Core stays focused on event routing.
-  if IS_RETAIL and (event == "PLAYER_PVP_KILLS_CHANGED" or event == "PLAYER_KILLING_BLOW" or event == "PLAYER_DEAD") then
+  if IS_RETAIL and (event == "PLAYER_PVP_KILLS_CHANGED" or event == "PLAYER_DEAD") then
     local Stats = GetMidnightStats()
     if Stats and Stats.OnEvent then
       Stats:OnEvent(event, ...)
@@ -921,7 +925,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     end
     if Core._bgDisabled then return end
     local unit = ...
-    if Detector and not Core._bgDisabled and not Core._instDisabled then if not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit(unit) end end
+    if Detector and not Core._instDisabled then Detector:CheckUnit(unit) end
     return
   end
 
@@ -947,7 +951,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     if Core._bgDisabled then return end
     local unit = ...
     if unit and (unit == "target" or unit == "mouseover" or unit:match('^nameplate')) then
-      if Detector and not Core._bgDisabled and not Core._instDisabled then if not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit(unit) end end
+      if Detector and not Core._instDisabled then Detector:CheckUnit(unit) end
     end
     return
   end

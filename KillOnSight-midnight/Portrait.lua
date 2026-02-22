@@ -84,7 +84,6 @@ local function RunRetail()
     local realm = SafeToString(rawR)
     local short = NormalizeName(n)
     if not short then return false end
-    if not n then return false end
 
     local players = select(1, GetDataTables())
     if not players then return false end
