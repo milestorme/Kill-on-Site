@@ -295,7 +295,8 @@ if not self.rows then return end
           if choice ~= "Default" and not self._badFontsWarned[choice] then
             self._badFontsWarned[choice] = true
             if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-              DEFAULT_CHAT_FRAME:AddMessage("")
+              local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or "KILLONSIGHT"
+              DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff" .. prefix .. ":|r Nearby font '" .. tostring(choice) .. "' could not be applied; falling back to default.")
             end
           end
         end
@@ -883,7 +884,7 @@ function Nearby:ApplyLocked()
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
-  local locked = prof.nearbyLocked == true
+  local locked = prof.nearbyFrameLocked == true
   self.frame:SetMovable(true)
   SafeEnableMouse(self.frame, true)
   if locked then
@@ -942,14 +943,14 @@ function Nearby:AlertNewEnemy(e)
   local prof = DB and DB:GetProfile()
   if not prof then return end
 
-  local L = GetLocale()
+  local Lk = KillOnSight_L
   local t = e.kosType
 
   -- KoS / Guild-KoS: keep the strong alert behavior (sound + flash) exactly as before.
-  -- NOTE: We *must not* rely on (t == L.KOS) if locale keys are missing (nil), so we guard with t.
+  -- NOTE: We *must not* rely on (t == Lk.KOS) if locale keys are missing (nil), so we guard with t.
   local isKoS = false
   if t then
-    if (L and L.KOS and t == L.KOS) or (L and L.GUILD_KOS and t == L.GUILD_KOS) or t == "KoS" or t == "Guild-KoS" then
+    if (Lk and Lk.KOS and t == Lk.KOS) or (Lk and Lk.GUILD_KOS and t == Lk.GUILD_KOS) or t == "KoS" or t == "Guild-KoS" then
       isKoS = true
     end
   end
@@ -976,10 +977,10 @@ end
 -- Returns two booleans: doChat, doStrong (sound/flash).
 function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
   if not name or name == "" then return false, false end
-  local Lc = GetLocale()
+  local Lk = KillOnSight_L
   local isKoS = false
   if listType then
-    if (Lc and Lc.KOS and listType == Lc.KOS) or (Lc and Lc.GUILD_KOS and listType == Lc.GUILD_KOS) or listType == "KoS" or listType == "Guild-KoS" then
+    if (Lk and Lk.KOS and listType == Lk.KOS) or (Lk and Lk.GUILD_KOS and listType == Lk.GUILD_KOS) or listType == "KoS" or listType == "Guild-KoS" then
       isKoS = true
     end
   end
