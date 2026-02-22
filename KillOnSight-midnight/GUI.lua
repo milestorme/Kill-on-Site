@@ -1886,10 +1886,10 @@ end)
 
 local cNearbyLock = MakeCheck(opt, L.UI_NEARBY_LOCK)
 cNearbyLock:SetPoint("TOPLEFT", cNearbySound, "BOTTOMLEFT", 0, -10)
-cNearbyLock:SetChecked(prof.nearbyLocked == true)
+cNearbyLock:SetChecked(prof.nearbyFrameLocked == true)
 cNearbyLock:SetScript("OnClick", function(self)
   local p = ActiveProfile()
-  p.nearbyLocked = self:GetChecked()
+  p.nearbyFrameLocked = self:GetChecked()
   if KillOnSight_Nearby and KillOnSight_Nearby.ApplyLocked then
     KillOnSight_Nearby:ApplyLocked()
   end
@@ -2157,7 +2157,7 @@ end)
     -- Nearby section
     if cNearby and cNearby.SetChecked then cNearby:SetChecked(prof.showNearbyFrame ~= false) end
     if cNearbySound and cNearbySound.SetChecked then cNearbySound:SetChecked(prof.nearbySound ~= false) end
-    if cNearbyLock and cNearbyLock.SetChecked then cNearbyLock:SetChecked(prof.nearbyLocked == true) end
+    if cNearbyLock and cNearbyLock.SetChecked then cNearbyLock:SetChecked(prof.nearbyFrameLocked == true) end
     if cAutoHide and cAutoHide.SetChecked then cAutoHide:SetChecked(prof.nearbyAutoHide ~= false) end
     if cGoblinTowns and cGoblinTowns.SetChecked then cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true) end
 
