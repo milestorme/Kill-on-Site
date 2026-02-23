@@ -152,3 +152,5 @@ L.UI_NOTES = "Notatki"
 L["TT_NOT_TARGETABLE"] = "Nie można teraz namierzyć"
 
 L.UI_NEARBY_BG_DARKNESS = "Przyciemnienie tła okna pobliżu"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Pasywne wykrywanie w pobliżu wymaga włączenia pasków nazw wrogów."

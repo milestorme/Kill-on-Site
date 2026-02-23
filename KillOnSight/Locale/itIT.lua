@@ -152,3 +152,5 @@ L.UI_NOTES = "Note"
 L["TT_NOT_TARGETABLE"] = "Non bersagliabile ora"
 
 L.UI_NEARBY_BG_DARKNESS = "Oscurità dello sfondo finestra vicini"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Il rilevamento passivo nelle vicinanze richiede che le Barre dei nomi dei nemici siano abilitate."

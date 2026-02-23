@@ -187,3 +187,5 @@ L.UI_NOTES = "Noter"
 L["TT_NOT_TARGETABLE"] = "Kan ikke målrettes nu"
 
 L.UI_NEARBY_BG_DARKNESS = "Mørkhed på baggrund i nær-vinduet"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passiv registrering i nærheden kræver, at fjendens navneplader er aktiveret."

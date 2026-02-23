@@ -181,3 +181,5 @@ L.UI_NOTES = "Notas"
 L["TT_NOT_TARGETABLE"] = "Não é possível selecionar agora"
 
 L.UI_NEARBY_BG_DARKNESS = "Escuridão do fundo da janela de próximos"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "A detecção passiva próxima exige que as Placas de Nome de Inimigos estejam ativadas."

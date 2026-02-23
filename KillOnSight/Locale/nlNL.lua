@@ -184,3 +184,5 @@ L.UI_NOTES = "Notities"
 L["TT_NOT_TARGETABLE"] = "Nu niet te targeten"
 
 L.UI_NEARBY_BG_DARKNESS = "Donkerheid van nabijheidsvenster-achtergrond"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passieve detectie in de buurt vereist dat vijandelijke naamplaten zijn ingeschakeld."

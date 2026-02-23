@@ -152,3 +152,5 @@ L.UI_NOTES = "メモ"
 L["TT_NOT_TARGETABLE"] = "現在ターゲット不可"
 
 L.UI_NEARBY_BG_DARKNESS = "付近ウィンドウ背景の暗さ"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "近距離のパッシブ検知には「敵のネームプレート」を有効にする必要があります。"
