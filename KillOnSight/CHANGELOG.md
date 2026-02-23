@@ -1,5 +1,12 @@
 # KillOnSight – Changelog
 
+## 3.2.3
+
+### Fixed
+- Fixed TBC “phantom” Nearby entries (layer/nameplate cleanup + visibility guard)
+- Removed legacy non-hostile target “ghost” workaround
+- Added one-time logon notice when Enemy Nameplates are disabled (localized)
+
 ## 3.2.2
 
 ### Refactor & Cleanup

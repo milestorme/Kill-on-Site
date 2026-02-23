@@ -181,3 +181,5 @@ L.UI_NOTES = "메모"
 L["TT_NOT_TARGETABLE"] = "지금은 대상 지정 불가"
 
 L.UI_NEARBY_BG_DARKNESS = "근처 창 배경 어두움"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "근처 수동 감지를 위해 적 이름표를 활성화해야 합니다."

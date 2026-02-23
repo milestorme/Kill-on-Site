@@ -152,3 +152,5 @@ L.UI_NOTES = "備註"
 L["TT_NOT_TARGETABLE"] = "目前無法選為目標"
 
 L.UI_NEARBY_BG_DARKNESS = "附近視窗背景深色度"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "附近的被動偵測需要啟用敵方姓名板。"

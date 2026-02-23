@@ -183,3 +183,5 @@ L.UI_NOTES = "Notes"
 L["TT_NOT_TARGETABLE"] = "Impossible à cibler pour le moment"
 
 L.UI_NEARBY_BG_DARKNESS = "Opacité du fond de la fenêtre À proximité"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "La détection passive à proximité nécessite l'activation des barres de nom des ennemis."

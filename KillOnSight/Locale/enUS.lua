@@ -171,3 +171,5 @@ L.UI_NOTES = "Notes"
 L["TT_NOT_TARGETABLE"] = "Not targetable right now"
 
 L.UI_NEARBY_BG_DARKNESS = "Nearby background darkness"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Nearby passive detection requires Enemy Nameplates enabled."

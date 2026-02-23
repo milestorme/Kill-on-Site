@@ -184,3 +184,5 @@ L.UI_NOTES = "Notizen"
 L["TT_NOT_TARGETABLE"] = "Derzeit nicht anvisierbar"
 
 L.UI_NEARBY_BG_DARKNESS = "Dunkelheit des Nahfenster-Hintergrunds"
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passive Erkennung in der Nähe erfordert aktivierte feindliche Namensplaketten."

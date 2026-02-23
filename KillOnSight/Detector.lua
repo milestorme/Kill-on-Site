@@ -98,6 +98,13 @@ function Detector:CheckUnit(unit)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
   if not unit or not UnitExists(unit) then return end
+
+-- TBC/Wrath-era clients can briefly surface nameplate units for enemies that are not actually
+-- renderable/attackable on your current layer (e.g. during layer transitions). Ignore non-visible
+-- nameplates so they don't get added to Nearby.
+if unit:match("^nameplate") and UnitIsVisible and (UnitIsVisible(unit) == false) then
+    return
+end
   if not InAllowedContext() then return end
   if UnitIsUnit(unit, "player") then return end
 

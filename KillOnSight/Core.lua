@@ -1,3 +1,25 @@
+-- Notice for enemy nameplates (shown every login/reload if disabled)
+local function CheckEnemyNameplatesNotice()
+    local cvar = GetCVar and GetCVar("nameplateShowEnemies")
+    if cvar == "0" then
+        local msg = (L and L.ENEMY_NAMEPLATES_REQUIRED) or "Nearby passive detection requires Enemy Nameplates enabled."
+
+        local function _print()
+            if DEFAULT_CHAT_FRAME then
+                DEFAULT_CHAT_FRAME:AddMessage("|cffFF0000KillOnSight:|r " .. msg)
+            end
+        end
+
+        -- Delay so it shows after other startup messages
+        if C_Timer and C_Timer.After then
+            C_Timer.After(5, _print)
+        else
+            _print()
+        end
+    end
+end
+
+
 -- Core.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
@@ -757,6 +779,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     StartEncounterTicker()
     StartDeferredGuildResolveTicker()
     Print(L.MSG_LOADED)
+    CheckEnemyNameplatesNotice()
     if C_Timer and C_Timer.After and KillOnSightDB and KillOnSightDB.localeSanity == true then
       C_Timer.After(10, LocaleSanityCheck)
     end
@@ -793,9 +816,12 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "NAME_PLATE_UNIT_REMOVED" then
-    -- Nearby list is pruned by ticker; no hard remove needed here.
-    return
-  end
+        local unit = ...
+        if KillOnSight_Nearby and KillOnSight_Nearby.OnNameplateRemoved then
+            KillOnSight_Nearby:OnNameplateRemoved(unit)
+        end
+        return
+    end
 
   if event == "UNIT_AURA" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP"
   or event == "UNIT_SPELLCAST_SUCCEEDED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then

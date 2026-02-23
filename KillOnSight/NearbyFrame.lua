@@ -1622,41 +1622,44 @@ b:SetScript("OnEnter", function(selfBtn)
         local entry = e
         if C_Timer and C_Timer.After then
           C_Timer.After(0.18, function()
-            if not entry then return end
-            local now = (GetTime and GetTime()) or 0
-            local tn, tr = UnitName("target")
-            if not tn or tn == "" then
-              entry._kosNotTargetableUntil = now + 30
-              RefreshNearbyTooltip(selfBtn)
-              return
-            end
-            local tfull = tn
-            if tr and tr ~= "" then tfull = tn .. "-" .. tr end
-            local targetNorm = NormalizeNameForCompare(tfull)
-            local entryNorm = NormalizeNameForCompare(entry.fullName or entry.name or "")
-            if targetNorm ~= "" and entryNorm ~= "" and targetNorm == entryNorm then
-              -- We successfully targeted them. If they are not attackable (and not friendly),
-              -- it is often a layering/cache ghost: hide this entry temporarily.
-              if UnitIsPlayer and UnitIsPlayer("target") then
-                local canAttack = (UnitCanAttack and UnitCanAttack("player", "target"))
-                local isFriend = (UnitIsFriend and UnitIsFriend("player", "target"))
-                if canAttack == false and isFriend == false and (not IsInSanctuary()) then
-                  entry._kosLayerFilteredUntil = now + 60
-                  RefreshNearbyTooltip(selfBtn)
-                end
-              end
-            
-                -- If they are targetable now, clear any previous not-targetable flags immediately.
-                if (canAttack == true) or (isFriend == true) then
-                  entry._kosNotTargetableUntil = nil
-                  entry._kosLayerFilteredUntil = nil
-                  RefreshNearbyTooltip(selfBtn)
-                end
-else
-              entry._kosNotTargetableUntil = now + 30
-              RefreshNearbyTooltip(selfBtn)
-            end
-          end)
+  if not entry then return end
+  local function checkTarget()
+    if not entry then return false end
+    if not UnitExists or not UnitExists("target") then return false end
+    local tn, tr = UnitName("target")
+    if not tn or tn == "" then return false end
+    local tfull = tn
+    if tr and tr ~= "" then tfull = tn .. "-" .. tr end
+    local targetNorm = NormalizeNameForCompare and NormalizeNameForCompare(tfull) or tfull
+    local entryNorm  = NormalizeNameForCompare and NormalizeNameForCompare(entry.fullName or entry.name or "") or (entry.fullName or entry.name or "")
+    return (targetNorm ~= "" and entryNorm ~= "" and targetNorm == entryNorm)
+  end
+
+  local function failNotTargetable()
+    local now = (GetTime and GetTime()) or 0
+    entry._kosNotTargetableUntil = now + 30
+    RefreshNearbyTooltip(selfBtn)
+  end
+
+  -- First check shortly after the secure macro runs.
+  if checkTarget() then
+    entry._kosNotTargetableUntil = nil
+    entry._kosLayerFilteredUntil = nil
+    RefreshNearbyTooltip(selfBtn)
+    return
+  end
+
+  -- Retry once more to avoid false "Not targetable" when the client targets slightly late.
+  C_Timer.After(0.22, function()
+    if checkTarget() then
+      entry._kosNotTargetableUntil = nil
+      entry._kosLayerFilteredUntil = nil
+      RefreshNearbyTooltip(selfBtn)
+      return
+    end
+    failNotTargetable()
+  end)
+end)
         end
         return
       elseif btn == "RightButton" then
@@ -1825,6 +1828,40 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
 
   self:Refresh()
 end
+
+-- Remove a single entry immediately (used to prevent "ghost" nearby entries on clients where
+-- nameplates can appear briefly for players on other layers/phases).
+function Nearby:ForgetByName(name)
+    if not name or name == "" then return end
+    local raw = name
+    name = NormalizeName(name) or name
+    local key = name:lower()
+    if not self.entries or not self.entries[key] then return end
+    self.entries[key] = nil
+    if self.alerted then self.alerted[key] = nil end
+    if self.strongAlerted then self.strongAlerted[key] = nil end
+    if self.announceAlerted then self.announceAlerted[key] = nil end
+    self:ScheduleRefresh()
+end
+
+-- Hooked from NAME_PLATE_UNIT_REMOVED so we don't keep players in the Nearby list
+-- for up to ACTIVE_TTL seconds after their nameplate is gone (common in TBC due to layering).
+function Nearby:OnNameplateRemoved(unit)
+    if not unit then return end
+    -- If they're still your target/mouseover, let the normal unit events keep them alive.
+    if UnitIsUnit and (UnitIsUnit(unit, "target") or UnitIsUnit(unit, "mouseover")) then
+        return
+    end
+
+    local name = GetUnitNameSafe and GetUnitNameSafe(unit) or nil
+    if not name and GetUnitName then
+        name = GetUnitName(unit)
+    end
+    if name then
+        self:ForgetByName(name)
+    end
+end
+
 
 function Nearby:Refresh()
 
