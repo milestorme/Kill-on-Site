@@ -1,22 +1,29 @@
 -- Notice for enemy nameplates (shown every login/reload if disabled)
 local function CheckEnemyNameplatesNotice()
-    local cvar = GetCVar and GetCVar("nameplateShowEnemies")
-    if cvar == "0" then
-        local msg = (L and L.ENEMY_NAMEPLATES_REQUIRED) or "Nearby passive detection requires Enemy Nameplates enabled."
+  -- Some clients split enemy nameplate CVars; treat enemy nameplates as enabled if ANY relevant toggle is on.
+  local function cvarOn(name)
+    local v = GetCVar and GetCVar(name)
+    return v == "1"
+  end
 
-        local function _print()
-            if DEFAULT_CHAT_FRAME then
-                DEFAULT_CHAT_FRAME:AddMessage("|cffFF0000KillOnSight:|r " .. msg)
-            end
-        end
+  local enemyOn = cvarOn("nameplateShowEnemies") or cvarOn("nameplateShowEnemyNPCs") or cvarOn("nameplateShowEnemyMinions")
+  if enemyOn then return end
 
-        -- Delay so it shows after other startup messages
-        if C_Timer and C_Timer.After then
-            C_Timer.After(5, _print)
-        else
-            _print()
-        end
+  local Loc = KillOnSight_L
+  local msg = (Loc and Loc.ENEMY_NAMEPLATES_REQUIRED) or "Nearby passive detection requires Enemy Nameplates enabled."
+
+  local function _print()
+    if DEFAULT_CHAT_FRAME then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffFF0000KillOnSight:|r " .. msg)
     end
+  end
+
+  -- Delay so it shows after other startup messages
+  if C_Timer and C_Timer.After then
+    C_Timer.After(5, _print)
+  else
+    _print()
+  end
 end
 
 
@@ -26,6 +33,10 @@ local L = KillOnSight_L
 
 local Core = CreateFrame("Frame")
 
+
+
+-- Fallback: fire the notice once on first PLAYER_ENTERING_WORLD in case the ADDON_LOADED path changes.
+local KOS_NameplateNoticePEW
 local band = (bit and bit.band) or (bit32 and bit32.band)
 
 local function GetDB()       return _G.KillOnSight_DB       end
