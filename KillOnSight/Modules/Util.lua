@@ -2,6 +2,10 @@
 -- Shared helpers (loaded early)
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 local Util = {}
 

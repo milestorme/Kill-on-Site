@@ -1,6 +1,10 @@
 -- Detector.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
@@ -96,7 +100,7 @@ end
 function Detector:CheckUnit(unit)
   local DB = GetDB()
   local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
   if not unit or not UnitExists(unit) then return end
 
 -- TBC/Wrath-era clients can briefly surface nameplate units for enemies that are not actually
@@ -171,10 +175,10 @@ end
       end
       local kosType = nil
       local pe = DB.LookupPlayer and DB:LookupPlayer(name)
-      if pe then kosType = pe.type or L.KOS end
+      if pe then kosType = pe.type or ((L and L.KOS) or "KoS") end
       if not kosType and guild and DB.LookupGuild then
         local ge = DB:LookupGuild(guild)
-        if ge then kosType = ge.type or L.GUILD_KOS end
+        if ge then kosType = ge.type or ((L and L.GUILD_KOS) or "Guild KoS") end
       end
       if KillOnSight_Nearby then
         KillOnSight_Nearby:Seen(name, classFile, guild, kosType, UnitLevel(unit))
@@ -188,7 +192,9 @@ end
     local key = ("p:"..name:lower())
     if ShouldNotify(key) then
       DB:MarkSeenPlayer(name)
-      Notifier:NotifyPlayer(playerEntry.type or L.KOS, name, playerEntry.reason)
+      if Notifier and Notifier.NotifyPlayer then
+        Notifier:NotifyPlayer(playerEntry.type or ((L and L.KOS) or "KoS"), name, playerEntry.reason)
+      end
     end
     return
   end
@@ -208,7 +214,9 @@ end
       local key = ("g:"..guild:lower()..":"..name:lower())
       if ShouldNotify(key) then
         DB:MarkSeenGuild(guild)
-        Notifier:NotifyGuild(guildEntry.type or L.GUILD_KOS, name, guild, guildEntry.reason)
+        if Notifier and Notifier.NotifyGuild then
+          Notifier:NotifyGuild(guildEntry.type or ((L and L.GUILD_KOS) or "Guild KoS"), name, guild, guildEntry.reason)
+        end
       end
       return
     end

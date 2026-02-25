@@ -30,6 +30,10 @@ end
 -- Core.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 local Core = CreateFrame("Frame")
 
@@ -100,13 +104,19 @@ local _pendingGUIRefresh = false
 local function _ScheduleGUIRefresh()
   if _pendingGUIRefresh then return end
   _pendingGUIRefresh = true
-  C_Timer.After(0.2, function()
+  local function doRefresh()
     _pendingGUIRefresh = false
     local GUI = GetGUI()
     if GUI and GUI.RefreshAll then
       GUI:RefreshAll()
     end
-  end)
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0.2, doRefresh)
+  else
+    doRefresh()
+  end
 end
 
 local function ResolveEncounter(guid)
@@ -151,7 +161,15 @@ function Core:_ScheduleGUIRefresh()
 end
 
 local function Print(msg)
-  DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..L.ADDON_PREFIX..":|r "..msg)
+  if not DEFAULT_CHAT_FRAME or not DEFAULT_CHAT_FRAME.AddMessage then return end
+  local prefix = (L and L.ADDON_PREFIX) or "KillOnSight"
+  DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..tostring(msg or ""))
+end
+
+local function ChatNotify(fmt, ...)
+  local Notifier = GetNotifier()
+  if not (Notifier and Notifier.Chat and fmt) then return end
+  Notifier:Chat(string.format(fmt, ...))
 end
 
 local nearbyTicker
@@ -159,6 +177,7 @@ local nearbyTicker
 local function StartNearbyNameplateScan()
   if nearbyTicker then return end
   if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
+  if not C_Timer or not C_Timer.NewTicker then return end
   nearbyTicker = C_Timer.NewTicker(2.5, function()
     local Detector = GetDetector()
     if not Detector then return end
@@ -182,7 +201,7 @@ local function SplitFirst(s)
 end
 
 local function Help()
-  Print(L.CMD_HELP)
+  Print((L and L.CMD_HELP) or "Usage: /kos help")
   Print("Pruning policy (Stats): /kos statsprune on|off|maxdays N|maxentries N|now")
   Print("Tip: /kos statsprune   (with no args) prints current status")
   Print("Import from Spy: /kos importspy")
@@ -201,14 +220,14 @@ end
 
 local function AddPlayer(rest)
   local DB = GetDB()
-  local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
 
   local name = EnsureName(rest)
   if not name then return Help() end
   if DB:HasPlayer(name) then return end
-  DB:AddPlayer(name, L.KOS, nil, UnitName("player"))
-  Notifier:Chat(string.format(L.ADDED_PLAYER, L.KOS, name))
+  local kosType = (L and L.KOS) or "KoS"
+  DB:AddPlayer(name, kosType, nil, UnitName("player"))
+  ChatNotify((L and L.ADDED_PLAYER) or "Added %s: %s", kosType, name)
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
   local Nearby = GetNearby()
@@ -217,15 +236,14 @@ end
 
 local function RemovePlayer(rest)
   local DB = GetDB()
-  local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
 
   local name = SplitFirst(rest or "")
   if not name then return Help() end
   if DB:RemovePlayer(name) then
-    Notifier:Chat(string.format(L.REMOVED_PLAYER, name))
+    ChatNotify((L and L.REMOVED_PLAYER) or "Removed player: %s", name)
   else
-    Notifier:Chat(string.format(L.NOT_FOUND, name))
+    ChatNotify((L and L.NOT_FOUND) or "Not found: %s", name)
   end
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
@@ -235,14 +253,14 @@ end
 
 local function AddGuild(rest)
   local DB = GetDB()
-  local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
 
   local guild = (rest or ""):gsub("^%s+", ""):gsub("%s+$", "")
   if guild == "" then return Help() end
   if DB:HasGuild(guild) then return end
-  DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
-  Notifier:Chat(string.format(L.ADDED_GUILD, L.GUILD_KOS, guild))
+  local guildType = (L and L.GUILD_KOS) or "Guild KoS"
+  DB:AddGuild(guild, guildType, nil, UnitName("player"))
+  ChatNotify((L and L.ADDED_GUILD) or "Added %s: %s", guildType, guild)
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
   local Nearby = GetNearby()
@@ -251,15 +269,14 @@ end
 
 local function RemoveGuild(rest)
   local DB = GetDB()
-  local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
 
   local guild = (rest or ""):gsub("^%s+", ""):gsub("%s+$", "")
   if guild == "" then return Help() end
   if DB:RemoveGuild(guild) then
-    Notifier:Chat(string.format(L.REMOVED_GUILD, guild))
+    ChatNotify((L and L.REMOVED_GUILD) or "Removed guild: %s", guild)
   else
-    Notifier:Chat(string.format(L.NOT_FOUND, guild))
+    ChatNotify((L and L.NOT_FOUND) or "Not found: %s", guild)
   end
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
@@ -276,8 +293,8 @@ local function List()
     for _ in pairs(t or {}) do n = n + 1 end
     return n
   end
-  Print(string.format(L.UI_LIST_PLAYERS, tostring(count(d.players))))
-  Print(string.format(L.UI_LIST_GUILDS, tostring(count(d.guilds))))
+  Print(string.format((L and L.UI_LIST_PLAYERS) or "Players: %s", tostring(count(d.players))))
+  Print(string.format((L and L.UI_LIST_GUILDS) or "Guilds: %s", tostring(count(d.guilds))))
   Print("Enemy stats: " .. tostring(count(d.statsPlayers)))
 end
 
@@ -612,19 +629,19 @@ local function HandleCLName(name, flags, guid, now, DB, Notifier, Nearby)
     local kosType = nil
     if DB.LookupPlayer then
       local pe = DB:LookupPlayer(cleanName)
-      if pe then kosType = pe.type or L.KOS end
+      if pe then kosType = pe.type or ((L and L.KOS) or "KoS") end
     end
     Nearby:Seen(cleanName, classFile, cachedGuild, kosType, nil)
   end
 
   -- If this hostile player is on KoS, alert
-  if Notifier and DB.LookupPlayer then
+  if Notifier and Notifier.NotifyPlayer and DB.LookupPlayer then
     local pe = DB:LookupPlayer(cleanName)
     if pe then
       local nk = "cl:p:" .. key
       if ShouldCLNotify(nk, now, 15) then
         DB:MarkSeenPlayer(cleanName)
-        Notifier:NotifyPlayer(pe.type or L.KOS, cleanName, pe.reason)
+        Notifier:NotifyPlayer(pe.type or ((L and L.KOS) or "KoS"), cleanName, pe.reason)
       end
     end
   end
@@ -710,7 +727,7 @@ local function HandleCombatLog()
               local _, cls = GetPlayerInfoByGUID(srcGUID)
               classFile = cls
             end
-            Nearby:Seen(cleanName, classFile, nil, L.HIDDEN, nil)
+            Nearby:Seen(cleanName, classFile, nil, (L and L.HIDDEN) or "Hidden", nil)
           end
           if Notifier and Notifier.NotifyHidden then
             local prof = DB and DB:GetProfile()
@@ -796,7 +813,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     StartNearbyNameplateScan()
     StartEncounterTicker()
     StartDeferredGuildResolveTicker()
-    Print(L.MSG_LOADED)
+    Print((L and L.MSG_LOADED) or "Loaded")
     CheckEnemyNameplatesNotice()
     if C_Timer and C_Timer.After and KillOnSightDB and KillOnSightDB.localeSanity == true then
       C_Timer.After(10, LocaleSanityCheck)
@@ -893,7 +910,9 @@ LocaleSanityCheck = function()
   if #unused > 0 then
     table.sort(unused)
     local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or "KILLONSIGHT"
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r Locale sanity: "..#unused.." key(s) defined but unused. Set KillOnSightDB.localeSanity=false to silence.")
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..table.concat(unused, ", "))
+    if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+      DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r Locale sanity: "..#unused.." key(s) defined but unused. Set KillOnSightDB.localeSanity=false to silence.")
+      DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..table.concat(unused, ", "))
+    end
   end
 end

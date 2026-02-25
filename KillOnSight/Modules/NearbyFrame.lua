@@ -2,6 +2,27 @@
 -- Spy-like nearby enemies window (small, scrollable, clickable)
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
+
+local KOS_TYPE = (L.KOS or "KoS")
+local GUILD_KOS_TYPE = (L.GUILD_KOS or "Guild KoS")
+local HIDDEN_TYPE = (L.HIDDEN or "Hidden")
+
+local function NormalizeKosTypeValue(t)
+  if not t or t == "" then return t end
+  if t == "KoS" or t == KOS_TYPE then return KOS_TYPE end
+  if t == "Guild-KoS" or t == "Guild KoS" or t == GUILD_KOS_TYPE then return GUILD_KOS_TYPE end
+  if t == "Hidden" or t == HIDDEN_TYPE then return HIDDEN_TYPE end
+  return t
+end
+
+local function IsKosLike(t)
+  t = NormalizeKosTypeValue(t)
+  return t == KOS_TYPE or t == GUILD_KOS_TYPE
+end
 
 -- Classic-safe shim: some clients/builds don't ship SafeSetShown helper.
 if type(SafeSetShown) ~= "function" then
@@ -455,6 +476,7 @@ end
 
 function Nearby:StartTicker()
   if self.ticker then return end
+  if not C_Timer or not C_Timer.NewTicker then return end
   self.ticker = C_Timer.NewTicker(self.tickerInterval or 0.5, function()
     -- periodic refresh so TTL prune + autohide works even when no new events happen
     if self.frame and (self.frame:IsShown() or (GetDB() and GetDB():GetProfile().showNearbyFrame ~= false)) then
@@ -921,26 +943,20 @@ function Nearby:AlertNewEnemy(e)
   local t = e.kosType
 
   -- KoS / Guild-KoS: keep the strong alert behavior (sound + flash) exactly as before.
-  -- NOTE: We *must not* rely on (t == L.KOS) if locale keys are missing (nil), so we guard with t.
-  local isKoS = false
-  if t then
-    if (L and L.KOS and t == L.KOS) or (L and L.GUILD_KOS and t == L.GUILD_KOS) or t == "KoS" or t == "Guild-KoS" then
-      isKoS = true
-    end
-  end
+  local isKoS = IsKosLike(t)
 
   if isKoS then
     -- Mark strong alert as consumed for this presence so Notifier does not
     -- re-fire sound/flash while the player remains in the Nearby list.
     local key = (e.name and e.name:lower()) or nil
     if key then self.strongAlerted[key] = true end
-    if prof.enableSound ~= false then N:Sound() end
-    if prof.enableScreenFlash ~= false then N:Flash() end
+    if prof.enableSound ~= false and type(N.Sound) == "function" then N:Sound() end
+    if prof.enableScreenFlash ~= false and type(N.Flash) == "function" then N:Flash() end
   else
     -- Spy-style "nearby detected" sound when ANY enemy is first added to the nearby list.
     -- This is intentionally separate from KoS alerts to avoid double-playing.
     -- NOTE: Nearby sound is intentionally independent from the main KoS/Guild sound toggle.
-    if prof.nearbySound ~= false then
+    if prof.nearbySound ~= false and type(PlaySoundFile) == "function" then
       PlaySoundFile("Interface/AddOns/KillOnSight/Sounds/detected-nearby.mp3", "Master")
     end
   end
@@ -950,12 +966,7 @@ end
 -- Returns two booleans: doChat, doStrong (sound/flash).
 function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
   if not name or name == "" then return false, false end
-  local isKoS = false
-  if listType then
-    if (L.KOS and listType == L.KOS) or (L.GUILD_KOS and listType == L.GUILD_KOS) then
-      isKoS = true
-    end
-  end
+  local isKoS = IsKosLike(listType)
   if not isKoS then return false, false end
 
   local norm = NormalizeName(name) or name
@@ -983,6 +994,7 @@ local function SortedEntries(self)
   local DB = GetDB()
   for lower, e in pairs(self.entries) do
     if e and e._key ~= lower then e._key = lower end
+    if e then e.kosType = NormalizeKosTypeValue(e.kosType) end
     local skip = false
     if e._kosLayerFilteredUntil and now < e._kosLayerFilteredUntil then
       skip = true
@@ -997,14 +1009,14 @@ local function SortedEntries(self)
         local guildKoS  = (not playerKoS) and e.guild and e.guild ~= ""
                           and DB.HasGuild and DB:HasGuild(e.guild)
         if playerKoS then
-          e.kosType = L.KOS
+          e.kosType = KOS_TYPE
         elseif guildKoS then
-          e.kosType = L.GUILD_KOS
-        elseif e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
+          e.kosType = GUILD_KOS_TYPE
+        elseif IsKosLike(e.kosType) then
           e.kosType = nil
         end
       end
-      if e.kosType == L.KOS or e.kosType == L.GUILD_KOS then
+      if IsKosLike(e.kosType) then
         if e.state == "inactive" then
           inactiveKoS[#inactiveKoS+1] = e
         else
@@ -1043,11 +1055,12 @@ local function RowLabel(e, tNow)
   -- Hidden (stealth/prowl/vanish) is a state separate from KoS/Guild tagging.
   -- We render it as a small icon inline with the text to avoid overlapping
   -- the KoS/Guild tags and to save horizontal space.
-  local isHidden = (e.isHidden == true) or (e.kosType == L.HIDDEN)
+  local isHidden = (e.isHidden == true) or (e.kosType == HIDDEN_TYPE)
 
   local util = _G.KillOnSight_Util
-  local isKoS = (e.kosType == L.KOS)
-  local isGuild = (e.kosType == L.GUILD_KOS)
+  local normalizedType = NormalizeKosTypeValue(e.kosType)
+  local isKoS = (normalizedType == KOS_TYPE)
+  local isGuild = (normalizedType == GUILD_KOS_TYPE)
   local tag = ""
   if util and util.AppendTags then
     tag = util:AppendTags("", isKoS, isGuild)
@@ -1095,8 +1108,8 @@ local function ShowMenuFor(self, e)
   local menu = {
     { text = e.name, isTitle = true, notCheckable = true },
     { text = L.UI_ADD_KOS, notCheckable = true, disabled = has, func = function()
-        DB:AddPlayer(e.name, L.KOS, nil, UnitName("player"), nil, e.realm, e.fullName, e.guild)
-        e.kosType = L.KOS
+        DB:AddPlayer(e.name, KOS_TYPE, nil, UnitName("player"), nil, e.realm, e.fullName, e.guild)
+        e.kosType = KOS_TYPE
         self:ScheduleRefresh()
       end
     },
@@ -1133,7 +1146,7 @@ local function UpdateScroll(self)
   local tNow = Now()
 
   if self.countFS then
-    self.countFS:SetText(string.format(L.UI_NEARBY_COUNT, total))
+    self.countFS:SetText(string.format((L.UI_NEARBY_COUNT or "Nearby: %d"), total))
   end
 
   -- IMPORTANT (combat / battleground reliability):
@@ -1207,7 +1220,7 @@ local function UpdateScroll(self)
             row.icon:Hide()
           end
           if row.skull then
-            row.skull:SetShown(e.kosType == L.KOS or e.kosType == L.GUILD_KOS)
+            row.skull:SetShown(IsKosLike(e.kosType))
           end
         else
           if row.icon then row.icon:Hide() end
@@ -1270,7 +1283,7 @@ local function UpdateScroll(self)
           row.icon:Hide()
         end
         if row.skull then
-          row.skull:SetShown(e.kosType == L.KOS or e.kosType == L.GUILD_KOS)
+          row.skull:SetShown(IsKosLike(e.kosType))
         end
       else
         if row.icon then row.icon:Hide() end
@@ -1366,7 +1379,7 @@ self._awMeasureFS = meas
   self.titleFS = title
 
   local count = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  count:SetText(string.format(L.UI_NEARBY_COUNT, 0))
+  count:SetText(string.format((L.UI_NEARBY_COUNT or "Nearby: %d"), 0))
   self.countFS = count
 
   -- Close
@@ -1471,14 +1484,13 @@ self._awMeasureFS = meas
       if e.level then GameTooltip:AddLine((L.TT_LEVEL_FMT):format(e.level > 0 and e.level or "??"), 1,1,1) end
       if e.guild and e.guild ~= "" then GameTooltip:AddLine(e.guild, 0.8,0.8,0.8) end
       if e.zone and e.zone ~= "" then GameTooltip:AddLine(e.zone, 0.8,0.8,0.8) end
-      if e.kosType == L.KOS then
+      local tipType = NormalizeKosTypeValue(e.kosType)
+      if tipType == KOS_TYPE then
         GameTooltip:AddLine(L.TT_KOS, 1,0.2,0.2)
-      elseif e.kosType == L.GUILD then
-        GameTooltip:AddLine(L.TT_GUILD, 1,0.8,0.2)
-      elseif e.kosType == L.GUILD_KOS then
+      elseif tipType == GUILD_KOS_TYPE then
         GameTooltip:AddLine(L.TT_GUILD_KOS, 1,0.8,0.2)
-      elseif (e.isHidden == true) or (e.kosType == L.HIDDEN) then
-        GameTooltip:AddLine("[" .. (L.HIDDEN or "Hidden") .. "]", 0.7,0.7,0.7)
+      elseif (e.isHidden == true) or (tipType == HIDDEN_TYPE) then
+        GameTooltip:AddLine("[" .. (HIDDEN_TYPE or "Hidden") .. "]", 0.7,0.7,0.7)
       end
       local now = (GetTime and GetTime()) or 0
       if e._kosNotTargetableUntil and now < e._kosNotTargetableUntil then
@@ -1730,10 +1742,17 @@ end
 function Nearby:ScheduleRefresh()
   if self.refreshScheduled then return end
   self.refreshScheduled = true
-  C_Timer.After(0.10, function()
+
+  local function doRefresh()
     self.refreshScheduled = false
     self:Refresh()
-  end)
+  end
+
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0.10, doRefresh)
+  else
+    doRefresh()
+  end
 end
 
 function Nearby:ClearAll(opts)
@@ -1787,7 +1806,8 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
   e.guild = guild or e.guild
   -- Hidden is a *state* (stealth/prowl/shadowmeld detection). Do not store it as kosType,
   -- otherwise later list-type updates (KoS/Guild) can erase it and the UI can't show both.
-  if kosType == L.HIDDEN then
+  kosType = NormalizeKosTypeValue(kosType)
+  if kosType == HIDDEN_TYPE then
     e.isHidden = true
     kosType = nil
   end
@@ -1947,4 +1967,3 @@ function Nearby:Init()
 end
 
 KillOnSight_Nearby = Nearby
-

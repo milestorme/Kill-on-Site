@@ -1,10 +1,19 @@
 -- GUI.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 -- Database.lua is listed before GUI.lua in the TOC, so KillOnSight_DB is already set
 -- by the time this file is parsed. Parse-time capture is safe here.
 local DB = KillOnSight_DB
+
+local function EnsureDB()
+  if not DB then DB = _G.KillOnSight_DB end
+  return DB
+end
 
 local GUI = {}
 local frame
@@ -16,7 +25,16 @@ local function FormatTime(ts)
 end
 
 local function Print(msg)
-  DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..L.ADDON_PREFIX..":|r "..msg)
+  if not DEFAULT_CHAT_FRAME or not DEFAULT_CHAT_FRAME.AddMessage then return end
+  local prefix = (L and L.ADDON_PREFIX) or "KillOnSight"
+  DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..prefix..":|r "..tostring(msg or ""))
+end
+
+local function TriggerSyncRequest()
+  local Sync = _G.KillOnSight_Sync
+  if not Sync then return end
+  if type(Sync.Hello) == "function" then Sync:Hello() end
+  if type(Sync.RequestDiff) == "function" then Sync:RequestDiff() end
 end
 
 
@@ -808,6 +826,8 @@ local function MakeTab(parent, idx, text)
 end
 
 function GUI:Create()
+  DB = EnsureDB()
+  if not DB then return end
 
 -- Forward references for enabling/disabling the Add button safely
 local addBtn
@@ -1050,7 +1070,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
     if name == "" then return end
     if ((DB.HasPlayer and DB:HasPlayer(name)) or (DB.LookupPlayer and DB:LookupPlayer(name) ~= nil) or false) then UpdateAddState(); return end
-    DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
+    DB:AddPlayer(name, (L.KOS or "KoS"), nil, UnitName("player"), classFile)
     nameBox:SetText("")
     if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
       KillOnSight_Nearby:Refresh()
@@ -1079,8 +1099,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   end)
 
   syncBtn:SetScript("OnClick", function()
-    KillOnSight_Sync:Hello()
-    KillOnSight_Sync:RequestDiff()
+    TriggerSyncRequest()
   end)
 
   -- guilds panel
@@ -1127,7 +1146,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   end
 
   gAddBtn:SetScript("OnClick", function()
-    DB:AddGuild(guildBox:GetText(), L.GUILD_KOS, nil, UnitName("player"))
+    DB:AddGuild(guildBox:GetText(), (L.GUILD_KOS or "Guild KoS"), nil, UnitName("player"))
     guildBox:SetText("")
     if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
       KillOnSight_Nearby:Refresh()
@@ -1154,8 +1173,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   end)
 
   gSyncBtn:SetScript("OnClick", function()
-    KillOnSight_Sync:Hello()
-    KillOnSight_Sync:RequestDiff()
+    TriggerSyncRequest()
   end)
 
   -- last seen panel
@@ -1266,7 +1284,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       UpdateAtkButtons()
       return
     end
-    DB:AddPlayer(e.name, L.KOS, nil, UnitName("player"), _NormalizeClass(e.class, e.realm, e.fullName, e.guild) or _GuessClassFor(e.name, e.guid))
+    DB:AddPlayer(e.name, (L.KOS or "KoS"), nil, UnitName("player"), _NormalizeClass(e.class, e.realm, e.fullName, e.guild) or _GuessClassFor(e.name, e.guid))
     if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
       KillOnSight_Nearby:Refresh()
     end
@@ -1285,7 +1303,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       UpdateAtkButtons()
       return
     end
-    DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
+    DB:AddGuild(guild, (L.GUILD_KOS or "Guild KoS"), nil, UnitName("player"))
     if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
       KillOnSight_Nearby:Refresh()
     end
@@ -1400,9 +1418,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     if not e then
       dName:SetText("-")
       lClass:SetText((L.UI_CLASS or "Class") .. ": -")
-      lGuild:SetText(L.UI_GUILD .. ": -")
+      lGuild:SetText((L.UI_GUILD or "Guild") .. ": -")
       lFirst:SetText((L.UI_STATS_FIRSTSEEN or "First seen") .. ": -")
-      lLast:SetText(L.UI_LAST_SEEN .. ": -")
+      lLast:SetText((L.UI_LAST_SEEN or "Last seen") .. ": -")
       lSeen:SetText((L.UI_STATS_SEEN or "Seen") .. ": -")
       lW:SetText((L.UI_STATS_WINS or "Wins") .. ": -")
       lL:SetText((L.UI_STATS_LOSES or "Losses") .. ": -")
@@ -1421,9 +1439,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
         or classFile
     end
     lClass:SetText((L.UI_CLASS or "Class") .. ": " .. classLabel)
-    lGuild:SetText(L.UI_GUILD .. ": " .. ((e.guild and e.guild ~= "") and e.guild or "-"))
+    lGuild:SetText((L.UI_GUILD or "Guild") .. ": " .. ((e.guild and e.guild ~= "") and e.guild or "-"))
     lFirst:SetText((L.UI_STATS_FIRSTSEEN or "First seen") .. ": " .. FormatTime(e.firstSeenAt))
-    lLast:SetText(L.UI_LAST_SEEN .. ": " .. FormatTime(e.lastSeenAt))
+    lLast:SetText((L.UI_LAST_SEEN or "Last seen") .. ": " .. FormatTime(e.lastSeenAt))
     local seenN = tonumber(e.seenCount or 0) or 0
     if seenN == 0 and (tonumber(e.firstSeenAt or 0) or 0) > 0 then
       seenN = 1
@@ -1443,7 +1461,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
 
     btnAdd:SetScript("OnClick", function()
       if name and name ~= "" and DB.AddPlayer and not DB:HasPlayer(name) then
-        DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
+        DB:AddPlayer(name, (L.KOS or "KoS"), nil, UnitName("player"), classFile)
         if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
           KillOnSight_Nearby:Refresh()
         end
@@ -1838,8 +1856,7 @@ end
   local sync2 = MakeButton(opt, L.UI_SYNC, 120, 22)
   sync2:SetPoint("TOPLEFT", sNearbyNameSize, "BOTTOMLEFT", 0, -26)
   sync2:SetScript("OnClick", function()
-    KillOnSight_Sync:Hello()
-    KillOnSight_Sync:RequestDiff()
+    TriggerSyncRequest()
   end)
 
   cSound:SetScript("OnClick", function(self) prof.enableSound = self:GetChecked() end)
@@ -1902,7 +1919,7 @@ end)
 -- Banner timing
 local tStealthTiming = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 tStealthTiming:SetPoint("TOPLEFT", cStealthNearby, "BOTTOMLEFT", 0, -48)
-tStealthTiming:SetText("|cffffff00"..L.UI_BANNER_TIMING.."|r")
+tStealthTiming:SetText("|cffffff00"..(L.UI_BANNER_TIMING or "Banner timing").."|r")
 
 local sStealthHold = MakeSlider(opt, L.UI_STEALTH_HOLD, 2, 12, 0.5)
 sStealthHold:SetPoint("TOPLEFT", tStealthTiming, "BOTTOMLEFT", 0, -18)
@@ -1963,6 +1980,8 @@ end)
 end
 
 function GUI:RefreshAll()
+  DB = EnsureDB()
+  if not DB then return end
   if not frame then return end
   if frame._playersPanel and frame._playersPanel._list then
     frame._playersPanel._list:SetData(BuildPlayers())
@@ -1984,7 +2003,10 @@ function GUI:RefreshAll()
 end
 
 function GUI:Show()
+  DB = EnsureDB()
+  if not DB then return end
   self:Create()
+  if not frame then return end
   frame:Show()
   self:RefreshAll()
 end
@@ -1994,7 +2016,10 @@ function GUI:Hide()
 end
 
 function GUI:Toggle()
+  DB = EnsureDB()
+  if not DB then return end
   self:Create()
+  if not frame then return end
   if frame:IsShown() then self:Hide() else self:Show() end
 end
 

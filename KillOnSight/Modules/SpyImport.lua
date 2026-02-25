@@ -6,6 +6,10 @@
 -- * We intentionally do NOT change any KillOnSight logic. This only adds entries to the KoS list.
 
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 local Import = {}
 

@@ -1,6 +1,10 @@
 -- Notifier.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 -- Lazy getter: DB is initialised after file load so we must not capture it at parse time.
 local function GetDB() return _G.KillOnSight_DB end
@@ -23,8 +27,8 @@ local function IsInGoblinTown()
   if sub == "" then sub = mini end
   if mini == "" then mini = sub end
 
-  local bb = (L.SUBZONE_BOOTY_BAY or "Booty Bay")
-  local gz = (L.SUBZONE_GADGETZAN or "Gadgetzan")
+  local bb = ((L and L.SUBZONE_BOOTY_BAY) or "Booty Bay")
+  local gz = ((L and L.SUBZONE_GADGETZAN) or "Gadgetzan")
 
   return sub == bb or mini == bb or sub == gz or mini == gz
 end
@@ -209,7 +213,7 @@ local function EnsureSpyAlertWindow()
   f.Title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   f.Title:SetPoint("TOPLEFT", f, "TOPLEFT", 42, -3)
   f.Title:SetHeight(12)
-  f.Title:SetText(L.STEALTH_DETECTED_TITLE)
+  f.Title:SetText((L and L.STEALTH_DETECTED_TITLE) or "Stealth Detected")
 
 
   f.Name = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -275,7 +279,7 @@ function Notifier:ShowSpyStealthAlert(name, classFile)
 
   -- Title (localized)
   if f.Title and f.Title.SetText then
-    f.Title:SetText(L.STEALTH_DETECTED_TITLE)
+    f.Title:SetText((L and L.STEALTH_DETECTED_TITLE) or "Stealth Detected")
   end
 
   -- Apply class-colored name (Spy-style)
@@ -315,12 +319,14 @@ function Notifier:ShowSpyStealthAlert(name, classFile)
   if f._kosStealthAnim and f._kosStealthAnim.Cancel then
     f._kosStealthAnim:Cancel()
   end
+  -- Clear any prior fade loop from an earlier alert before starting a new one.
+  f:SetScript("OnUpdate", nil)
 
   -- Start flash pulse (small overlay)
   _FlashWindow(f)
 
   -- Hold, then fade out smoothly
-  if C_Timer and C_Timer.After then
+  if C_Timer and C_Timer.NewTimer then
     f._kosStealthAnim = C_Timer.NewTimer(hold, function()
       if not f or not f.IsShown or not f:IsShown() then return end
       local t = 0
@@ -337,7 +343,25 @@ function Notifier:ShowSpyStealthAlert(name, classFile)
       end)
     end)
   else
-    -- fallback: no timer API, just show
+    -- Fallback without C_Timer: run hold+fade entirely via OnUpdate.
+    local t = 0
+    local phase = "hold"
+    f:SetScript("OnUpdate", function(self, elapsed)
+      t = t + elapsed
+      if phase == "hold" then
+        if t < hold then return end
+        phase = "fade"
+        t = 0
+      end
+      local p = t / fade
+      if p >= 1 then
+        self:SetScript("OnUpdate", nil)
+        self:Hide()
+        self:SetAlpha(1)
+        return
+      end
+      self:SetAlpha(1 - p)
+    end)
   end
 end
 
@@ -356,7 +380,11 @@ end
 function Notifier:Sound()
   local DB = GetDB()
   if not DB or not DB.GetProfile or not DB:GetProfile().enableSound then return end
-  PlaySound(SOUNDKIT.RAID_WARNING, "Master")
+  if type(PlaySound) == "function" and SOUNDKIT and SOUNDKIT.RAID_WARNING then
+    PlaySound(SOUNDKIT.RAID_WARNING, "Master")
+  elseif type(PlaySoundFile) == "function" then
+    pcall(PlaySoundFile, "Interface\\AddOns\\KillOnSight\\Sounds\\detected-nearby.mp3", "Master")
+  end
 end
 
 function Notifier:Flash()
@@ -397,7 +425,7 @@ function Notifier:NotifyPlayer(listType, name, reason)
 
   local suffix = reason and (" - "..reason) or ""
   if doChat then
-    self:Chat(string.format(L.SEEN, listType, name, suffix))
+    self:Chat(string.format(((L and L.SEEN) or "%s spotted: %s%s"), listType, name, suffix))
   end
   if doStrong then
     self:Sound()
@@ -424,7 +452,7 @@ function Notifier:NotifyGuild(listType, name, guild, reason)
 
   local suffix = reason and (" - "..reason) or ""
   if doChat then
-    self:Chat(string.format(L.SEEN_GUILD, listType, name, guild, suffix))
+    self:Chat(string.format(((L and L.SEEN_GUILD) or "%s spotted: %s <%s>%s"), listType, name, guild, suffix))
   end
   if doStrong then
     self:Sound()
@@ -539,7 +567,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
 
   -- Chat output (Chat() respects printToChat)
   if prof.stealthDetectChat ~= false then
-    self:Chat(string.format(L.SEEN_HIDDEN, label .. coloredName))
+    self:Chat(string.format(((L and L.SEEN_HIDDEN) or "Hidden enemy detected: %s"), label .. coloredName))
   end
   -- Spy-style stealth alert window
   if prof.stealthDetectCenterWarning ~= false then
@@ -548,7 +576,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
   -- Stealth sound (independent of the main KoS/Guild sound toggle)
   if prof.stealthDetectSound ~= false then
     local ok = pcall(PlaySoundFile, "Interface\\AddOns\\KillOnSight\\Sounds\\detected-stealth.mp3", "Master")
-    if not ok then
+    if (not ok) and type(PlaySound) == "function" and SOUNDKIT and SOUNDKIT.RAID_WARNING then
       PlaySound(SOUNDKIT.RAID_WARNING, "Master")
     end
   end
@@ -560,7 +588,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
   -- Add to Nearby list (pass class so row can be colored/iconed)
   if prof.stealthDetectAddToNearby ~= false then
     if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.Seen then
-      _G.KillOnSight_Nearby:Seen(name, classFile, nil, L.HIDDEN, nil)
+      _G.KillOnSight_Nearby:Seen(name, classFile, nil, ((L and L.HIDDEN) or "Hidden"), nil)
     end
   end
 end
@@ -568,7 +596,7 @@ end
 function Notifier:NotifyActivity(listType, name, activity, reason)
   if SuppressInGoblinTown() or IsInSanctuary() then return end
   local suffix = reason and (" - "..reason) or ""
-  self:Chat(string.format(L.ACTIVITY, listType, name, activity, suffix))
+  self:Chat(string.format(((L and L.ACTIVITY) or "%s activity: %s (%s)%s"), listType, name, activity, suffix))
   self:Sound()
 end
 

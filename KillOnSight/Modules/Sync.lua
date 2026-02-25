@@ -2,6 +2,10 @@
 -- Diff-based sync using changeSeq/revision.
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 -- Lazy getters: DB and Notifier are initialised after file load.
 local function GetDB()       return _G.KillOnSight_DB       end
@@ -42,7 +46,7 @@ local function PlayerNames()
   return short, full
 end
 
-local function CanSync() return IsInGuild() end
+local function CanSync() return IsInGuild and IsInGuild() end
 
 local syncDisabledWarned = false
 local function WarnSyncDisabledOnce()
@@ -50,17 +54,23 @@ local function WarnSyncDisabledOnce()
   if CanSync() then syncDisabledWarned = false; return false end
   if syncDisabledWarned then return true end
   syncDisabledWarned = true
-  if Notifier then Notifier:Chat(L.SYNC_DISABLED) end
+  if Notifier and Notifier.Chat then
+    Notifier:Chat((L and L.SYNC_DISABLED) or "Sync is only available in guild chat.")
+  end
   return true
 end
 
 local function BestChannel()
-  if IsInGuild() then return "GUILD" end
+  if CanSync() then return "GUILD" end
   return nil
 end
 
 local function Send(channel, msg)
-  C_ChatInfo.SendAddonMessage(PREFIX, msg, channel)
+  if C_ChatInfo and C_ChatInfo.SendAddonMessage then
+    C_ChatInfo.SendAddonMessage(PREFIX, msg, channel)
+  elseif SendAddonMessage then
+    SendAddonMessage(PREFIX, msg, channel)
+  end
 end
 
 local function Escape(s)
@@ -219,7 +229,11 @@ local function SendChunks(channel, lines)
 end
 
 function Sync:Init()
-  C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
+  if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+    C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
+  elseif RegisterAddonMessagePrefix then
+    RegisterAddonMessagePrefix(PREFIX)
+  end
 end
 
 function Sync:Hello()
@@ -237,11 +251,13 @@ end
 function Sync:RequestDiff()
   local DB = GetDB()
   local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
   local now = GetTime and GetTime() or 0
   if now < (nextSyncAllowedAt or 0) then
     local remain = math.ceil((nextSyncAllowedAt or 0) - now)
-    Notifier:Chat((L.SYNC_COOLDOWN or "Sync is on cooldown: %ds remaining."):format(remain))
+    if Notifier and Notifier.Chat then
+      Notifier:Chat((((L and L.SYNC_COOLDOWN) or "Sync is on cooldown: %ds remaining."):format(remain)))
+    end
     return
   end
   if not CanSync() then
@@ -252,7 +268,9 @@ function Sync:RequestDiff()
   local d = DB:GetData()
   Send(ch, ("REQ|%s|%s"):format(tostring(d.revision or 0), tostring(d.changeSeq or 0)))
   nextSyncAllowedAt = (GetTime and GetTime() or 0) + (SYNC_COOLDOWN or 60)
-  Notifier:Chat(L.SYNC_SENT)
+  if Notifier and Notifier.Chat then
+    Notifier:Chat((L and L.SYNC_SENT) or "Sync request sent.")
+  end
 end
 
 local rx = {} -- [sender] = { lines={} }
@@ -260,7 +278,7 @@ local rx = {} -- [sender] = { lines={} }
 local function ApplyLines(sender, lines)
   local DB       = GetDB()
   local Notifier = GetNotifier()
-  if not DB or not Notifier then return end
+  if not DB then return end
   local d = DB:GetData()
   local stats = {
     p_added = 0, p_updated = 0,
@@ -300,9 +318,11 @@ local function ApplyLines(sender, lines)
   end
 
   -- One-line summary (local chat only)
-  Notifier:Chat((
-    "|cffd20ff7KillOnSight|r: Sync from %s complete — KoS +%d / ~%d, Guild +%d / ~%d, deletes ignored %d, ignored %d"
-  ):format(tostring(sender), stats.p_added, stats.p_updated, stats.g_added, stats.g_updated, stats.deletes_ignored, stats.ignored))
+  if Notifier and Notifier.Chat then
+    Notifier:Chat((
+      "|cffd20ff7KillOnSight|r: Sync from %s complete — KoS +%d / ~%d, Guild +%d / ~%d, deletes ignored %d, ignored %d"
+    ):format(tostring(sender), stats.p_added, stats.p_updated, stats.g_added, stats.g_updated, stats.deletes_ignored, stats.ignored))
+  end
 
   if KillOnSight_GUI and KillOnSight_GUI.RefreshAll then
     KillOnSight_GUI:RefreshAll()
@@ -372,7 +392,7 @@ function Sync:OnMessage(prefix, msg, channel, sender)
     return
   end
   if channel ~= "GUILD" then return end
-  if not IsInGuild() then return end
+  if not CanSync() then return end
 
   local DB       = GetDB()
   local Notifier = GetNotifier()
@@ -393,8 +413,8 @@ function Sync:OnMessage(prefix, msg, channel, sender)
 
   if cmd == "ERR" then
     local code, a, b = strsplit("|", rest or "", 3)
-    if code == "TOO_OLD" then
-      Notifier:Chat((L.SYNC_TOO_OLD or "Sync failed: peer is too far behind (oldest=%s, current=%s)." ):format(tostring(a or "?"), tostring(b or "?")))
+    if code == "TOO_OLD" and Notifier and Notifier.Chat then
+      Notifier:Chat((((L and L.SYNC_TOO_OLD) or "Sync failed: peer is too far behind (oldest=%s, current=%s)."):format(tostring(a or "?"), tostring(b or "?"))))
     end
     return
   end

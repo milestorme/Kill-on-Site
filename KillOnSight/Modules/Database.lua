@@ -1,6 +1,10 @@
 -- Database.lua
 local ADDON_NAME = ...
 local L = KillOnSight_L
+if type(L) ~= "table" then
+  local _lf = { KOS = "KoS", GUILD_KOS = "Guild KoS", HIDDEN = "Hidden" }
+  L = setmetatable({}, { __index = function(_, k) return _lf[k] or tostring(k) end })
+end
 
 KillOnSightDB = KillOnSightDB or {}
 
@@ -333,7 +337,7 @@ local function MakePlayerEntry(name, listType, reason, addedBy, existing, class,
     guild = guild or (existing and existing.guild) or nil,
 
     class = class or (existing and existing.class) or nil,
-    type = listType or L.KOS,
+    type = listType or (L.KOS or "KoS"),
     reason = norm(reason),
     addedBy = addedBy or UnitName("player") or "Unknown",
     addedAt = existing and existing.addedAt or Now(),
@@ -346,7 +350,7 @@ end
 local function MakeGuildEntry(guild, listType, reason, addedBy, existing)
   return {
     guild = guild,
-    type = listType or L.GUILD_KOS,
+    type = listType or (L.GUILD_KOS or "Guild KoS"),
     reason = norm(reason),
     addedBy = addedBy or UnitName("player") or "Unknown",
     addedAt = existing and existing.addedAt or Now(),
