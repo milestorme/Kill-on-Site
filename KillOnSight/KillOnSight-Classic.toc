@@ -2,18 +2,14 @@
 ## Title: Kill on Sight
 ## Notes: Kill on Sight notifier and tracking addon (Classic)
 ## Author: Milestorme
-## Version: 3.2.4
+## Version: 3.2.5
 ## Category: Combat
-## IconTexture: Interface/AddOns/KillOnSight/icon.tga
+## IconTexture: Interface/AddOns/KillOnSight/Images/icon.tga
 ## SavedVariables: KillOnSightDB
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Localizations: enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
 
-Libs/LibStub/LibStub.lua
-Libs/LibSharedMedia-3.0/lib.xml
-Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
-Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua
-Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua
+embeds.xml
 Locale/enUS.lua
 Locale/deDE.lua
 Locale/frFR.lua
@@ -30,15 +26,15 @@ Locale/jaJP.lua
 Locale/nlNL.lua
 Locale/daDK.lua
 Locale/plPL.lua
-Database.lua
-Util.lua
-Notifier.lua
-NearbyFrame.lua
-Detector.lua
-Activity.lua
-Sync.lua
-GUI.lua
-Minimap.lua
-Portrait.lua
-SpyImport.lua
-Core.lua
+Modules/Database.lua
+Modules/Util.lua
+Modules/Notifier.lua
+Modules/NearbyFrame.lua
+Modules/Detector.lua
+Modules/Activity.lua
+Modules/Sync.lua
+Modules/GUI.lua
+Modules/Minimap.lua
+Modules/Portrait.lua
+Modules/SpyImport.lua
+Modules/Core.lua

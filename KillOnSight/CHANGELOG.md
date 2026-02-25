@@ -1,5 +1,11 @@
 # KillOnSight – Changelog
 
+## 3.2.5 
+
+### Changed
+- Restructured addon folders (moved Lua modules into `Modules/`, and assets into `Images/`).
+- Added `embeds.xml` and updated TOCs to load libraries via the embedded XML loader.
+
 ## 3.2.4
 
 ### Fixed

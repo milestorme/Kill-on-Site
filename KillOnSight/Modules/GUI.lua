@@ -858,7 +858,7 @@ end
   frame.logo = frame:CreateTexture(nil, "ARTWORK")
   frame.logo:SetSize(64, 64)
   frame.logo:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -12)
-  frame.logo:SetTexture("Interface\\AddOns\\KillOnSight\\logo.tga")
+  frame.logo:SetTexture("Interface\\AddOns\\KillOnSight\\Images\\logo.tga")
   frame.logo:SetAlpha(0.95)
 
 
