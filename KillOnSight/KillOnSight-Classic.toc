@@ -2,7 +2,7 @@
 ## Title: Kill on Sight
 ## Notes: Kill on Sight notifier and tracking addon (Classic)
 ## Author: Milestorme
-## Version: 3.2.3
+## Version: 3.2.4
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB

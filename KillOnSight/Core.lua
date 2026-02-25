@@ -728,37 +728,44 @@ local function HandleCombatLog()
 
   -- Last attackers tracking: ONLY when an enemy actually attacked YOU
   -- (not just seen/nearby; must be a hostile action targeted at the player).
-  if not playerGUID or dstGUID ~= playerGUID then return end
-  if not srcName or srcName == "" then return end
-  if not IsFlagPlayer(srcFlags) then return end
-  if not IsFlagHostileSpy(srcFlags) then return end
-
-  local isAttack = false
-  if subevent == "SWING_DAMAGE" or subevent == "RANGE_DAMAGE" or (subevent and subevent:find("_DAMAGE")) then
-    isAttack = true
-  elseif subevent == "SWING_MISSED" or subevent == "RANGE_MISSED" or (subevent and subevent:find("_MISSED")) then
-    -- Attacks that miss/dodge/parry/immune/etc still count as an attack on you.
-    isAttack = true
-  elseif subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" or subevent == "SPELL_AURA_APPLIED_DOSE" then
-    -- Hostile debuffs/CC on the player count as an attack (e.g. Sap/Cheap Shot).
-    isAttack = true
+  -- Some clients/log variants can be inconsistent, so fall back to dstFlags when available.
+  local attackedMe = false
+  if playerGUID and dstGUID == playerGUID then
+    attackedMe = true
+  elseif dstFlags and CombatLog_Object_IsA and COMBATLOG_OBJECT_AFFILIATION_MINE and COMBATLOG_OBJECT_TYPE_PLAYER then
+    attackedMe = CombatLog_Object_IsA(dstFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) and CombatLog_Object_IsA(dstFlags, COMBATLOG_OBJECT_TYPE_PLAYER)
   end
 
-  if not isAttack then return end
+  if attackedMe then
+    if srcName and srcName ~= "" and IsFlagPlayer(srcFlags) and IsFlagHostileSpy(srcFlags) then
+      local isAttack = false
+      if subevent == "SWING_DAMAGE" or subevent == "RANGE_DAMAGE" or (subevent and subevent:find("_DAMAGE")) then
+        isAttack = true
+      elseif subevent == "SWING_MISSED" or subevent == "RANGE_MISSED" or (subevent and subevent:find("_MISSED")) then
+        -- Attacks that miss/dodge/parry/immune/etc still count as an attack on you.
+        isAttack = true
+      elseif subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" or subevent == "SPELL_AURA_APPLIED_DOSE" then
+        -- Hostile debuffs/CC on the player count as an attack (e.g. Sap/Cheap Shot).
+        isAttack = true
+      end
 
-  local guildName = ""
-  if srcGUID then
-    guildName = GetCachedGuild(srcGUID, now) or ""
-    if guildName == "" and CanTryResolveGuild(srcGUID, now) then
-      NoteResolveTry(srcGUID, now)
-      local resolved = ResolveGuildForGuid(srcName, srcGUID)
-      if resolved and resolved ~= "" then
-        guildName = resolved
-        SetCachedGuild(srcGUID, resolved, now)
+      if isAttack then
+        local guildName = ""
+        if srcGUID then
+          guildName = GetCachedGuild(srcGUID, now) or ""
+          if guildName == "" and CanTryResolveGuild(srcGUID, now) then
+            NoteResolveTry(srcGUID, now)
+            local resolved = ResolveGuildForGuid(srcName, srcGUID)
+            if resolved and resolved ~= "" then
+              guildName = resolved
+              SetCachedGuild(srcGUID, resolved, now)
+            end
+          end
+        end
+        DB:AddLastAttacker(srcName, srcGUID, (GetRealZoneText and GetRealZoneText()) or "", guildName)
       end
     end
   end
-  DB:AddLastAttacker(srcName, srcGUID, (GetRealZoneText and GetRealZoneText()) or "", guildName)
 end
 
 Core:SetScript("OnEvent", function(self, event, ...)

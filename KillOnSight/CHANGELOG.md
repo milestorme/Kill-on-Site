@@ -1,5 +1,16 @@
 # KillOnSight – Changelog
 
+## 3.2.4
+
+### Fixed
+- Fixed attackers list not populating when the player is attacked
+- Resolved issue where combat log handler exited early due to strict dstGUID check
+- Corrected logic to scope attacker tracking instead of returning from the entire handler
+
+### Improved
+- Added fallback detection using combat log flags (AFFILIATION_MINE, TYPE_PLAYER) for better compatibility across Classic/TBC/Wrath clients
+- Improved reliability of attacker detection across inconsistent CLEU events
+
 ## 3.2.3
 
 ### Fixed
