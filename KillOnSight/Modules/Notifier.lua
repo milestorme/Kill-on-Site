@@ -15,8 +15,6 @@ local function _Print(msg)
 end
 
 -- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
-
--- Optional town-level suppression (Classic/TBC-friendly): Booty Bay / Gadgetzan.
 local function IsInGoblinTown()
   local sub = (GetSubZoneText and GetSubZoneText()) or ""
   local mini = (GetMinimapZoneText and GetMinimapZoneText()) or ""

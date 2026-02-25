@@ -487,7 +487,8 @@ end
 -- Enemy encounter stats (separate from KoS/Guild lists; not synced)
 local function _StatsKey(name)
   if not name or name == "" then return nil end
-  return name:match("^[^-]+") and (name:match("^[^-]+") or name):lower() or name:lower()
+  local matched = name:match("^[^-]+")
+  return (matched or name):lower()
 end
 
 -- Update / create an enemy stats record WITHOUT incrementing encounter count.

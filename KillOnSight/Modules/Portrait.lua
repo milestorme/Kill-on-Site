@@ -58,7 +58,12 @@ end
 
 local function IsKoSTarget()
   if not UnitExists("target") or not UnitIsPlayer("target") then return false end
-  local n, r = UnitName("target")
+  local n = UnitName and UnitName("target")
+  local r
+  if UnitFullName then
+    local _n, _r = UnitFullName("target")
+    if _r and _r ~= "" then r = _r end
+  end
   local short = NormalizeName(n)
   if not short then return false end
 
