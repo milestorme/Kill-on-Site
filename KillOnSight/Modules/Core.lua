@@ -426,10 +426,9 @@ end
 local function IsFlagHostileSpy(flags)
   -- Only treat units as hostile if the HOSTILE reaction bit is set.
   -- Avoids same-faction/friendly entries from certain combat log flag combinations.
-  if not band then return false end
+  if not band or not COMBATLOG_OBJECT_REACTION_HOSTILE then return false end
   local f = flags or 0
-  return COMBATLOG_OBJECT_REACTION_HOSTILE
-     and band(f, COMBATLOG_OBJECT_REACTION_HOSTILE) == COMBATLOG_OBJECT_REACTION_HOSTILE
+  return band(f, COMBATLOG_OBJECT_REACTION_HOSTILE) == COMBATLOG_OBJECT_REACTION_HOSTILE
 end
 
 -- Reuses module-level CleanName; avoids a duplicate inner Clean() function.
@@ -834,12 +833,12 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "NAME_PLATE_UNIT_REMOVED" then
-        local unit = ...
-        if KillOnSight_Nearby and KillOnSight_Nearby.OnNameplateRemoved then
-            KillOnSight_Nearby:OnNameplateRemoved(unit)
-        end
-        return
+    local unit = ...
+    if KillOnSight_Nearby and KillOnSight_Nearby.OnNameplateRemoved then
+      KillOnSight_Nearby:OnNameplateRemoved(unit)
     end
+    return
+  end
 
   if event == "UNIT_AURA" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP"
   or event == "UNIT_SPELLCAST_SUCCEEDED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
