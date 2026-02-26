@@ -21,6 +21,21 @@ end
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 
+
+-- Battleground mute: when enabled, suppress ALL addon notification sounds while inside battleground instances.
+local function IsInBattleground()
+  if not IsInInstance then return false end
+  local inInst, instType = IsInInstance()
+  return inInst and instType == "pvp"
+end
+
+local function IsBattlegroundSoundMuted()
+  local DB = GetDB()
+  if not DB or not DB.GetProfile then return false end
+  local prof = DB:GetProfile()
+  return (prof and prof.battlegroundMuteSounds) and IsInBattleground() or false
+end
+
 -- Sanctuary detection: prevent Nearby population and clear the list in safe "sanctuary" areas.
 -- Prefer GetZonePVPInfo() which can return "sanctuary"; fall back to IsResting() in versions/zones
 -- where that is the only reliable signal.
@@ -940,7 +955,7 @@ function Nearby:AlertNewEnemy(e)
     -- Spy-style "nearby detected" sound when ANY enemy is first added to the nearby list.
     -- This is intentionally separate from KoS alerts to avoid double-playing.
     -- NOTE: Nearby sound is intentionally independent from the main KoS/Guild sound toggle.
-    if prof.nearbySound ~= false then
+    if prof.nearbySound ~= false and not IsBattlegroundSoundMuted() then
       PlaySoundFile("Interface/AddOns/KillOnSight/Sounds/detected-nearby.mp3", "Master")
     end
   end

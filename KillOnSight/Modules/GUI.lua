@@ -1606,13 +1606,9 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   cFlash:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
   cFlash:SetChecked(prof.enableScreenFlash)
 
-  local cInst = MakeCheck(opt, L.UI_INSTANCES)
-  cInst:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 0, -8)
-  cInst:SetChecked(prof.notifyInInstances)
-
   -- Nearby
   local tNearby = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  tNearby:SetPoint("TOPLEFT", cInst, "BOTTOMLEFT", 0, -18)
+  tNearby:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 0, -18)
   tNearby:SetText(L.UI_NEARBY_HEADING or "Nearby")
 
 -- Nearby window options
@@ -1844,7 +1840,6 @@ end
 
   cSound:SetScript("OnClick", function(self) prof.enableSound = self:GetChecked() end)
   cFlash:SetScript("OnClick", function(self) prof.enableScreenFlash = self:GetChecked() end)
-  cInst:SetScript("OnClick", function(self) prof.notifyInInstances = self:GetChecked() end)
 -- Stealth detection options
 local tStealth = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 tStealth:SetPoint("TOPLEFT", 320, -20)
@@ -1943,7 +1938,20 @@ sStealthFade:SetScript("OnValueChanged", function(self, v)
     if KillOnSight_Notifier and KillOnSight_Notifier.ApplyStealthSettings then KillOnSight_Notifier:ApplyStealthSettings() end
   sStealthFadeValue:SetText(v .. "s")
 end)
-  -- initialize tab visuals
+  
+  -- Battlegrounds
+  local tBG = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  tBG:SetPoint("TOPLEFT", sStealthFade, "BOTTOMLEFT", 0, -36)
+  tBG:SetText(L.UI_BATTLEGROUNDS or "Battlegrounds")
+
+  local cBGMute = MakeCheck(opt, L.UI_BG_MUTE_SOUNDS or "Mute all notification sounds in battlegrounds")
+  cBGMute:SetPoint("TOPLEFT", tBG, "BOTTOMLEFT", 0, -10)
+  cBGMute:SetChecked(prof.battlegroundMuteSounds == true)
+  cBGMute:SetScript("OnClick", function(self)
+    prof.battlegroundMuteSounds = self:GetChecked()
+  end)
+
+-- initialize tab visuals
   if frame.tabs then
     for i,t in ipairs(frame.tabs) do
       if t and t.SetSelected then t:SetSelected(i == 1) end

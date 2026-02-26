@@ -189,3 +189,13 @@ L["TT_NOT_TARGETABLE"] = "Kan ikke målrettes nu"
 L.UI_NEARBY_BG_DARKNESS = "Mørkhed på baggrund i nær-vinduet"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Passiv registrering i nærheden kræver, at fjendens navneplader er aktiveret."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Slagmarker"
+L.BG_MUTE_SOUNDS = "Slå alle notifikationslyde fra i slagmarker"
+L.BG_MUTE_SOUNDS_DESC = "Deaktiverer KoS-, gilde-, Nearby- og stealth-advarselslyde inde i slagmarker."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

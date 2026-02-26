@@ -173,3 +173,13 @@ L["TT_NOT_TARGETABLE"] = "Not targetable right now"
 L.UI_NEARBY_BG_DARKNESS = "Nearby background darkness"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Nearby passive detection requires Enemy Nameplates enabled."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Battlegrounds"
+L.BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+L.BG_MUTE_SOUNDS_DESC = "Disables KoS, Guild, Nearby, and Stealth alert sounds while inside battlegrounds."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

@@ -154,3 +154,13 @@ L["TT_NOT_TARGETABLE"] = "目前無法選為目標"
 L.UI_NEARBY_BG_DARKNESS = "附近視窗背景深色度"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "附近的被動偵測需要啟用敵方姓名板。"
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "戰場"
+L.BG_MUTE_SOUNDS = "在戰場中靜音所有提示音"
+L.BG_MUTE_SOUNDS_DESC = "在戰場中禁用 KoS、公會、附近與潛行提示音。"
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

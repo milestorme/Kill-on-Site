@@ -1,6 +1,9 @@
 # KillOnSight – Changelog
 
-## 3.2.5
+## 3.2.5 
+
+### Added
+- Added Battleground sound mute option (KoS/Guild/Nearby/Stealth)
 
 ### Changed
 - Restructured addon folders (moved Lua modules into `Modules/`, and assets into `Images/`).

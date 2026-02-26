@@ -186,3 +186,13 @@ L["TT_NOT_TARGETABLE"] = "Nu niet te targeten"
 L.UI_NEARBY_BG_DARKNESS = "Donkerheid van nabijheidsvenster-achtergrond"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Passieve detectie in de buurt vereist dat vijandelijke naamplaten zijn ingeschakeld."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Slagvelden"
+L.BG_MUTE_SOUNDS = "Alle meldingsgeluiden dempen in slagvelden"
+L.BG_MUTE_SOUNDS_DESC = "Schakelt KoS-, gilde-, Nearby- en stealth-waarschuwingsgeluiden uit in slagvelden."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

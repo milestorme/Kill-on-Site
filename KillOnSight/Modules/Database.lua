@@ -58,6 +58,7 @@ local DEFAULTS = {
   profile = {
     enableSound = true,
     enableScreenFlash = true,
+    battlegroundMuteSounds = false, -- mute ALL addon notification sounds while in battlegrounds
     throttleSeconds = 12,
     notifyInInstances = true,
     printToChat = true,
@@ -227,6 +228,9 @@ function DB:Init()
 
   -- Force ultra-minimal Nearby window (no option to change)
   realmDB.profile.nearbyMinimal = true
+
+  -- Always allow notifications inside instances (setting removed from UI)
+  realmDB.profile.notifyInInstances = true
 
   -- Clean up legacy/dead config keys (kept for backward compatibility in old SVs)
   realmDB.profile.guildAlertCooldownSeconds = nil

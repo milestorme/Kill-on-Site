@@ -154,3 +154,13 @@ L["TT_NOT_TARGETABLE"] = "現在ターゲット不可"
 L.UI_NEARBY_BG_DARKNESS = "付近ウィンドウ背景の暗さ"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "近距離のパッシブ検知には「敵のネームプレート」を有効にする必要があります。"
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "戦場"
+L.BG_MUTE_SOUNDS = "戦場ではすべての通知サウンドをミュート"
+L.BG_MUTE_SOUNDS_DESC = "戦場内ではKoS／ギルド／Nearby／ステルスの警告サウンドを無効にします。"
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

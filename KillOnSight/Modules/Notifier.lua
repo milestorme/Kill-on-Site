@@ -62,6 +62,21 @@ local function IsInSanctuary()
 end
 
 
+
+-- Battleground mute: when enabled, suppress ALL addon notification sounds while inside battleground instances.
+local function IsInBattleground()
+  if not IsInInstance then return false end
+  local inInst, instType = IsInInstance()
+  return inInst and instType == "pvp"
+end
+
+local function IsBattlegroundSoundMuted()
+  local DB = GetDB()
+  if not DB or not DB.GetProfile then return false end
+  local prof = DB:GetProfile()
+  return (prof and prof.battlegroundMuteSounds) and IsInBattleground() or false
+end
+
 local function ClassHex(classFile)
   if not classFile or not RAID_CLASS_COLORS or not RAID_CLASS_COLORS[classFile] then
     return nil
@@ -352,6 +367,7 @@ function Notifier:Chat(msg)
 end
 
 function Notifier:Sound()
+  if IsBattlegroundSoundMuted() then return end
   local DB = GetDB()
   if not DB or not DB.GetProfile or not DB:GetProfile().enableSound then return end
   PlaySound(SOUNDKIT.RAID_WARNING, "Master")
@@ -544,7 +560,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
     self:ShowSpyStealthAlert(name, classFile)
   end
   -- Stealth sound (independent of the main KoS/Guild sound toggle)
-  if prof.stealthDetectSound ~= false then
+  if prof.stealthDetectSound ~= false and not IsBattlegroundSoundMuted() then
     local ok = pcall(PlaySoundFile, "Interface\\AddOns\\KillOnSight\\Sounds\\detected-stealth.mp3", "Master")
     if not ok then
       PlaySound(SOUNDKIT.RAID_WARNING, "Master")

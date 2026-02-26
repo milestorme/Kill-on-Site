@@ -37,12 +37,8 @@ end
 local function Now() return time() end
 
 local function InAllowedContext()
-  local DB = GetDB()
-  if not DB then return false end
-  local prof = DB:GetProfile()
-  if prof.notifyInInstances then return true end
-  local inInstance = IsInInstance()
-  return not inInstance
+  -- "Notify in instances" is always enabled (setting removed).
+  return true
 end
 
 local function ShouldNotify(key)

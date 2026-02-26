@@ -154,3 +154,13 @@ L["TT_NOT_TARGETABLE"] = "Non bersagliabile ora"
 L.UI_NEARBY_BG_DARKNESS = "Oscurità dello sfondo finestra vicini"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Il rilevamento passivo nelle vicinanze richiede che le Barre dei nomi dei nemici siano abilitate."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Campi di battaglia"
+L.BG_MUTE_SOUNDS = "Disattiva tutti i suoni di notifica nei campi di battaglia"
+L.BG_MUTE_SOUNDS_DESC = "Disattiva i suoni di avviso per KoS, gilda, vicinanze e furtività nei campi di battaglia."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

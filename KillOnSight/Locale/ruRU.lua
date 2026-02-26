@@ -183,3 +183,13 @@ L["TT_NOT_TARGETABLE"] = "Сейчас нельзя выбрать целью"
 L.UI_NEARBY_BG_DARKNESS = "Темнота фона окна рядом"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Пассивное обнаружение поблизости требует включённых индикаторов имён врагов."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Поля боя"
+L.BG_MUTE_SOUNDS = "Отключить все звуки уведомлений на полях боя"
+L.BG_MUTE_SOUNDS_DESC = "Отключает звуки оповещений KoS, гильдии, Nearby и обнаружения скрытности на полях боя."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

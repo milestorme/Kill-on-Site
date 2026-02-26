@@ -154,3 +154,13 @@ L["TT_NOT_TARGETABLE"] = "Nie można teraz namierzyć"
 L.UI_NEARBY_BG_DARKNESS = "Przyciemnienie tła okna pobliżu"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Pasywne wykrywanie w pobliżu wymaga włączenia pasków nazw wrogów."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Pola bitwy"
+L.BG_MUTE_SOUNDS = "Wycisz wszystkie dźwięki powiadomień na polach bitwy"
+L.BG_MUTE_SOUNDS_DESC = "Wyłącza dźwięki alertów KoS, gildii, Nearby i wykrycia skradania na polach bitwy."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

@@ -154,3 +154,13 @@ L["TT_NOT_TARGETABLE"] = "Não é possível selecionar agora"
 L.UI_NEARBY_BG_DARKNESS = "Escuridão do fundo da janela de próximos"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "A deteção passiva nas proximidades requer que as Placas de Nome dos Inimigos estejam ativadas."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Campos de batalha"
+L.BG_MUTE_SOUNDS = "Silenciar todos os sons de notificação em campos de batalha"
+L.BG_MUTE_SOUNDS_DESC = "Desativa sons de alerta de KoS, guilda, Nearby e furtividade dentro de campos de batalha."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+

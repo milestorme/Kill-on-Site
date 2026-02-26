@@ -186,3 +186,13 @@ L["TT_NOT_TARGETABLE"] = "Derzeit nicht anvisierbar"
 L.UI_NEARBY_BG_DARKNESS = "Dunkelheit des Nahfenster-Hintergrunds"
 
 L.ENEMY_NAMEPLATES_REQUIRED = "Passive Erkennung in der Nähe erfordert aktivierte feindliche Namensplaketten."
+
+-- Battleground options
+L.UI_BATTLEGROUNDS = "Battlegrounds"
+L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
+-- Battleground options (sound suppression)
+L.BATTLEGROUNDS_HEADER = "Schlachtfelder"
+L.BG_MUTE_SOUNDS = "Alle Benachrichtigungstöne in Schlachtfeldern stummschalten"
+L.BG_MUTE_SOUNDS_DESC = "Deaktiviert KoS-, Gilden-, Nearby- und Tarnungswarnungen in Schlachtfeldern."
+L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
+
