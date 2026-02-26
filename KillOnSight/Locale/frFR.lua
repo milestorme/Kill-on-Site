@@ -38,33 +38,26 @@ L.SEEN_GUILD = "Guilde de %s à proximité : %s (%s)%s"
 L.SEEN_HIDDEN = "Camouflé détecté : %s"
 L.SYNC_COOLDOWN = "Synchronisation en recharge : %ds restantes."
 L.SYNC_DISABLED = "La synchronisation nécessite d'être dans une guilde."
-L.SYNC_DONE = "Synchronisation terminée."
-L.SYNC_RECEIVED = "Données de synchronisation reçues de %s."
 L.SYNC_SENT = "Demande de synchronisation envoyée."
-L.UI_ADD = "Add"
+L.SYNC_TOO_OLD = "Synchronisation échouée : le pair est trop en retard (oldest=%s, current=%s)."
+L.UI_ADD = "Ajouter"
 L.UI_ADD_GUILD = "Ajouter une guilde"
 L.UI_ADD_KOS = "Ajouter KoS"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "Attaqué"
 L.UI_CLEAR = "Effacer"
 L.UI_CLOSE = "Fermer"
 L.UI_FLASH = "Clignoter"
 L.UI_GUILD = "Guilde"
-L.UI_INSTANCES = "Notifier en instance"
+L.UI_ALERTS = "KoS / Guilde"
+L.UI_NEARBY_HEADING = "À proximité"
 L.UI_LAST_SEEN = "Vu pour la dernière fois"
 L.UI_CLASS = "Classe"
 L.UI_NAME = "Nom"
-L.UI_NEARBY_ALPHA = "Transparence"
 L.UI_NEARBY_AUTOHIDE = "Masquer si vide"
 L.UI_DISABLE_GOBLIN_TOWNS = "Désactiver les alertes à Baie-du-Butin / Gadgetzan"
 L.SUBZONE_BOOTY_BAY = "Baie-du-Butin"
 L.SUBZONE_GADGETZAN = "Gadgetzan"
-L.UI_NEARBY_FADE = "Fondu entrée/sortie"
 L.UI_NEARBY_FRAME = "Fenêtre Proches"
 L.UI_NEARBY_LOCK = "Verrouiller la fenêtre"
-L.UI_NEARBY_MINIMAL = "Fenêtre Proches ultra-minimale"
-L.UI_NEARBY_ROWFADE = "Minuteries de fondu par ligne"
-L.UI_NEARBY_ROWICONS = "Icônes de ligne (classe/crâne)"
 L.UI_NEARBY_SCALE = "Échelle de la fenêtre"
 L.UI_NEARBY_NAME_FONT = "Police des noms à proximité"
 L.UI_NEARBY_NAME_SIZE = "Taille de police des noms à proximité"
@@ -73,14 +66,15 @@ L.UI_NEARBY_RANGE_CLAMP = "Portée de détection (style Classic)"
 L.UI_OPTIONS = "Options"
 
 L.UI_OPTIONS_TITLE = "Options"
-L.UI_REMOVE = "Remove"
+L.UI_REMOVE = "Retirer"
 L.UI_SOUND = "Son"
 L.UI_STEALTH = "Détection furtive"
 L.UI_STEALTH_ADD_NEARBY = "Ajouter les furtifs à la liste Proches"
-L.UI_STEALTH_BANNER = "Afficher l’alerte centrale"
+L.UI_STEALTH_BANNER = "Afficher l'alerte centrale"
+L.UI_STEALTH_CHAT = "Notification dans le chat"
 L.UI_STEALTH_ENABLE = "Activer la détection furtive"
-L.UI_STEALTH_FADE = "Fondu de l’alerte (s)"
-L.UI_STEALTH_HOLD = "Durée de l’alerte (s)"
+L.UI_STEALTH_FADE = "Fondu de l'alerte (s)"
+L.UI_STEALTH_HOLD = "Durée de l'alerte (s)"
 L.UI_STEALTH_SOUND = "Jouer le son de furtivité"
 L.UI_STEALTH_FLASH = "Flash écran en furtivité"
 L.UI_SYNC = "Synchroniser"
@@ -88,7 +82,6 @@ L.UI_TAB_ATTACKERS = "Assaillants"
 L.UI_TAB_GUILDS = "Guildes"
 L.UI_TAB_PLAYERS = "Joueurs"
 L.UI_TAB_STATS = "Statistiques"
-L.UI_THROTTLE = "Limitation (s)"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "Type"
 L.UI_ZONE = "Zone"
@@ -97,17 +90,14 @@ L.UI_CLEAR_NEARBY = "Vider la liste proche"
 L.UI_NEARBY_COUNT = "Proches : %d"
 L.UI_ADD_KOS_TARGET = "Ajouter KoS (cible)"
 L.ERR_NO_PLAYER_TARGET = "Aucun joueur ciblé."
-L.UI_BANNER_TIMING = "Durée de l’alerte"
-L.UI_BANNER_HOLD_HELP = "Durée pendant laquelle l’alerte reste entièrement visible avant de s’estomper."
-L.UI_BANNER_FADE_HELP = "Durée de l’estompage progressif de l’alerte."
+L.UI_BANNER_TIMING = "Durée de l'alerte"
+L.UI_BANNER_HOLD_HELP = "Durée pendant laquelle l'alerte reste entièrement visible avant de s'estomper."
+L.UI_BANNER_FADE_HELP = "Durée de l'estompage progressif de l'alerte."
 L.UI_LIST_PLAYERS = "Joueurs : %s"
 L.UI_LIST_GUILDS = "Guildes : %s"
 
-
 L.MSG_LOADED = "Chargé. Tapez /kos show"
 L.UI_NEARBY_HEADER = "Nom / Niveau / Heure"
-
-
 
 L.STEALTH_DETECTED_TITLE = "Joueur en camouflage détecté !"
 
@@ -129,43 +119,17 @@ L.UI_STATS_SORT_SEEN = "Vu"
 L.UI_STATS_SORT_WINS = "Victoires"
 L.UI_STATS_SORT_LOSES = "Défaites"
 
-L.TT_MINIMAP_TITLE = 'Kill on Sight'
-
-L.TT_MINIMAP_LEFTCLICK = 'Clic gauche : Ouvrir/Fermer'
-
-L.TT_MINIMAP_RIGHTCLICK = 'Clic droit : Menu'
-
-L.TT_ON_KOS = 'Sur la liste KoS'
-L.TT_GUILD = "Guilde"
-L.TT_KOS = "Tuer à vue"
-L.TT_NOT_TARGETABLE = "Non ciblable"
-
-L.TT_GUILD_KOS = 'KoS de guilde'
-
-L.TT_LEVEL_FMT = 'Niveau %s'
-
-L.UI_STEALTH_CHAT = "Chat notification"
-
-L.UI_NEARBY_SOUND = "Nearby list sound"
-
-
--- Added/updated for new 3.0.x UI & features
-L.UI_ADD = "Ajouter"
-L.UI_REMOVE = "Retirer"
-L.UI_OPTIONS = "Options"
-L.UI_TYPE = "Type"
-L.UI_ZONE = "Zone"
-L.UI_ALERT_NEW = "Alerter lors d'un nouvel ennemi à proximité"
-L.UI_STEALTH_CHAT = "Notification dans le chat"
-L.UI_NEARBY_SOUND = "Son de la liste à proximité"
-L.UI_ALERTS = "KoS / Guilde"
-L.UI_NEARBY_HEADING = "À proximité"
 L.TT_MINIMAP_TITLE = "Kill on Sight"
 L.TT_MINIMAP_LEFTCLICK = "Clic gauche : Ouvrir/Fermer"
 L.TT_MINIMAP_RIGHTCLICK = "Clic droit : Menu"
-L.TT_ON_KOS = "Sur la liste KoS"
+L.TT_KOS = "Tuer à vue"
+L.TT_GUILD = "Guilde"
+L.TT_NOT_TARGETABLE = "Impossible à cibler pour le moment"
 L.TT_GUILD_KOS = "KoS de guilde"
 L.TT_LEVEL_FMT = "Niveau %s"
+
+L.UI_NEARBY_SOUND = "Son de la liste à proximité"
+
 L.UI_ATTACKERS_TITLE = "Assaillants"
 
 -- Notes / Spy import
@@ -179,19 +143,8 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Notes"
 
-
-L["TT_NOT_TARGETABLE"] = "Impossible à cibler pour le moment"
-
 L.UI_NEARBY_BG_DARKNESS = "Opacité du fond de la fenêtre À proximité"
 
-L.ENEMY_NAMEPLATES_REQUIRED = "La détection passive à proximité nécessite l'activation des barres de nom des ennemis."
-
 -- Battleground options
-L.UI_BATTLEGROUNDS = "Battlegrounds"
-L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "Champs de bataille"
-L.BG_MUTE_SOUNDS = "Couper tous les sons de notification en champs de bataille"
-L.BG_MUTE_SOUNDS_DESC = "Désactive les sons d’alerte KoS, guilde, proximité et furtivité en champs de bataille."
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
-
+L.UI_BATTLEGROUNDS = "Champs de bataille"
+L.UI_BG_MUTE_SOUNDS = "Couper tous les sons de notification en champs de bataille"
