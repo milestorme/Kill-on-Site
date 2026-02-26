@@ -1,10 +1,17 @@
 # KillOnSight – Changelog
 
-## 3.2.5 
+## 3.2.5
 
 ### Changed
 - Restructured addon folders (moved Lua modules into `Modules/`, and assets into `Images/`).
 - Added `embeds.xml` and updated TOCs to load libraries via the embedded XML loader.
+
+### Fixed
+- `Core.lua` `IsFlagHostileSpy`: added nil guard for `COMBATLOG_OBJECT_REACTION_HOSTILE` so the function always returns `false` (not `nil`) when the constant is unavailable, consistent with the existing `band` guard and the sibling `IsFlagPlayer`.
+- `Core.lua` `NAME_PLATE_UNIT_REMOVED` handler: normalized 8-space body indentation to the 2-space standard used by every other event block in the same handler.
+- `Database.lua` `_StatsKey`: cached `name:match()` result to avoid evaluating the same pattern twice; removed unreachable inner `or name` branch.
+- `Notifier.lua`: removed duplicate comment above `IsInGoblinTown` that appeared twice with a blank line between them.
+- `Portrait.lua` `IsKoSTarget`: replaced `UnitName()` (returns name only) with a guarded `UnitFullName()` call to correctly retrieve the realm, so realm-qualified KoS entries trigger the portrait border on cross-realm targets.
 
 ## 3.2.4
 
