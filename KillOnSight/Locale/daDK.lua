@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "daDK") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passiv registrering i nærheden kræver, at fjendtlige navneskilte er aktiveret."
 
 L.ACTIVITY = "%s i nærheden: %s (%s)%s"
 L.ADDED_GUILD = "Guild tilføjet til %s: %s"

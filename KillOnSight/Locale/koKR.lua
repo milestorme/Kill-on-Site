@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "koKR") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "주변 패시브 감지를 사용하려면 적 이름표를 활성화해야 합니다."
 
 L.ACTIVITY = "%s 근처: %s (%s)%s"
 L.ADDED_GUILD = "%s에 길드 추가: %s"

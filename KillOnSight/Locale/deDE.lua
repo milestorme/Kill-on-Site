@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "deDE") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passive Erkennung in der Nähe erfordert aktivierte feindliche Namensplaketten."
 
 L.ACTIVITY = "%s in der Nähe: %s (%s)%s"
 L.ADDED_GUILD = "Gilde zu %s hinzugefügt: %s"

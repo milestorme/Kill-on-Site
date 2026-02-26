@@ -20,6 +20,8 @@ end
 
 local L = KillOnSight_L_data
 
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Nearby passive detection requires Enemy Nameplates enabled."
 -- Default (enUS) strings. Other locale files override these keys.
 
 L.ACTIVITY = "%s nearby: %s (%s)%s"

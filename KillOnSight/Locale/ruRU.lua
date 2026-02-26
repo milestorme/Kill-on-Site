@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "ruRU") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Пассивное обнаружение поблизости требует включённых вражеских индикаторов имён."
 
 L.ACTIVITY = "%s рядом: %s (%s)%s"
 L.ADDED_GUILD = "Гильдия добавлена в %s: %s"

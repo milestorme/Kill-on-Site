@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "jaJP") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "近距離のパッシブ検出には敵のネームプレートを有効にする必要があります。"
 
 L.ACTIVITY = "%s 付近: %s (%s)%s"
 L.ADDED_GUILD = "ギルドを %s に追加: %s"

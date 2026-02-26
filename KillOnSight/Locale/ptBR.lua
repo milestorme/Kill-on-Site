@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "ptBR") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "A detecção passiva nas proximidades requer que as placas de nome inimigas estejam ativadas."
 
 L.ACTIVITY = "%s por perto: %s (%s)%s"
 L.ADDED_GUILD = "Guilda adicionada a %s: %s"

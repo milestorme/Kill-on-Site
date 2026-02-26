@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "nlNL") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Passieve detectie in de buurt vereist dat vijandelijke naamplaatjes zijn ingeschakeld."
 
 L.ACTIVITY = "%s in de buurt: %s (%s)%s"
 L.ADDED_GUILD = "Gilde toegevoegd aan %s: %s"

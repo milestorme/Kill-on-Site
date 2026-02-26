@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "plPL") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "Pasywne wykrywanie w pobliżu wymaga włączenia wrogich tabliczek z nazwami."
 
 L.ACTIVITY = "%s w pobliżu: %s (%s)%s"
 L.ADDED_GUILD = "Dodano gildię do %s: %s"

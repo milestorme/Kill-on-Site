@@ -20,7 +20,10 @@ end
 
 local L = KillOnSight_L_data
 
+
 if not (GetLocale() == "zhTW") then return end
+
+L.ENEMY_NAMEPLATES_REQUIRED = "附近被動偵測需要啟用敵方姓名板。"
 
 L.ACTIVITY = "%s 附近: %s (%s)%s"
 L.ADDED_GUILD = "已將公會加入 %s: %s"
