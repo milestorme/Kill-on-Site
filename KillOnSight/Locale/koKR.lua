@@ -38,46 +38,40 @@ L.SEEN_GUILD = "근처에서 %s의 길드 발견: %s (%s)%s"
 L.SEEN_HIDDEN = "은신 감지: %s"
 L.SYNC_COOLDOWN = "동기화 대기시간: %ds 남음."
 L.SYNC_DISABLED = "동기화하려면 길드에 속해 있어야 합니다."
-L.SYNC_DONE = "동기화 완료."
-L.SYNC_RECEIVED = "%s로부터 동기화 데이터를 받았습니다."
 L.SYNC_SENT = "동기화 요청을 보냈습니다."
-L.UI_ADD = "Add"
+L.SYNC_TOO_OLD = "동기화 실패: 상대방이 너무 뒤처져 있습니다 (oldest=%s, current=%s)."
+L.UI_ADD = "추가"
 L.UI_ADD_GUILD = "길드 추가"
 L.UI_ADD_KOS = "KoS 추가"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "공격 받음"
 L.UI_CLEAR = "지우기"
 L.UI_CLOSE = "닫기"
 L.UI_FLASH = "점멸"
 L.UI_GUILD = "길드"
-L.UI_INSTANCES = "인스턴스에서 알림"
+L.UI_ALERTS = "KoS / 길드"
+L.UI_NEARBY_HEADING = "근처"
 L.UI_LAST_SEEN = "마지막 목격"
 L.UI_CLASS = "직업"
 L.UI_NAME = "이름"
-L.UI_NEARBY_ALPHA = "근처 투명도"
 L.UI_NEARBY_AUTOHIDE = "비어 있으면 자동 숨김"
 L.UI_DISABLE_GOBLIN_TOWNS = "무법항 / 가젯잔에서 알림 끄기"
 L.SUBZONE_BOOTY_BAY = "무법항"
 L.SUBZONE_GADGETZAN = "가젯잔"
-L.UI_NEARBY_FADE = "페이드 인/아웃"
 L.UI_NEARBY_FRAME = "근처 창"
 L.UI_NEARBY_LOCK = "근처 창 잠금"
-L.UI_NEARBY_MINIMAL = "초미니 근처 창"
-L.UI_NEARBY_ROWFADE = "행별 페이드 타이머"
-L.UI_NEARBY_ROWICONS = "행 아이콘 (직업/해골)"
 L.UI_NEARBY_SCALE = "근처 창 크기"
 L.UI_NEARBY_NAME_FONT = "근처 이름 글꼴"
 L.UI_NEARBY_NAME_SIZE = "근처 이름 크기"
 L.UI_NEARBY_RANGE_CLAMP = "감지 거리(클래식 느낌)"
 
-L.UI_OPTIONS = "Options"
+L.UI_OPTIONS = "옵션"
 
 L.UI_OPTIONS_TITLE = "옵션"
-L.UI_REMOVE = "Remove"
+L.UI_REMOVE = "제거"
 L.UI_SOUND = "소리"
 L.UI_STEALTH = "은신 감지"
 L.UI_STEALTH_ADD_NEARBY = "은신자를 근처 목록에 추가"
 L.UI_STEALTH_BANNER = "중앙 경고 배너 표시"
+L.UI_STEALTH_CHAT = "채팅 알림"
 L.UI_STEALTH_ENABLE = "은신 감지 사용"
 L.UI_STEALTH_FADE = "배너 페이드 (초)"
 L.UI_STEALTH_HOLD = "배너 유지 (초)"
@@ -88,7 +82,6 @@ L.UI_TAB_ATTACKERS = "공격자"
 L.UI_TAB_GUILDS = "길드"
 L.UI_TAB_PLAYERS = "플레이어"
 L.UI_TAB_STATS = "통계"
-L.UI_THROTTLE = "제한 (초)"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "유형"
 L.UI_ZONE = "지역"
@@ -103,11 +96,8 @@ L.UI_BANNER_FADE_HELP = "경고가 부드럽게 사라지는 데 걸리는 시�
 L.UI_LIST_PLAYERS = "플레이어: %s"
 L.UI_LIST_GUILDS = "길드: %s"
 
-
 L.MSG_LOADED = "로드됨. /kos show 입력"
 L.UI_NEARBY_HEADER = "이름 / 레벨 / 시간"
-
-
 
 L.STEALTH_DETECTED_TITLE = "은신 플레이어 감지!"
 
@@ -129,41 +119,22 @@ L.UI_STATS_SORT_SEEN = "목격"
 L.UI_STATS_SORT_WINS = "승리"
 L.UI_STATS_SORT_LOSES = "패배"
 
-L.TT_MINIMAP_TITLE = 'Kill on Sight'
-
-L.TT_MINIMAP_LEFTCLICK = '왼쪽 클릭: 열기/닫기'
-
-L.TT_MINIMAP_RIGHTCLICK = '오른쪽 클릭: 메뉴'
-
-L.TT_ON_KOS = 'KoS 목록에 있음'
-L.TT_GUILD = "길드"
-L.TT_KOS = "발견 즉시 공격"
-L.TT_NOT_TARGETABLE = "대상 지정 불가"
-
-L.TT_GUILD_KOS = '길드 KoS'
-
-L.TT_LEVEL_FMT = '레벨 %s'
-
-L.UI_STEALTH_CHAT = "Chat notification"
-
-L.UI_NEARBY_SOUND = "Nearby list sound"
-
-
--- Added/updated for new 3.0.x UI & features
-L.UI_ADD = "추가"
-L.UI_REMOVE = "제거"
-L.UI_OPTIONS = "옵션"
-L.UI_ALERT_NEW = "근처에 새로운 적이 나타나면 알림"
-L.UI_STEALTH_CHAT = "채팅 알림"
-L.UI_NEARBY_SOUND = "근처 목록 소리"
-L.UI_ALERTS = "KoS / 길드"
-L.UI_NEARBY_HEADING = "근처"
 L.TT_MINIMAP_TITLE = "Kill on Sight"
+
 L.TT_MINIMAP_LEFTCLICK = "왼쪽 클릭: 열기/닫기"
+
 L.TT_MINIMAP_RIGHTCLICK = "오른쪽 클릭: 메뉴"
-L.TT_ON_KOS = "KoS 목록에 있음"
+
+L.TT_KOS = "발견 즉시 공격"
+L.TT_GUILD = "길드"
+L.TT_NOT_TARGETABLE = "지금은 대상 지정 불가"
+
 L.TT_GUILD_KOS = "길드 KoS"
+
 L.TT_LEVEL_FMT = "레벨 %s"
+
+L.UI_NEARBY_SOUND = "근처 목록 소리"
+
 L.UI_ATTACKERS_TITLE = "공격자"
 
 -- Notes / Spy import
@@ -177,19 +148,8 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "메모"
 
-
-L["TT_NOT_TARGETABLE"] = "지금은 대상 지정 불가"
-
 L.UI_NEARBY_BG_DARKNESS = "근처 창 배경 어두움"
 
-L.ENEMY_NAMEPLATES_REQUIRED = "근처 수동 감지를 위해 적 이름표를 활성화해야 합니다."
-
 -- Battleground options
-L.UI_BATTLEGROUNDS = "Battlegrounds"
-L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "전장"
-L.BG_MUTE_SOUNDS = "전장에서 모든 알림 소리 음소거"
-L.BG_MUTE_SOUNDS_DESC = "전장에서는 KoS, 길드, Nearby 및 은신 경고 소리를 비활성화합니다."
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
-
+L.UI_BATTLEGROUNDS = "전장"
+L.UI_BG_MUTE_SOUNDS = "전장에서 모든 알림 소리 음소거"

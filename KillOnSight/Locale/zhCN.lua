@@ -38,46 +38,40 @@ L.SEEN_GUILD = "附近发现%s的公会：%s（%s）%s"
 L.SEEN_HIDDEN = "发现潜行：%s"
 L.SYNC_COOLDOWN = "同步冷却中：剩余 %d 秒。"
 L.SYNC_DISABLED = "同步需要加入公会。"
-L.SYNC_DONE = "同步完成。"
-L.SYNC_RECEIVED = "已从 %s 接收同步数据。"
 L.SYNC_SENT = "已发送同步请求。"
-L.UI_ADD = "Add"
+L.SYNC_TOO_OLD = "同步失败：对等方版本过旧（oldest=%s，current=%s）。"
+L.UI_ADD = "添加"
 L.UI_ADD_GUILD = "添加公会"
 L.UI_ADD_KOS = "添加 KoS"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "被攻击"
 L.UI_CLEAR = "清除"
 L.UI_CLOSE = "关闭"
 L.UI_FLASH = "闪烁"
 L.UI_GUILD = "公会"
-L.UI_INSTANCES = "副本内提示"
+L.UI_ALERTS = "KoS / 公会"
+L.UI_NEARBY_HEADING = "附近"
 L.UI_LAST_SEEN = "上次出现"
 L.UI_CLASS = "职业"
 L.UI_NAME = "名字"
-L.UI_NEARBY_ALPHA = "附近透明度"
 L.UI_NEARBY_AUTOHIDE = "为空时自动隐藏"
 L.UI_DISABLE_GOBLIN_TOWNS = "在藏宝海湾 / 加基森禁用警报"
 L.SUBZONE_BOOTY_BAY = "藏宝海湾"
 L.SUBZONE_GADGETZAN = "加基森"
-L.UI_NEARBY_FADE = "淡入/淡出"
 L.UI_NEARBY_FRAME = "附近窗口"
 L.UI_NEARBY_LOCK = "锁定附近窗口"
-L.UI_NEARBY_MINIMAL = "超简附近窗口"
-L.UI_NEARBY_ROWFADE = "每行淡出计时"
-L.UI_NEARBY_ROWICONS = "行图标（职业/骷髅）"
 L.UI_NEARBY_SCALE = "附近窗口缩放"
 L.UI_NEARBY_NAME_FONT = "附近名字字体"
 L.UI_NEARBY_NAME_SIZE = "附近名字字号"
 L.UI_NEARBY_RANGE_CLAMP = "侦测范围（经典风格）"
 
-L.UI_OPTIONS = "Options"
+L.UI_OPTIONS = "选项"
 
 L.UI_OPTIONS_TITLE = "选项"
-L.UI_REMOVE = "Remove"
+L.UI_REMOVE = "移除"
 L.UI_SOUND = "声音"
 L.UI_STEALTH = "潜行侦测"
 L.UI_STEALTH_ADD_NEARBY = "将潜行者加入附近列表"
 L.UI_STEALTH_BANNER = "显示中央警告条"
+L.UI_STEALTH_CHAT = "聊天提示"
 L.UI_STEALTH_ENABLE = "启用潜行侦测"
 L.UI_STEALTH_FADE = "警告淡出（秒）"
 L.UI_STEALTH_HOLD = "警告停留（秒）"
@@ -88,7 +82,6 @@ L.UI_TAB_ATTACKERS = "攻击者"
 L.UI_TAB_GUILDS = "公会"
 L.UI_TAB_PLAYERS = "玩家"
 L.UI_TAB_STATS = "统计"
-L.UI_THROTTLE = "节流（秒）"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "类型"
 L.UI_ZONE = "区域"
@@ -103,11 +96,8 @@ L.UI_BANNER_FADE_HELP = "提示条平滑淡出的时间。"
 L.UI_LIST_PLAYERS = "玩家：%s"
 L.UI_LIST_GUILDS = "公会：%s"
 
-
 L.MSG_LOADED = "已加载。输入 /kos show"
 L.UI_NEARBY_HEADER = "名字 / 等级 / 时间"
-
-
 
 L.STEALTH_DETECTED_TITLE = "侦测到潜行玩家！"
 
@@ -129,41 +119,17 @@ L.UI_STATS_SORT_SEEN = "出现"
 L.UI_STATS_SORT_WINS = "胜利"
 L.UI_STATS_SORT_LOSES = "失败"
 
-L.TT_MINIMAP_TITLE = 'Kill on Sight'
-
-L.TT_MINIMAP_LEFTCLICK = '左键：打开/关闭'
-
-L.TT_MINIMAP_RIGHTCLICK = '右键：菜单'
-
-L.TT_ON_KOS = '在KoS列表'
-L.TT_GUILD = "公会"
-L.TT_KOS = "见面即杀"
-L.TT_NOT_TARGETABLE = "无法选中"
-
-L.TT_GUILD_KOS = '公会KoS'
-
-L.TT_LEVEL_FMT = '等级 %s'
-
-L.UI_STEALTH_CHAT = "Chat notification"
-
-L.UI_NEARBY_SOUND = "Nearby list sound"
-
-
--- Added/updated for new 3.0.x UI & features
-L.UI_ADD = "添加"
-L.UI_REMOVE = "移除"
-L.UI_OPTIONS = "选项"
-L.UI_ALERT_NEW = "附近出现新敌人时提醒"
-L.UI_STEALTH_CHAT = "聊天提示"
-L.UI_NEARBY_SOUND = "附近列表音效"
-L.UI_ALERTS = "KoS / 公会"
-L.UI_NEARBY_HEADING = "附近"
 L.TT_MINIMAP_TITLE = "Kill on Sight"
 L.TT_MINIMAP_LEFTCLICK = "左键：打开/关闭"
 L.TT_MINIMAP_RIGHTCLICK = "右键：菜单"
-L.TT_ON_KOS = "在KoS列表中"
+L.TT_KOS = "见面即杀"
+L.TT_GUILD = "公会"
+L.TT_NOT_TARGETABLE = "当前无法选为目标"
 L.TT_GUILD_KOS = "公会KoS"
 L.TT_LEVEL_FMT = "等级 %s"
+
+L.UI_NEARBY_SOUND = "附近列表音效"
+
 L.UI_ATTACKERS_TITLE = "攻击者"
 
 -- Notes / Spy import
@@ -177,19 +143,8 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "备注"
 
-
-L["TT_NOT_TARGETABLE"] = "当前无法选为目标"
-
 L.UI_NEARBY_BG_DARKNESS = "附近窗口背景深色度"
 
-L.ENEMY_NAMEPLATES_REQUIRED = "附近的被动侦测需要启用敌方姓名板。"
-
 -- Battleground options
-L.UI_BATTLEGROUNDS = "Battlegrounds"
-L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "战场"
-L.BG_MUTE_SOUNDS = "在战场中静音所有提示音"
-L.BG_MUTE_SOUNDS_DESC = "在战场中禁用 KoS、公会、附近和潜行提示音。"
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
-
+L.UI_BATTLEGROUNDS = "战场"
+L.UI_BG_MUTE_SOUNDS = "在战场中静音所有提示音"

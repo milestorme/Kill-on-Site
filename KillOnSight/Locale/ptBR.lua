@@ -38,46 +38,40 @@ L.SEEN_GUILD = "Guilda de %s avistada por perto: %s (%s)%s"
 L.SEEN_HIDDEN = "Oculto detectado: %s"
 L.SYNC_COOLDOWN = "Sincronização em recarga: %ds restantes."
 L.SYNC_DISABLED = "A sincronização requer estar em uma guilda."
-L.SYNC_DONE = "Sincronização concluída."
-L.SYNC_RECEIVED = "Dados de sincronização recebidos de %s."
 L.SYNC_SENT = "Pedido de sincronização enviado."
-L.UI_ADD = "Add"
+L.SYNC_TOO_OLD = "Sincronização falhou: o par está muito defasado (oldest=%s, current=%s)."
+L.UI_ADD = "Adicionar"
 L.UI_ADD_GUILD = "Adicionar guilda"
 L.UI_ADD_KOS = "Adicionar KoS"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "Atacado"
 L.UI_CLEAR = "Limpar"
 L.UI_CLOSE = "Fechar"
 L.UI_FLASH = "Piscar"
 L.UI_GUILD = "Guilda"
-L.UI_INSTANCES = "Notificar em instâncias"
+L.UI_ALERTS = "KoS / Guilda"
+L.UI_NEARBY_HEADING = "Próximos"
 L.UI_LAST_SEEN = "Visto por último"
 L.UI_CLASS = "Classe"
 L.UI_NAME = "Nome"
-L.UI_NEARBY_ALPHA = "Transparência da janela"
 L.UI_NEARBY_AUTOHIDE = "Ocultar automaticamente quando vazia"
 L.UI_DISABLE_GOBLIN_TOWNS = "Desativar alertas em Angra do Butim / Gadgetzan"
 L.SUBZONE_BOOTY_BAY = "Angra do Butim"
 L.SUBZONE_GADGETZAN = "Gadgetzan"
-L.UI_NEARBY_FADE = "Aparecer/desaparecer"
 L.UI_NEARBY_FRAME = "Janela de próximos"
 L.UI_NEARBY_LOCK = "Bloquear janela de próximos"
-L.UI_NEARBY_MINIMAL = "Janela de próximos ultra-minimalista"
-L.UI_NEARBY_ROWFADE = "Temporizadores de desvanecer por linha"
-L.UI_NEARBY_ROWICONS = "Ícones na linha (classe/caveira)"
 L.UI_NEARBY_SCALE = "Escala da janela de próximos"
 L.UI_NEARBY_NAME_FONT = "Fonte dos nomes próximos"
 L.UI_NEARBY_NAME_SIZE = "Tamanho da fonte dos nomes próximos"
 L.UI_NEARBY_RANGE_CLAMP = "Alcance de detecção (estilo Classic)"
 
-L.UI_OPTIONS = "Options"
+L.UI_OPTIONS = "Opções"
 
 L.UI_OPTIONS_TITLE = "Opções"
-L.UI_REMOVE = "Remove"
+L.UI_REMOVE = "Remover"
 L.UI_SOUND = "Som"
 L.UI_STEALTH = "Detecção de furtividade"
 L.UI_STEALTH_ADD_NEARBY = "Adicionar ocultos à lista Próximos"
 L.UI_STEALTH_BANNER = "Mostrar aviso central"
+L.UI_STEALTH_CHAT = "Notificação no chat"
 L.UI_STEALTH_ENABLE = "Ativar detecção de furtividade"
 L.UI_STEALTH_FADE = "Desvanecer aviso (segundos)"
 L.UI_STEALTH_HOLD = "Duração do aviso (segundos)"
@@ -88,7 +82,6 @@ L.UI_TAB_ATTACKERS = "Atacantes"
 L.UI_TAB_GUILDS = "Guildas"
 L.UI_TAB_PLAYERS = "Jogadores"
 L.UI_TAB_STATS = "Estatísticas"
-L.UI_THROTTLE = "Limite (s)"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "Tipo"
 L.UI_ZONE = "Zona"
@@ -103,11 +96,8 @@ L.UI_BANNER_FADE_HELP = "Quanto tempo o aviso leva para desaparecer suavemente."
 L.UI_LIST_PLAYERS = "Jogadores: %s"
 L.UI_LIST_GUILDS = "Guildas: %s"
 
-
 L.MSG_LOADED = "Carregado. Digite /kos show"
 L.UI_NEARBY_HEADER = "Nome / Nível / Hora"
-
-
 
 L.STEALTH_DETECTED_TITLE = "Jogador furtivo detectado!"
 
@@ -129,41 +119,17 @@ L.UI_STATS_SORT_SEEN = "Visto"
 L.UI_STATS_SORT_WINS = "Vitórias"
 L.UI_STATS_SORT_LOSES = "Derrotas"
 
-L.TT_MINIMAP_TITLE = 'Kill on Sight'
-
-L.TT_MINIMAP_LEFTCLICK = 'Clique esquerdo: Abrir/Fechar'
-
-L.TT_MINIMAP_RIGHTCLICK = 'Clique direito: Menu'
-
-L.TT_ON_KOS = 'Na lista KoS'
-L.TT_GUILD = "Guilda"
-L.TT_KOS = "Matar ao ver"
-L.TT_NOT_TARGETABLE = "Não pode ser alvo"
-
-L.TT_GUILD_KOS = 'KoS da guilda'
-
-L.TT_LEVEL_FMT = 'Nível %s'
-
-L.UI_STEALTH_CHAT = "Chat notification"
-
-L.UI_NEARBY_SOUND = "Nearby list sound"
-
-
--- Added/updated for new 3.0.x UI & features
-L.UI_ADD = "Adicionar"
-L.UI_REMOVE = "Remover"
-L.UI_OPTIONS = "Opções"
-L.UI_ALERT_NEW = "Alertar ao detectar um novo inimigo próximo"
-L.UI_STEALTH_CHAT = "Notificação no chat"
-L.UI_NEARBY_SOUND = "Som da lista de próximos"
-L.UI_ALERTS = "KoS / Guilda"
-L.UI_NEARBY_HEADING = "Próximos"
 L.TT_MINIMAP_TITLE = "Matar à Vista"
 L.TT_MINIMAP_LEFTCLICK = "Clique esquerdo: Abrir/Fechar"
 L.TT_MINIMAP_RIGHTCLICK = "Clique direito: Menu"
-L.TT_ON_KOS = "Na lista KoS"
+L.TT_GUILD = "Guilda"
+L.TT_KOS = "Matar ao ver"
+L.TT_NOT_TARGETABLE = "Não é possível selecionar agora"
 L.TT_GUILD_KOS = "KoS da guilda"
 L.TT_LEVEL_FMT = "Nível %s"
+
+L.UI_NEARBY_SOUND = "Som da lista de próximos"
+
 L.UI_ATTACKERS_TITLE = "Atacantes"
 
 -- Notes / Spy import
@@ -177,19 +143,8 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Notas"
 
-
-L["TT_NOT_TARGETABLE"] = "Não é possível selecionar agora"
-
 L.UI_NEARBY_BG_DARKNESS = "Escuridão do fundo da janela de próximos"
 
-L.ENEMY_NAMEPLATES_REQUIRED = "A detecção passiva próxima exige que as Placas de Nome de Inimigos estejam ativadas."
-
 -- Battleground options
-L.UI_BATTLEGROUNDS = "Battlegrounds"
-L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "Campos de batalha"
-L.BG_MUTE_SOUNDS = "Silenciar todos os sons de notificação em campos de batalha"
-L.BG_MUTE_SOUNDS_DESC = "Desativa sons de alerta de KoS, guilda, Nearby e furtividade dentro de campos de batalha."
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
-
+L.UI_BATTLEGROUNDS = "Campos de batalha"
+L.UI_BG_MUTE_SOUNDS = "Silenciar todos os sons de notificação em campos de batalha"

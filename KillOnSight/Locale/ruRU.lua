@@ -38,46 +38,40 @@ L.SEEN_GUILD = "Гильдия %s рядом: %s (%s)%s"
 L.SEEN_HIDDEN = "Обнаружен скрытник: %s"
 L.SYNC_COOLDOWN = "Синхронизация на перезарядке: осталось %ds."
 L.SYNC_DISABLED = "Синхронизация требует состоять в гильдии."
-L.SYNC_DONE = "Синхронизация завершена."
-L.SYNC_RECEIVED = "Данные синхронизации получены от %s."
 L.SYNC_SENT = "Запрос синхронизации отправлен."
-L.UI_ADD = "Add"
+L.SYNC_TOO_OLD = "Синхронизация не удалась: участник слишком далеко позади (oldest=%s, current=%s)."
+L.UI_ADD = "Добавить"
 L.UI_ADD_GUILD = "Добавить гильдию"
 L.UI_ADD_KOS = "Добавить KoS"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "Атакован"
 L.UI_CLEAR = "Очистить"
 L.UI_CLOSE = "Закрыть"
 L.UI_FLASH = "Мигание"
 L.UI_GUILD = "Гильдия"
-L.UI_INSTANCES = "Уведомлять в инстансах"
+L.UI_ALERTS = "KoS / Гильдия"
+L.UI_NEARBY_HEADING = "Рядом"
 L.UI_LAST_SEEN = "Последний раз"
 L.UI_CLASS = "Класс"
 L.UI_NAME = "Имя"
-L.UI_NEARBY_ALPHA = "Прозрачность окна"
 L.UI_NEARBY_AUTOHIDE = "Автоскрытие, если пусто"
 L.UI_DISABLE_GOBLIN_TOWNS = "Отключить оповещения в Пиратской Бухте / Прибамбасске"
 L.SUBZONE_BOOTY_BAY = "Пиратская Бухта"
 L.SUBZONE_GADGETZAN = "Прибамбасск"
-L.UI_NEARBY_FADE = "Плавное появл./исчезн."
 L.UI_NEARBY_FRAME = "Окно рядом"
 L.UI_NEARBY_LOCK = "Закрепить окно рядом"
-L.UI_NEARBY_MINIMAL = "Ультра-минималистичное окно рядом"
-L.UI_NEARBY_ROWFADE = "Таймеры затухания по строкам"
-L.UI_NEARBY_ROWICONS = "Иконки строки (класс/череп)"
 L.UI_NEARBY_SCALE = "Масштаб окна рядом"
 L.UI_NEARBY_NAME_FONT = "Шрифт имён рядом"
 L.UI_NEARBY_NAME_SIZE = "Размер шрифта имён рядом"
 L.UI_NEARBY_RANGE_CLAMP = "Дальность обнаружения (как в Classic)"
 
-L.UI_OPTIONS = "Options"
+L.UI_OPTIONS = "Настройки"
 
 L.UI_OPTIONS_TITLE = "Настройки"
-L.UI_REMOVE = "Remove"
+L.UI_REMOVE = "Удалить"
 L.UI_SOUND = "Звук"
 L.UI_STEALTH = "Обнаружение скрытности"
 L.UI_STEALTH_ADD_NEARBY = "Добавлять скрытников в список рядом"
 L.UI_STEALTH_BANNER = "Показывать центральный баннер"
+L.UI_STEALTH_CHAT = "Уведомление в чат"
 L.UI_STEALTH_ENABLE = "Включить обнаружение скрытности"
 L.UI_STEALTH_FADE = "Затухание баннера (сек.)"
 L.UI_STEALTH_HOLD = "Показ баннера (сек.)"
@@ -88,7 +82,6 @@ L.UI_TAB_ATTACKERS = "Нападавшие"
 L.UI_TAB_GUILDS = "Гильдии"
 L.UI_TAB_PLAYERS = "Игроки"
 L.UI_TAB_STATS = "Статистика"
-L.UI_THROTTLE = "Ограничение (с)"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "Тип"
 L.UI_ZONE = "Зона"
@@ -103,11 +96,8 @@ L.UI_BANNER_FADE_HELP = "Как долго предупреждение плав
 L.UI_LIST_PLAYERS = "Игроки: %s"
 L.UI_LIST_GUILDS = "Гильдии: %s"
 
-
 L.MSG_LOADED = "Загружено. Введите /kos show"
 L.UI_NEARBY_HEADER = "Имя / Уровень / Время"
-
-
 
 L.STEALTH_DETECTED_TITLE = "Обнаружен игрок в скрытности!"
 
@@ -129,41 +119,17 @@ L.UI_STATS_SORT_SEEN = "Видели"
 L.UI_STATS_SORT_WINS = "Победы"
 L.UI_STATS_SORT_LOSES = "Поражения"
 
-L.TT_MINIMAP_TITLE = 'Kill on Sight'
-
-L.TT_MINIMAP_LEFTCLICK = 'ЛКМ: Открыть/Закрыть'
-
-L.TT_MINIMAP_RIGHTCLICK = 'ПКМ: Меню'
-
-L.TT_ON_KOS = 'В списке KoS'
-L.TT_GUILD = "Гильдия"
-L.TT_KOS = "Убить при встрече"
-L.TT_NOT_TARGETABLE = "Недоступно для цели"
-
-L.TT_GUILD_KOS = 'KoS гильдии'
-
-L.TT_LEVEL_FMT = 'Уровень %s'
-
-L.UI_STEALTH_CHAT = "Chat notification"
-
-L.UI_NEARBY_SOUND = "Nearby list sound"
-
-
--- Added/updated for new 3.0.x UI & features
-L.UI_ADD = "Добавить"
-L.UI_REMOVE = "Удалить"
-L.UI_OPTIONS = "Настройки"
-L.UI_ALERT_NEW = "Оповещать о новом враге рядом"
-L.UI_STEALTH_CHAT = "Уведомление в чат"
-L.UI_NEARBY_SOUND = "Звук списка рядом"
-L.UI_ALERTS = "KoS / Гильдия"
-L.UI_NEARBY_HEADING = "Рядом"
 L.TT_MINIMAP_TITLE = "Убить при встрече"
 L.TT_MINIMAP_LEFTCLICK = "ЛКМ: Открыть/Закрыть"
 L.TT_MINIMAP_RIGHTCLICK = "ПКМ: Меню"
-L.TT_ON_KOS = "В списке KoS"
+L.TT_KOS = "Убить при встрече"
+L.TT_GUILD = "Гильдия"
+L.TT_NOT_TARGETABLE = "Сейчас нельзя выбрать целью"
 L.TT_GUILD_KOS = "Гильдейский KoS"
 L.TT_LEVEL_FMT = "Уровень %s"
+
+L.UI_NEARBY_SOUND = "Звук списка рядом"
+
 L.UI_ATTACKERS_TITLE = "Нападавшие"
 
 -- Notes / Spy import
@@ -177,19 +143,8 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Заметки"
 
-
-L["TT_NOT_TARGETABLE"] = "Сейчас нельзя выбрать целью"
-
 L.UI_NEARBY_BG_DARKNESS = "Темнота фона окна рядом"
 
-L.ENEMY_NAMEPLATES_REQUIRED = "Пассивное обнаружение поблизости требует включённых индикаторов имён врагов."
-
 -- Battleground options
-L.UI_BATTLEGROUNDS = "Battlegrounds"
-L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "Поля боя"
-L.BG_MUTE_SOUNDS = "Отключить все звуки уведомлений на полях боя"
-L.BG_MUTE_SOUNDS_DESC = "Отключает звуки оповещений KoS, гильдии, Nearby и обнаружения скрытности на полях боя."
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
-
+L.UI_BATTLEGROUNDS = "Поля боя"
+L.UI_BG_MUTE_SOUNDS = "Отключить все звуки уведомлений на полях боя"

@@ -38,35 +38,26 @@ L.SEEN_GUILD = "%s guild spotted nearby: %s (%s)%s"
 L.SEEN_HIDDEN = "Hidden detected: %s"
 L.SYNC_COOLDOWN = "Sync is on cooldown: %ds remaining."
 L.SYNC_DISABLED = "Sync requires being in a guild."
-L.SYNC_DONE = "Sync complete."
-L.SYNC_RECEIVED = "Received sync data from %s."
 L.SYNC_SENT = "Sync request sent."
+L.SYNC_TOO_OLD = "Sync failed: peer is too far behind (oldest=%s, current=%s)."
 L.UI_ADD = "Add"
 L.UI_ADD_GUILD = "Add Guild"
 L.UI_ADD_KOS = "Add KoS"
-L.UI_ALERT_NEW = "Alert on new nearby enemy"
-L.UI_ATTACKED_AT = "Attacked"
 L.UI_CLEAR = "Clear"
 L.UI_CLOSE = "Close"
 L.UI_FLASH = "Flash"
 L.UI_GUILD = "Guild"
-L.UI_INSTANCES = "Notify in instances"
 L.UI_ALERTS = "KoS / Guild"
 L.UI_NEARBY_HEADING = "Nearby"
 L.UI_LAST_SEEN = "Last seen"
 L.UI_CLASS = "Class"
 L.UI_NAME = "Name"
-L.UI_NEARBY_ALPHA = "Nearby transparency"
 L.UI_NEARBY_AUTOHIDE = "Auto-hide when empty"
 L.UI_DISABLE_GOBLIN_TOWNS = "Disable alerts in Booty Bay / Gadgetzan"
 L.SUBZONE_BOOTY_BAY = "Booty Bay"
 L.SUBZONE_GADGETZAN = "Gadgetzan"
-L.UI_NEARBY_FADE = "Fade in/out"
 L.UI_NEARBY_FRAME = "Nearby window"
 L.UI_NEARBY_LOCK = "Lock nearby window"
-L.UI_NEARBY_MINIMAL = "Ultra-minimal nearby window"
-L.UI_NEARBY_ROWFADE = "Per-row fade timers"
-L.UI_NEARBY_ROWICONS = "Row icons (class/skull)"
 L.UI_NEARBY_SCALE = "Nearby window scale"
 L.UI_NEARBY_NAME_FONT = "Nearby name font"
 L.UI_NEARBY_NAME_SIZE = "Nearby name size"
@@ -91,7 +82,6 @@ L.UI_TAB_ATTACKERS = "Attackers"
 L.UI_TAB_GUILDS = "Guilds"
 L.UI_TAB_PLAYERS = "Players"
 L.UI_TAB_STATS = "Stats"
-L.UI_THROTTLE = "Throttle (sec)"
 L.UI_TITLE = "Kill on Sight"
 L.UI_TYPE = "Type"
 L.UI_ZONE = "Zone"
@@ -140,11 +130,8 @@ L.TT_MINIMAP_LEFTCLICK = "Left-click: Open/Close"
 
 L.TT_MINIMAP_RIGHTCLICK = "Right-click: Menu"
 
-L.TT_ON_KOS = "On KoS list"
-
 L.TT_KOS = "Kill on Sight"
 L.TT_GUILD = "Guild"
-L.TT_NOT_TARGETABLE = "Not targetable"
 
 L.TT_GUILD_KOS = "Guild-KoS"
 
@@ -167,19 +154,11 @@ L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS e
 L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
 L.UI_NOTES = "Notes"
 
-
-L["TT_NOT_TARGETABLE"] = "Not targetable right now"
+L.TT_NOT_TARGETABLE = "Not targetable right now"
 
 L.UI_NEARBY_BG_DARKNESS = "Nearby background darkness"
-
-L.ENEMY_NAMEPLATES_REQUIRED = "Nearby passive detection requires Enemy Nameplates enabled."
 
 -- Battleground options
 L.UI_BATTLEGROUNDS = "Battlegrounds"
 L.UI_BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
--- Battleground options (sound suppression)
-L.BATTLEGROUNDS_HEADER = "Battlegrounds"
-L.BG_MUTE_SOUNDS = "Mute all notification sounds in battlegrounds"
-L.BG_MUTE_SOUNDS_DESC = "Disables KoS, Guild, Nearby, and Stealth alert sounds while inside battlegrounds."
-L.UI_BG_MUTE_SOUNDS_DESC = L.BG_MUTE_SOUNDS_DESC
 
