@@ -189,7 +189,7 @@ local function StartNearbyNameplateScan()
     local Detector = GetDetector()
     if not Detector then return end
     local Nearby = GetNearby()
-    if Nearby and Nearby.IsShown and (not Nearby:IsShown()) then return end
+    if Nearby and Nearby.frame and Nearby.frame.IsShown and (not Nearby.frame:IsShown()) then return end
     local plates = C_NamePlate.GetNamePlates(false)
     if not plates then return end
     for _, plate in ipairs(plates) do

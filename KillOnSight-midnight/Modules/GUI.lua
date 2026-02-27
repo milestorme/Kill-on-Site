@@ -1082,7 +1082,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   guildLabel:SetText(L.UI_GUILD)
   guildLabel:SetPoint("TOPLEFT", pGuilds, "TOPLEFT", 90, -14)
 
-  guildBox = MakeEditBox(pGuilds, 150)
+  local guildBox = MakeEditBox(pGuilds, 150)
   guildBox:SetPoint("TOPLEFT", pGuilds, "TOPLEFT", 145, -10)
   guildBox:SetWidth(150) -- fixed width so it does not overlap the logo
   -- no reason box in UI
@@ -1485,6 +1485,8 @@ local factionLabel = "-"
       RefreshStatsList()
     end
   end)
+
+  sortDD.onChanged = function() RefreshStatsList() end
 
   pStats._Refresh = RefreshStatsList
   RefreshStatsList()
@@ -2159,7 +2161,6 @@ end)
     if cNearbySound and cNearbySound.SetChecked then cNearbySound:SetChecked(prof.nearbySound ~= false) end
     if cNearbyLock and cNearbyLock.SetChecked then cNearbyLock:SetChecked(prof.nearbyFrameLocked == true) end
     if cAutoHide and cAutoHide.SetChecked then cAutoHide:SetChecked(prof.nearbyAutoHide ~= false) end
-    if cGoblinTowns and cGoblinTowns.SetChecked then cGoblinTowns:SetChecked(prof.disableInGoblinTowns == true) end
 
     -- Scale
     prof.nearbyFrame = prof.nearbyFrame or {}
@@ -2193,11 +2194,11 @@ end)
       if type(fontChoices) == "table" then
         local ok = false
         for _, v in ipairs(fontChoices) do
-          if v == _pFont.nearbyNameFont then ok = true break end
+          if v == prof.nearbyNameFont then ok = true break end
         end
-        if not ok then _pFont.nearbyNameFont = "Default" end
+        if not ok then prof.nearbyNameFont = "Default" end
       end
-      ddNearbyFont.selected = _pFont.nearbyNameFont
+      ddNearbyFont.selected = prof.nearbyNameFont
       UIDropDownMenu_SetText(ddNearbyFont, ddNearbyFont.selected)
       UIDropDownMenu_Refresh(ddNearbyFont)
     end
