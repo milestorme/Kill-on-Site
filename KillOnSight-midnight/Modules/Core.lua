@@ -668,5 +668,4 @@ LocaleSanityCheck = function()
   end
 end
 
-_G.KillOnSight_Core = _G.KillOnSight_Core or Core
 _G.KillOnSight_Core._ScheduleGUIRefresh = _ScheduleGUIRefresh

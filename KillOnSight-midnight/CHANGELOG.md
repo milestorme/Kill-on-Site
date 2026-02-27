@@ -1,3 +1,17 @@
+## 3.3.8
+
+### Changed
+- Restructured project: all modules moved into a dedicated `Modules/` folder for cleaner organisation.
+- Libraries now load via a single `Libs/embeds.xml` instead of individual file entries in the TOC.
+
+### Fixed
+- Removed redundant double-export of `_G.KillOnSight_Core` at the end of Core.lua.
+
+### Notes
+- No gameplay, SavedVariables, or API changes — this is a project-structure and housekeeping release.
+- `Midnight_Init.lua` remains in the addon root as the pre-module bootstrap.
+- Load order is unchanged; all global captures verified correct.
+
 ## 3.3.7
 - Fix: Prevent nil realmDB errors by lazily initializing database state when accessed early (DB:GetData / DB:GetProfile)
 
