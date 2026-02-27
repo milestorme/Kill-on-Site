@@ -582,6 +582,7 @@ function Nearby:ApplyPosition()
   local DB = GetDB()
   if not DB or not self.frame then return end
   local prof = DB:GetProfile()
+  if InCombatLockdown and InCombatLockdown() then self:QueueLayout(); return end
   local p = prof.nearbyFrame or {}
   self.frame:ClearAllPoints()
   self.frame:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER", p.x or 280, p.y or 80)
@@ -619,7 +620,7 @@ function Nearby:SetShown(shown)
     if shown then self:Create() end
     return
   end
-  if shown then self.frame:Show() else self.frame:Hide() end
+  SafeSetShown(self.frame, shown)
   if shown then self:StartTicker() else self:StopTicker() end
 end
 
@@ -694,12 +695,12 @@ function Nearby:SetMinimized(mini)
   if not self.frame then return end
 
   if self.minimized then
-    self.scroll:Hide()
-    for _,r in ipairs(self.rows) do r:Hide() end
+    SafeSetShown(self.scroll, false)
+    for _,r in ipairs(self.rows) do SafeSetShown(r, false) end
     self:_SetFrameHeightSafe(62)
   else
-    self.scroll:Show()
-    for _,r in ipairs(self.rows) do r:Show() end
+    SafeSetShown(self.scroll, true)
+    for _,r in ipairs(self.rows) do SafeSetShown(r, true) end
   end
   self:Refresh()
 end
@@ -1258,7 +1259,7 @@ local function UpdateScroll(self)
 
     if e then
       -- Secure targeting: only set while out of combat (protected in combat).
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("type1", "macro")
         -- Use macrotext1 (paired with type1). Also set macrotext for maximum compatibility
         -- across client variants that may read the un-suffixed attribute.
@@ -1311,7 +1312,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)
         row:SetAttribute("type1", nil)
@@ -1332,7 +1333,7 @@ local function UpdateScroll(self)
       SafeEnableMouse(row, false)
       if row.icon then row.icon:Hide() end
       if row.skull then row.skull:Hide() end
-      if row.SetAttribute then
+      if row.SetAttribute and not (InCombatLockdown and InCombatLockdown()) then
         row:SetAttribute("type1", nil)
         row:SetAttribute("macrotext1", nil)
         row:SetAttribute("macrotext", nil)
