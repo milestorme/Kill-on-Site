@@ -424,12 +424,16 @@ end
   GameTooltip:Show()
 end
 
--- Layout refresh helper (Retail/BG safe): attempt immediately; never wait for PLAYER_REGEN_ENABLED.
+-- Layout refresh helper (Retail/BG safe): defer protected layout changes until combat ends.
 function Nearby:QueueLayout()
-  self._pendingLayout = nil
-  if self.ApplyMinimalMode then pcall(function() self:ApplyMinimalMode() end) end
-  if self.Refresh then pcall(function() self:Refresh() end) end
+  self._pendingLayout = true
+  self:_RunOrDefer(function()
+    self._pendingLayout = nil
+    if self.ApplyMinimalMode then self:ApplyMinimalMode() end
+    if self.Refresh then self:Refresh() end
+  end)
 end
+
 
 
 function Nearby:StartTicker()
@@ -502,6 +506,66 @@ SafeSetShown = function(frame, shown)
   end)
 end
 
+
+
+-- Combat-safe executor: defers protected UI changes until combat ends (Retail/BG safe)
+function Nearby:_EnsureCombatDeferFrame()
+  if self._combatDeferFrame or not CreateFrame then return end
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  f:SetScript("OnEvent", function()
+    if InCombatLockdown and InCombatLockdown() then return end
+    if Nearby and Nearby._deferred then
+      Nearby:_FlushDeferred()
+    end
+  end)
+  self._combatDeferFrame = f
+end
+
+function Nearby:_FlushDeferred()
+  if InCombatLockdown and InCombatLockdown() then return end
+  local q = self._deferred
+  if not q or #q == 0 then
+    if self._combatDeferFrame then
+      pcall(function()
+        self._combatDeferFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        self._combatDeferFrame:SetScript("OnEvent", nil)
+      end)
+      self._combatDeferFrame = nil
+    end
+    return
+  end
+
+  self._deferred = {}
+  for _,fn in ipairs(q) do
+    if type(fn) == "function" then
+      pcall(fn)
+    end
+  end
+
+  if not self._deferred or #self._deferred == 0 then
+    if self._combatDeferFrame then
+      pcall(function()
+        self._combatDeferFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        self._combatDeferFrame:SetScript("OnEvent", nil)
+      end)
+      self._combatDeferFrame = nil
+    end
+  else
+    self:_EnsureCombatDeferFrame()
+  end
+end
+
+function Nearby:_RunOrDefer(fn)
+  if type(fn) ~= "function" then return end
+  if InCombatLockdown and InCombatLockdown() then
+    self._deferred = self._deferred or {}
+    table.insert(self._deferred, fn)
+    self:_EnsureCombatDeferFrame()
+    return
+  end
+  fn()
+end
 
 
 -- Safe width setter (Retail/BG combat-safe): defer SetWidth in combat to avoid taint/protected errors.
@@ -643,9 +707,11 @@ function Nearby:ApplyPosition()
   if not DB or not self.frame then return end
   local prof = DB:GetProfile()
   local p = prof.nearbyFrame or {}
-  self.frame:ClearAllPoints()
-  self.frame:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER", p.x or 280, p.y or 80)
-  self.frame:SetScale(p.scale or 1.0)
+  self:_RunOrDefer(function()
+    self.frame:ClearAllPoints()
+    self.frame:SetPoint(p.point or "CENTER", UIParent, p.relPoint or "CENTER", p.x or 280, p.y or 80)
+    self.frame:SetScale(p.scale or 1.0)
+  end)
   self:ApplyBackdrop()
 end
 
@@ -864,6 +930,8 @@ function Nearby:ApplyMinimalMode()
     self:AutoFitHeight(self._lastCount or 1)
     end
   end
+  self:_RunOrDefer(function()
+
 
   -- row positions update
   if self.rows and #self.rows > 0 then
@@ -876,6 +944,7 @@ function Nearby:ApplyMinimalMode()
       end
     end
   end
+  end)
 end
 
 
@@ -1874,7 +1943,7 @@ function Nearby:Create()
   UpdateScroll(self)
   self:ApplyAlpha()
   self:ApplyLocked()
-  self:ApplyMinimalMode()
+  self:_RunOrDefer(function() self:ApplyMinimalMode() end)
   self:StartTicker()
   self:HandleSanctuaryChange()
   self:Refresh() -- apply auto-hide immediately
@@ -2673,13 +2742,16 @@ end
 end
 
 function Nearby:Refresh()
-  if not self.frame then self:Create() end
+  if not self.frame then
+    self:_RunOrDefer(function() self:Create() end)
+    if not self.frame then return end
+  end
 
   local DB = GetDB()
   if not DB then return end
   local prof = DB:GetProfile()
 
-  self:ApplyMinimalMode()
+  self:_RunOrDefer(function() self:ApplyMinimalMode() end)
 
   if prof.showNearbyFrame == false then
     SafeSetShown(self.frame, false)

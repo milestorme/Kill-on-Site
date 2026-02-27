@@ -178,6 +178,7 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Notas"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Cercanos está limitado porque las placas de nombre enemigas están DESACTIVADAS. Activa las placas de nombre enemigas (Interfaz > Nombres) para detección completa. Puedes alternarlas con la tecla V."
+L.NEARBY_DISABLED_INSTANCE = "Nearby está desactivado en campos de batalla y arenas."
 L.TT_SPEC_LOADING = "Inspeccionando…"
 
 -- Profiles (options presets)

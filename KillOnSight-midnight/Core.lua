@@ -84,7 +84,9 @@ local function ApplyPvPInstanceDisableState(isPvP)
     Core._bgDisableWarned = true
     local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or 'KILLONSIGHT'
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-      DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r Nearby is disabled in battlegrounds/arenas.')
+      local msg = (KillOnSight_L and KillOnSight_L.NEARBY_DISABLED_INSTANCE) or \"Nearby is disabled in battlegrounds and arenas.\"
+
+      DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r '..msg)
     end
   end
 end

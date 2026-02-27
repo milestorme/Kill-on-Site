@@ -149,6 +149,7 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Note"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Vicini è limitato perché le barre dei nomi nemiche sono DISATTIVATE. Abilita le barre dei nomi nemiche (Interfaccia > Nomi) per il rilevamento completo. Puoi alternarle con il tasto V."
+L.NEARBY_DISABLED_INSTANCE = "Nearby è disattivato in campi di battaglia e arene."
 L.TT_SPEC_LOADING = "Ispezione…"
 
 -- Profiles (options presets)

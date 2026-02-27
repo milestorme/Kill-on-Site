@@ -1,3 +1,9 @@
+## 3.3.6
+- Fix: Localized the battleground/arena "Nearby disabled" notice (new L.NEARBY_DISABLED_INSTANCE)
+- Fix: Prevent UI taint and ADDON_ACTION_BLOCKED errors by deferring layout updates during combat
+- Fix: Safe handling of frame positioning (SetPoint / ClearAllPoints) in combat lockdown
+- Improvement: Centralized deferred execution system for combat-safe UI updates
+
 # KillOnSight – Changelog
 All notable changes to this project will be documented in this file.
 

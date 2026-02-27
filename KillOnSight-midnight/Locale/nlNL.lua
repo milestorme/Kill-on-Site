@@ -181,6 +181,7 @@ L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added,
 L.UI_NOTES = "Notities"
 
 L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Dichtbij is beperkt omdat vijandelijke naamplaten UIT staan. Schakel vijandelijke naamplaten in (Interface > Namen) voor volledige detectie. Je kunt ze toggelen met de V-toets."
+L.NEARBY_DISABLED_INSTANCE = "Nearby is uitgeschakeld in slagvelden en arena's."
 L.TT_SPEC_LOADING = "Inspecteren…"
 
 -- Profiles (options presets)
