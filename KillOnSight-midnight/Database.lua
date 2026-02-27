@@ -341,13 +341,40 @@ function DB:Init()
   end
 end
 
+function DB:_EnsureRealmDB()
+  -- Defensive init: some modules may query DB before ADDON_LOADED finishes,
+  -- or in rare edge-cases where realmDB wasn't set (e.g. savedvars not ready).
+  if not self.realmDB then
+    if type(self.Init) == "function" then
+      -- Never throw here; if Init fails we still return a safe table.
+      pcall(function() self:Init() end)
+    end
+  end
+
+  -- Absolute fallback: keep the addon functional even if saved vars are missing.
+  if not self.realmDB then
+    KillOnSightDB = KillOnSightDB or {}
+    KillOnSightDB.global = KillOnSightDB.global or {}
+    self.realmDB = KillOnSightDB.global
+    self.realmKey = self.realmKey or "GLOBAL"
+  end
+
+  self.realmDB.data = self.realmDB.data or {}
+  return self.realmDB
+end
+
 function DB:GetProfile()
   -- Returns the *active* options profile for the current character.
   -- (Per realm+faction DB; per-character assignment within that DB.)
-  return self.activeProfile or (self.realmDB and self.realmDB.profile) or {}
+  if self.activeProfile then return self.activeProfile end
+  local realmDB = self:_EnsureRealmDB()
+  return realmDB.profile or {}
 end
 
-function DB:GetData() return self.realmDB.data end
+function DB:GetData()
+  local realmDB = self:_EnsureRealmDB()
+  return realmDB.data
+end
 
 -- ------------------------------------------------------------
 -- Profiles (Options presets)
