@@ -3,6 +3,7 @@
 ## 3.2.6
 - Fix: Prevent ADDON_ACTION_BLOCKED by deferring Nearby frame updates during combat
 - Fix: Safe handling of Show/Hide, SetPoint, and SetAttribute in combat lockdown
+- Fixed phantom Nearby entries by removing targets on click if they resolve as non-attackable (layered/phase ghost)
 
 
 ## 3.2.5 

@@ -1447,6 +1447,35 @@ self._awMeasureFS = meas
       selfBtn:SetAttribute("macrotext1", "/targetexact " .. tname)
       selfBtn:SetAttribute("macrotext",  "/targetexact " .. tname)
     end)
+
+
+    -- After targeting, verify the resolved unit is actually attackable.
+    -- If the click targets a same-named player that we *cannot* attack (often a layer/phase ghost),
+    -- immediately remove the entry from Nearby so it doesn't linger as a phantom.
+    b:SetScript("PostClick", function(selfBtn, button)
+      if button ~= "LeftButton" then return end
+      local e = selfBtn.entry
+      if not e then return end
+      if not UnitExists or not UnitName or not UnitCanAttack or not UnitIsPlayer then return end
+      if not UnitExists("target") or not UnitIsPlayer("target") then return end
+
+      local tname, trealm = UnitName("target")
+      if not tname or tname == "" then return end
+      local tfull = (trealm and trealm ~= "" and (tname .. "-" .. trealm)) or tname
+
+      -- Compare normalized names so Classic/TBC realm handling doesn't cause false mismatches.
+      local want = NormalizeName((e.fullName or e.name) or "") or ((e.fullName or e.name) or "")
+      local got  = NormalizeName(tfull) or tfull
+      if want == "" or got == "" then return end
+      if want:lower() ~= got:lower() then return end
+
+      -- Yellow (neutral but attackable) and Red (hostile) will be attackable. Blue/friendly/phase ghosts won't.
+      if UnitCanAttack("player", "target") == false then
+        if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.ForgetByName then
+          _G.KillOnSight_Nearby:ForgetByName(e.fullName or e.name)
+        end
+      end
+    end)
     b:SetPoint("TOPLEFT", 12, -56 - (i-1)*22)
     b:SetSize((f:GetWidth() or 216) - 36, 22)
 
