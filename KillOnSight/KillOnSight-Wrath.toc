@@ -1,0 +1,40 @@
+## Interface: 30405, 38000
+## Title: Kill on Sight
+## Notes: Kill on Sight notifier and tracking addon
+## Author: Milestorme
+## Version: 3.2.6
+## Category: Combat
+## IconTexture: Interface/AddOns/KillOnSight/Images/icon.tga
+## SavedVariables: KillOnSightDB
+## OptionalDeps: LibSharedMedia-3.0
+## X-Localizations: enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
+
+embeds.xml
+Locale/enUS.lua
+Locale/deDE.lua
+Locale/frFR.lua
+Locale/esES.lua
+Locale/esMX.lua
+Locale/itIT.lua
+Locale/ptBR.lua
+Locale/ptPT.lua
+Locale/ruRU.lua
+Locale/koKR.lua
+Locale/zhCN.lua
+Locale/zhTW.lua
+Locale/jaJP.lua
+Locale/nlNL.lua
+Locale/daDK.lua
+Locale/plPL.lua
+Modules/Database.lua
+Modules/Util.lua
+Modules/Notifier.lua
+Modules/NearbyFrame.lua
+Modules/Detector.lua
+Modules/Activity.lua
+Modules/Sync.lua
+Modules/GUI.lua
+Modules/Minimap.lua
+Modules/Portrait.lua
+Modules/SpyImport.lua
+Modules/Core.lua
