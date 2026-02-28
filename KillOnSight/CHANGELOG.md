@@ -1,5 +1,8 @@
 # KillOnSight – Changelog
 
+## 3.2.7
+- Update TOC's Compress to one 
+
 ## 3.2.6
 - Fix: Prevent ADDON_ACTION_BLOCKED by deferring Nearby frame updates during combat
 - Fix: Safe handling of Show/Hide, SetPoint, and SetAttribute in combat lockdown
