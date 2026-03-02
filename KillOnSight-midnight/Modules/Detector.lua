@@ -251,8 +251,14 @@ function Detector:OnNameplateRemoved(unit)
   local okG, guid = pcall(UnitGUID, unit)
   if not okG or not guid then return end
 
+  -- Midnight: guid can be a protected "secret" value that passes nil checks
+  -- but throws "table index is secret" when used as a table key or in string ops.
+  local okType, isStr = pcall(function() return type(guid) == "string" end)
+  if not okType or not isStr then return end
+
   local now = Now()
-  stealthLastSeenByGUID[guid] = now
+  local okSet, _ = pcall(function() stealthLastSeenByGUID[guid] = now end)
+  if not okSet then return end
   CleanupStealthState(now)
 
   local okN, name = pcall(UnitName, unit)

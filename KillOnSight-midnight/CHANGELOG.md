@@ -1,3 +1,6 @@
+## 3.3.9
+- Fixed bug where detector was still active in delves
+
 ## 3.3.8
 
 ### Changed

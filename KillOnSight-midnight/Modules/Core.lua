@@ -17,11 +17,18 @@ end
 local function IsInPvEInstance()
   if not IsInInstance then return false end
   local ok, inInstance, instType = pcall(IsInInstance)
-  if not ok or not inInstance then return false end
+  -- If pcall failed, assume we're instanced (safe side: disable detector).
+  if not ok then return true end
+  if not inInstance then return false end
 
   -- Blizzard can return new/unknown instance types (e.g. Delves).
   -- We only want to keep KoS active in open world; treat everything else as PvE suppression.
-  if instType == "pvp" or instType == "arena" then
+  -- Wrap comparisons in pcall in case instType is a protected "secret" value.
+  local okCmp, isPvP = pcall(function()
+    return instType == "pvp" or instType == "arena"
+  end)
+  if not okCmp then return true end  -- secret value → assume instanced, disable
+  if isPvP then
     return false
   end
   return true
