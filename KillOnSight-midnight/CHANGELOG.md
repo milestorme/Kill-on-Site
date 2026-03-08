@@ -1,3 +1,10 @@
+## 3.4.0
+
+### Fixed
+- `Database.lua` `_StatsKey`: cached `name:match()` result to avoid evaluating the same pattern twice (backport from Classic v3.2.5)
+- `Notifier.lua`: removed excessive blank lines between `_Print` and `IsInGoblinTown`
+- `NearbyFrame.lua`: fixed inconsistent nil guard on modifier key check (Shift/Ctrl/Alt) in row click handler
+
 ## 3.3.9
 - Fixed bug where detector was still active in delves
 
