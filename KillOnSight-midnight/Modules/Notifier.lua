@@ -13,10 +13,6 @@ local function _Print(msg)
 end
 
 
-
-
-
-
 -- Optional town-level suppression: Booty Bay / Gadgetzan.
 local function IsInGoblinTown()
   local sub = (GetSubZoneText and GetSubZoneText()) or ""

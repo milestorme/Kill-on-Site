@@ -1718,7 +1718,7 @@ function Nearby:Create()
       if InCombatLockdown and InCombatLockdown() then return end
 
       -- Modifiers are handled elsewhere in KoS; keep targeting on plain left-click.
-      if IsShiftKeyDown and (IsShiftKeyDown() or (IsControlKeyDown and IsControlKeyDown()) or (IsAltKeyDown and IsAltKeyDown())) then
+      if (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown()) or (IsAltKeyDown and IsAltKeyDown()) then
         return
       end
 
