@@ -22,9 +22,11 @@ end
 
 local function _InspectEnabled()
   if IsInInstance then
-    local inInst, instType = IsInInstance()
-    if inInst and instType and instType ~= "none" then
-      return false
+    local ok, inInst, instType = pcall(IsInInstance)
+    if not ok then return false end  -- assume instanced on error
+    if inInst then
+      local okCmp, isOpenWorld = pcall(function() return instType == "none" end)
+      if not okCmp or not isOpenWorld then return false end
     end
   end
   return true
@@ -1865,11 +1867,19 @@ function Nearby:Create()
     inf:RegisterEvent("PLAYER_TARGET_CHANGED")
     inf:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
     inf:SetScript("OnEvent", function(_, event, arg1)
-      -- Disable Retail inspect/nameplate helpers inside instances/BGs (Nearby is suppressed there).
+      -- Disable Retail inspect/nameplate helpers inside instances/BGs/Delves (Nearby is suppressed there).
+      -- Wrap in pcall: Blizzard can return protected/secret instType values (e.g. Delves).
       if IsInInstance then
-        local inInst, instType = IsInInstance()
-        if inInst and instType and instType ~= "none" then
-          return
+        local ok, inInst, instType = pcall(IsInInstance)
+        if not ok then return end  -- pcall failed → assume instanced, bail out
+        if inInst then
+          -- Compare instType inside pcall in case it is a secret/protected value.
+          local okCmp, isOpenWorld = pcall(function()
+            return instType == "none"
+          end)
+          if not okCmp or not isOpenWorld then
+            return
+          end
         end
       end
       if event == "INSPECT_READY" then
@@ -1879,6 +1889,7 @@ function Nearby:Create()
 
       -- Helper: if this guid is tracked in Nearby and spec is unknown, request it now.
       local function TryQueueForGuid(guid, unit)
+        guid = guid and _ValidPlayerGUID(guid)
         if not guid or not Nearby.guidToKey then return end
         local key = Nearby.guidToKey[guid]
         if not key then return end
@@ -1892,12 +1903,14 @@ function Nearby:Create()
         local unit = arg1
         if unit and UnitGUID then
           local guid = UnitGUID(unit)
+          -- Sanitise: UnitGUID may return a tainted/secret value inside instances/delves.
+          guid = _ValidPlayerGUID(guid)
+          if not guid then
+            return
+          end
           -- Remember the freshest unit token for this guid.
           Nearby:_EnsureInspect()
-        if type(guid) ~= "string" or guid == "" then
-          return
-        end
-        Nearby._inspectMgr.lastUnit[guid] = unit
+          Nearby._inspectMgr.lastUnit[guid] = unit
           TryQueueForGuid(guid, unit)
         end
       elseif event == "NAME_PLATE_UNIT_REMOVED" then

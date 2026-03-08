@@ -1,3 +1,8 @@
+## 3.4.1
+
+### Fixed
+- Tainted GUID/instance-type comparisons in NearbyFrame causing "attempt to compare local 'guid'" errors inside Delves by wrapping IsInInstance and UnitGUID checks in pcall.
+
 ## 3.4.0
 
 ### Fixed
