@@ -618,6 +618,12 @@ Core:SetScript("OnEvent", function(self, event, ...)
   end
 
   if event == "UNIT_AURA" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_SUCCEEDED" or event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_FLAGS" or event == "UNIT_FACTION" then
+    if IsInPvEInstance() then
+      if not Core._instDisabled then ApplyPvEInstanceDisableState(true) end
+      return
+    elseif Core._instDisabled then
+      ApplyPvEInstanceDisableState(false)
+    end
     if Core._bgDisabled then return end
     local unit = ...
     if unit and (unit == "target" or unit == "mouseover" or unit:match('^nameplate')) then

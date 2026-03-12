@@ -154,8 +154,16 @@ end
 
 local function GetUnitGuild(unit)
   if not unit then return end
-  local g = GetGuildInfo and GetGuildInfo(unit)
-  if g and g ~= "" then return g end
+  if not GetGuildInfo then return end
+  local ok, g = pcall(GetGuildInfo, unit)
+  if not ok then return nil end
+  local okCmp, result = pcall(function()
+    if type(g) ~= "string" then return nil end
+    if g == "" then return nil end
+    return g
+  end)
+  if not okCmp or not result then return nil end
+  return result
 end
 
 local function GetUnitNameSafe(unit)
@@ -163,9 +171,15 @@ local function GetUnitNameSafe(unit)
   if not UnitName then return nil end
   local ok, raw = pcall(UnitName, unit)
   if not ok then return nil end
-  local ok2, name = pcall(tostring, raw)
-  if not ok2 or type(name) ~= "string" or name == "" then return nil end
-  return name
+  -- raw may be a tainted "secret" string; tostring does NOT untaint it.
+  -- Wrap ALL comparisons and operations in pcall.
+  local okCheck, result = pcall(function()
+    if type(raw) ~= "string" then return nil end
+    if raw == "" then return nil end
+    return raw
+  end)
+  if not okCheck or not result then return nil end
+  return result
 end
 
 local function GetUnitFullNameSafe(unit)
@@ -173,12 +187,20 @@ local function GetUnitFullNameSafe(unit)
   if not UnitFullName then return nil, nil end
   local ok, n, r = pcall(UnitFullName, unit)
   if not ok then return nil, nil end
-  local okN, name = pcall(tostring, n)
-  if not okN or type(name) ~= "string" or name == "" then return nil, nil end
+  local okN, name = pcall(function()
+    if type(n) ~= "string" then return nil end
+    if n == "" then return nil end
+    return n
+  end)
+  if not okN or not name then return nil, nil end
   local realm = nil
   if r ~= nil then
-    local okR, realmStr = pcall(tostring, r)
-    if okR and type(realmStr) == "string" and realmStr ~= "" then
+    local okR, realmStr = pcall(function()
+      if type(r) ~= "string" then return nil end
+      if r == "" then return nil end
+      return r
+    end)
+    if okR and realmStr then
       realm = realmStr
     end
   end
@@ -375,13 +397,28 @@ function Detector:CheckUnit(unit, forceNearby)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local guid = UnitGUID and UnitGUID(unit)
+  local guid = nil
+  if UnitGUID then
+    local okG, rawGuid = pcall(UnitGUID, unit)
+    if okG then
+      local okV, validGuid = pcall(function()
+        if type(rawGuid) ~= "string" then return nil end
+        if rawGuid == "" then return nil end
+        return rawGuid
+      end)
+      if okV then guid = validGuid end
+    end
+  end
   local name = GetUnitNameSafe(unit)
   if not name then return end
 
   -- Nameplates include NPCs, pets and totems. We must only track *enemy players*.
   local isPlayerUnit = (UnitIsPlayer and UnitIsPlayer(unit)) or false
-  local isPlayerGUID = (guid and guid:match('^Player%-')) ~= nil
+  local isPlayerGUID = false
+  if guid then
+    local okM, m = pcall(string.match, guid, '^Player%-')
+    isPlayerGUID = (okM and m ~= nil)
+  end
 
   -- Retail can briefly report hostile nameplate units as not-attackable (UnitCanAttack false)
   -- right as the nameplate appears. Prefer friend/enemy APIs and fall back to GUID-based assumptions.
