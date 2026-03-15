@@ -11,7 +11,11 @@ local function IsInPvPInstance()
   if not IsInInstance then return false end
   local ok, inInstance, instType = pcall(IsInInstance)
   if not ok then return false end
-  return (inInstance and (instType == "pvp" or instType == "arena")) and true or false
+  if not inInstance then return false end
+  local okCmp, isPvP = pcall(function()
+    return instType == "pvp" or instType == "arena"
+  end)
+  return (okCmp and isPvP) or false
 end
 
 local function IsInPvEInstance()

@@ -1,8 +1,8 @@
-## Interface: 120001
+## Interface: 120005
 ## Title: Kill on Sight: Midnight
 ## Notes: Retail-only Midnight fork (WPVP focused)
 ## Author: Milestorme
-## Version: 3.4.2
+## Version: 3.4.3
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB

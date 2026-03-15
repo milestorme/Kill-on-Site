@@ -1,3 +1,13 @@
+## 3.4.3
+
+- Fixed _ValidPlayerGUID taint errors caused by pcall(tostring) not actually untainting secret strings; all comparisons now wrapped in pcall(function() ... end)
+- Hardened remaining bare instType comparisons in Core.lua and Portrait.lua
+
+## 3.4.2
+
+- Fixed Detector still firing inside Delves via UNIT_AURA/spellcast events that bypassed the instance gate
+- Fixed tainted string comparisons in Detector (UnitName, UnitFullName, GetGuildInfo, UnitGUID) causing "attempt to compare local 'name'" errors in protected instances
+
 ## 3.4.1
 
 ### Fixed

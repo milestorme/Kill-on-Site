@@ -11,13 +11,15 @@ local function GetNotifier() return _G.KillOnSight_Notifier end
 -- Never use non-string GUIDs as table keys or in comparisons.
 local function _ValidPlayerGUID(guid)
   -- In BGs/instances Blizzard may hand addons a protected "secret" value that breaks even simple comparisons.
-  -- Never compare or pattern-match the raw value; coerce via tostring inside pcall and validate the result.
-  if type(guid) ~= "string" then return nil end
-  local ok, s = pcall(tostring, guid)
-  if not ok or type(s) ~= "string" then return nil end
-  if s == "" then return nil end
-  if not s:match("^Player%-") then return nil end
-  return s
+  -- tostring does NOT untaint. Wrap all comparisons in pcall.
+  local ok, result = pcall(function()
+    if type(guid) ~= "string" then return nil end
+    if guid == "" then return nil end
+    if not guid:match("^Player%-") then return nil end
+    return guid
+  end)
+  if not ok then return nil end
+  return result
 end
 
 local function _InspectEnabled()

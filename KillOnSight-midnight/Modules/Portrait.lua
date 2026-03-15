@@ -11,22 +11,29 @@ local f = CreateFrame("Frame")
 
 local function InRestrictedInstance()
   if not IsInInstance then return false end
-  local inInst, instType = IsInInstance()
-  return inInst and instType and instType ~= "none"
+  local ok, inInst, instType = pcall(IsInInstance)
+  if not ok then return true end  -- assume restricted on error
+  if not inInst then return false end
+  local okCmp, isOpenWorld = pcall(function() return instType == "none" end)
+  if not okCmp or not isOpenWorld then return true end
+  return false
 end
 
 local function SafeToString(v)
-  local ok, s = pcall(tostring, v)
+  local ok, result = pcall(function()
+    if type(v) ~= "string" then return nil end
+    if v == "" then return nil end
+    return v
+  end)
   if not ok then return nil end
-  local ok2, plain = pcall(string.format, "%s", s)
-  if not ok2 or type(plain) ~= "string" or plain == "" then return nil end
-  return plain
+  return result
 end
 
 local function NormalizeName(name)
   local s = SafeToString(name)
   if not s then return nil end
-  local short = s:match("^([^%-]+)")
+  local ok, short = pcall(string.match, s, "^([^%-]+)")
+  if not ok then return nil end
   return short or s
 end
 
@@ -230,7 +237,9 @@ local function IsArenaInstance()
   if not IsInInstance then return false end
   local ok, inInstance, instType = pcall(IsInInstance)
   if not ok then return false end
-  return (inInstance and instType == "arena") and true or false
+  if not inInstance then return false end
+  local okCmp, isArena = pcall(function() return instType == "arena" end)
+  return (okCmp and isArena) or false
 end
 
 local function Update()
