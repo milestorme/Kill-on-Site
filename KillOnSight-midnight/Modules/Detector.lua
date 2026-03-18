@@ -13,6 +13,23 @@ local function Now() return time() end
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 local function GetCore() return _G.KillOnSight_Core end
+
+-- Hard gate: bail out if we're in any non-PvP instance (Delves, dungeons, raids, scenarios).
+-- This is defense-in-depth; Core.lua also gates, but tainted return values can slip past.
+local function _IsDisabledInstance()
+  if not IsInInstance then return false end
+  local ok, inInstance, instType = pcall(IsInInstance)
+  if not ok then return true end  -- assume instanced on error
+  -- inInstance may itself be tainted; use pcall for the truthiness check.
+  local okBool, isIn = pcall(function() return inInstance == true end)
+  if not okBool then return true end
+  if not isIn then return false end
+  local okCmp, isPvP = pcall(function()
+    return instType == "pvp" or instType == "arena"
+  end)
+  if not okCmp then return true end
+  return not isPvP
+end
 local function GetNearby() return _G.KillOnSight_Nearby end
 
 -- Stealth/vanish detection via UNIT_AURA on target/mouseover/nameplates.
@@ -211,10 +228,11 @@ local function UnitTargetsPlayer(unit)
   if not unit or unit == "" then return false end
   if not UnitExists or not UnitIsUnit then return false end
   local u = unit .. "target"
-  local ok1, exists = pcall(UnitExists, u)
-  if not ok1 or exists ~= true then return false end
-  local ok2, isunit = pcall(UnitIsUnit, u, "player")
-  return (ok2 and isunit == true) or false
+  local ok, result = pcall(function()
+    if not UnitExists(u) then return false end
+    return UnitIsUnit(u, "player") and true or false
+  end)
+  return (ok and result) or false
 end
 
 -- Throttle notifications per key (player/guild) using profile throttleSeconds.
@@ -267,6 +285,7 @@ local Detector = {}
 -- infer a hidden transition to keep stealth/prowl announcements working without CLEU.
 function Detector:OnNameplateRemoved(unit)
   if not unit or unit == "" then return end
+  if _IsDisabledInstance() then return end
   if _G.KillOnSight_Core and (_G.KillOnSight_Core._bgDisabled or _G.KillOnSight_Core._instDisabled) then return end
   if not UnitGUID or not UnitName then return end
 
@@ -391,6 +410,8 @@ end
 -- Main entry point used by Core.lua (target/mouseover/nameplates/unit-scoped events).
 function Detector:CheckUnit(unit, forceNearby)
   if not unit or unit == "" then return end
+  -- Hard gate: never run detection inside Delves/dungeons/raids/scenarios.
+  if _IsDisabledInstance() then return end
   if UnitExists and not UnitExists(unit) then return end
 
   local DB = GetDB()
@@ -413,7 +434,11 @@ function Detector:CheckUnit(unit, forceNearby)
   if not name then return end
 
   -- Nameplates include NPCs, pets and totems. We must only track *enemy players*.
-  local isPlayerUnit = (UnitIsPlayer and UnitIsPlayer(unit)) or false
+  local isPlayerUnit = false
+  if UnitIsPlayer then
+    local okP, p = pcall(UnitIsPlayer, unit)
+    isPlayerUnit = (okP and p and true) or false
+  end
   local isPlayerGUID = false
   if guid then
     local okM, m = pcall(string.match, guid, '^Player%-')
@@ -422,18 +447,22 @@ function Detector:CheckUnit(unit, forceNearby)
 
   -- Retail can briefly report hostile nameplate units as not-attackable (UnitCanAttack false)
   -- right as the nameplate appears. Prefer friend/enemy APIs and fall back to GUID-based assumptions.
+  -- All WoW API boolean returns can be tainted in instances; wrap in pcall.
   local isHostile = nil
-  if UnitIsEnemy then
-    isHostile = UnitIsEnemy('player', unit)
-  end
-  if isHostile == nil and UnitIsFriend then
-    local f = UnitIsFriend('player', unit)
-    if f ~= nil then isHostile = not f end
-  end
-  if isHostile == nil and UnitCanAttack then
-    local ca = UnitCanAttack('player', unit)
-    if ca ~= nil then isHostile = ca end
-  end
+  pcall(function()
+    if UnitIsEnemy then
+      local e = UnitIsEnemy('player', unit)
+      if e ~= nil then isHostile = e and true or false; return end
+    end
+    if UnitIsFriend then
+      local f = UnitIsFriend('player', unit)
+      if f ~= nil then isHostile = not f; return end
+    end
+    if UnitCanAttack then
+      local ca = UnitCanAttack('player', unit)
+      if ca ~= nil then isHostile = ca and true or false; return end
+    end
+  end)
   if isHostile == nil and isPlayerGUID and tostring(unit):match('^nameplate') then
     isHostile = true
   end

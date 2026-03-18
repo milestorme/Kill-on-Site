@@ -1,3 +1,13 @@
+## 3.4.5
+
+- Added _IsDisabledInstance() hard gate at top of Detector:CheckUnit and OnNameplateRemoved as defense-in-depth against instance detection leaks
+- Fixed tainted boolean comparisons from UnitIsUnit, UnitIsPlayer, UnitIsEnemy, UnitIsFriend, UnitCanAttack
+- Rewrote IsInPvEInstance as single pcall block to catch tainted inInstance booleans
+
+## 3.4.4
+
+- Fixed TOC
+
 ## 3.4.3
 
 - Fixed _ValidPlayerGUID taint errors caused by pcall(tostring) not actually untainting secret strings; all comparisons now wrapped in pcall(function() ... end)
