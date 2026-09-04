@@ -136,12 +136,11 @@ local function Update()
   -- Keep ALL KoS/Guild behavior for PLAYER targets exactly as-is.
   -- Additionally, show Blizzard-style rare/elite dragons for NPC targets.
   if not UnitExists("target") then
-    -- Restore whatever Blizzard wants when there's no target.
-    if TargetFrame_CheckClassification then
-      TargetFrame_CheckClassification(TargetFrame)
-    else
-      ApplyBorder("none")
-    end
+    -- Restore only the texture we changed. Don't call Blizzard's
+    -- TargetFrame_CheckClassification here - it reflows/reveals other parts
+    -- of the default Target frame, which conflicts with frame-skinning addons
+    -- (e.g. Easy Frames) that have hidden or replaced those default pieces.
+    ApplyBorder("none")
     return
   end
 
@@ -153,12 +152,9 @@ local function Update()
       ApplyBorder("elite")
       return
     end
-    -- Non-KoS player: restore Blizzard default (no dragon)
-    if TargetFrame_CheckClassification then
-      TargetFrame_CheckClassification(TargetFrame)
-    else
-      ApplyBorder("none")
-    end
+    -- Non-KoS player: restore our own texture only (see note above about
+    -- avoiding TargetFrame_CheckClassification for frame-skin compatibility).
+    ApplyBorder("none")
     return
   end
 
@@ -172,12 +168,8 @@ local function Update()
     return
   end
 
-  -- Normal NPC: restore Blizzard's normal texture.
-  if TargetFrame_CheckClassification then
-    TargetFrame_CheckClassification(TargetFrame)
-  else
-    ApplyBorder("none")
-  end
+  -- Normal NPC: restore our own texture only.
+  ApplyBorder("none")
 end
 
 
