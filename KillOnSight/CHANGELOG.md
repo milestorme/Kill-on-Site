@@ -1,5 +1,8 @@
 # KillOnSight – Changelog
 
+## 3.2.7
+- Added a real 60s cooldown (STRONG_ALERT_COOLDOWN) so the sound/flash fires on first sighting, then again only after 60s if the target is still around.
+- Added a 2.5s debounce before a nameplate-removal actually forgets a target, canceled if they're re-sighted in that window — so a flicker no longer counts as "fell off the list." A real absence (60s of no sighting via the existing TTL, or a genuine nameplate removal that sticks) still resets things properly.
 ## 3.2.6
 - Fix: Prevent ADDON_ACTION_BLOCKED by deferring Nearby frame updates during combat
 - Fix: Safe handling of Show/Hide, SetPoint, and SetAttribute in combat lockdown

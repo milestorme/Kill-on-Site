@@ -96,9 +96,11 @@ local Nearby = {
   rows = {},
   entries = {},   -- [lowerName] = {name,class,guild,level,zone,lastSeen,kosType}
   alerted = {},   -- [lowerName] = true if alerted this presence
-  -- KoS/Guild announcement gates: only once per presence while the player remains in Nearby.
-  strongAlerted = {},  -- [lowerName] = true if sound/flash already played this presence
-  announceAlerted = {},-- [lowerName] = true if chat announce already sent this presence
+  -- KoS/Guild announcement gates: fires immediately on first sighting, then again only
+  -- every STRONG_ALERT_COOLDOWN seconds while the player remains in Nearby.
+  strongAlerted = {},  -- [lowerName] = GetTime() sound/flash last played (nil = never this presence)
+  announceAlerted = {},-- [lowerName] = GetTime() chat announce last sent (nil = never this presence)
+  _pendingForget = {}, -- [lowerName] = pending C_Timer for a debounced nameplate-removal forget
   refreshScheduled = false,
   minimized = false,
   menu = nil,
@@ -926,6 +928,10 @@ function Nearby:FadeTo(targetAlpha, duration, hideOnDone)
   if hideOnDone then SafeSetShown(self.frame, false) end
 end
 
+-- How often (seconds) a still-present KoS/Guild-KoS target can re-trigger the
+-- strong alert (sound + flash) after the first sighting.
+local STRONG_ALERT_COOLDOWN = 60
+
 function Nearby:AlertNewEnemy(e)
   local N = GetNotifier()
   if not N or not e then return end
@@ -946,10 +952,10 @@ function Nearby:AlertNewEnemy(e)
   end
 
   if isKoS then
-    -- Mark strong alert as consumed for this presence so Notifier does not
-    -- re-fire sound/flash while the player remains in the Nearby list.
+    -- Record when the strong alert last fired for this presence, so a later
+    -- re-check (ConsumeKoSGuildAnnouncement) knows the cooldown has started.
     local key = (e.name and e.name:lower()) or nil
-    if key then self.strongAlerted[key] = true end
+    if key then self.strongAlerted[key] = Now() end
     if prof.enableSound ~= false then N:Sound() end
     if prof.enableScreenFlash ~= false then N:Flash() end
   else
@@ -962,7 +968,9 @@ function Nearby:AlertNewEnemy(e)
   end
 end
 
--- KoS/Guild alerts should only fire once while the player remains in the Nearby list.
+-- KoS/Guild alerts fire immediately on first sighting, then again only every
+-- STRONG_ALERT_COOLDOWN seconds while the player remains in the Nearby list
+-- (the dedupe state itself is reset once they actually fall off the list).
 -- Returns two booleans: doChat, doStrong (sound/flash).
 function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
   if not name or name == "" then return false, false end
@@ -976,16 +984,20 @@ function Nearby:ConsumeKoSGuildAnnouncement(name, listType)
 
   local norm = NormalizeName(name) or name
   local key = tostring(norm):lower()
+  local now = Now()
 
   local doChat = false
   local doStrong = false
 
-  if not self.announceAlerted[key] then
-    self.announceAlerted[key] = true
+  local lastChat = self.announceAlerted[key]
+  if not lastChat or (now - lastChat) >= STRONG_ALERT_COOLDOWN then
+    self.announceAlerted[key] = now
     doChat = true
   end
-  if not self.strongAlerted[key] then
-    self.strongAlerted[key] = true
+
+  local lastStrong = self.strongAlerted[key]
+  if not lastStrong or (now - lastStrong) >= STRONG_ALERT_COOLDOWN then
+    self.strongAlerted[key] = now
     doStrong = true
   end
 
@@ -1783,6 +1795,12 @@ end
 
 function Nearby:ClearAll(opts)
   opts = opts or {}
+  if self._pendingForget then
+    for k, pending in pairs(self._pendingForget) do
+      if pending.Cancel then pending:Cancel() end
+    end
+  end
+  self._pendingForget = {}
   self.entries = {}
   self.alerted = {}
   self.strongAlerted = {}
@@ -1817,6 +1835,15 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
   local rawName = name
   name = NormalizeName(name) or name
   local key = name:lower()
+
+  -- Cancel any pending "nameplate went away" forget for this target: they're
+  -- clearly still here, so don't let a debounced timer wipe their alert state
+  -- (and the entry itself) out from under this sighting.
+  if self._pendingForget and self._pendingForget[key] then
+    local pending = self._pendingForget[key]
+    self._pendingForget[key] = nil
+    if pending.Cancel then pending:Cancel() end
+  end
 
   local e = self.entries[key]
   local isNew = false
@@ -1889,6 +1916,13 @@ function Nearby:ForgetByName(name)
     self:ScheduleRefresh()
 end
 
+-- Nameplates flicker on/off briefly for all sorts of harmless reasons (camera angle,
+-- line-of-sight, render distance, layering) - forgetting the target instantly on every
+-- blip would also wipe its alert-dedupe state, making KoS/Guild sounds replay on every
+-- flicker instead of respecting the cooldown. Debounce the forget instead: only actually
+-- drop the target (and reset its alert state) if the nameplate stays gone for this long.
+local NAMEPLATE_FORGET_GRACE = 2.5
+
 -- Hooked from NAME_PLATE_UNIT_REMOVED so we don't keep players in the Nearby list
 -- for up to ACTIVE_TTL seconds after their nameplate is gone (common in TBC due to layering).
 function Nearby:OnNameplateRemoved(unit)
@@ -1902,7 +1936,20 @@ function Nearby:OnNameplateRemoved(unit)
     if not name and GetUnitName then
         name = GetUnitName(unit)
     end
-    if name then
+    if not name then return end
+
+    local key = (NormalizeName(name) or name):lower()
+
+    self._pendingForget = self._pendingForget or {}
+    if self._pendingForget[key] then return end -- already debouncing this one
+
+    if C_Timer and C_Timer.NewTimer then
+        self._pendingForget[key] = C_Timer.NewTimer(NAMEPLATE_FORGET_GRACE, function()
+            self._pendingForget[key] = nil
+            self:ForgetByName(name)
+        end)
+    else
+        -- No timer API available on this client: fall back to the old immediate forget.
         self:ForgetByName(name)
     end
 end
