@@ -1,5 +1,9 @@
 # KillOnSight – Changelog
 
+## 3.2.8
+- Avoid TargetFrame reflow in portrait styling
+- Stop calling Blizzard's TargetFrame_CheckClassification for empty, non-KoS player, and normal NPC targets. This keeps the custom portrait border logic compatible with frame-skinning addons like Easy Frames while preserving existing KoS/Guild highlighting and rare/elite dragon styling for relevant targets.
+
 ## 3.2.7
 - Added a real 60s cooldown (STRONG_ALERT_COOLDOWN) so the sound/flash fires on first sighting, then again only after 60s if the target is still around.
 - Added a 2.5s debounce before a nameplate-removal actually forgets a target, canceled if they're re-sighted in that window — so a flicker no longer counts as "fell off the list." A real absence (60s of no sighting via the existing TTL, or a genuine nameplate removal that sticks) still resets things properly.
