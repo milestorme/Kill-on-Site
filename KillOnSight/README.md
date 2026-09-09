@@ -9,6 +9,7 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
 - **KoS list**: Add/remove players and get alerts when they’re seen nearby.
 - **Guild tracking**: Track hostile players belonging to specific guilds ("Guild-KoS").
 - **Nearby window**
+  - Announce submenu to the Nearby list's right-click menu (Say / Party / Raid / Guild / Local Defense)
   - Sorts by most recent **Last seen**
   - Optional row icons (class/skull), per-row fade timers, scaling, transparency
   - Auto-hide when empty

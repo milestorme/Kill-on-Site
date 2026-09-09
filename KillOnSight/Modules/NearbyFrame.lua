@@ -1113,6 +1113,115 @@ local function EnsureMenu(self)
   self.menu = CreateFrame("Frame", "KillOnSight_NearbyMenu", UIParent, "UIDropDownMenuTemplate")
 end
 
+-- Post-to-chat (Spy-style "Announce"): builds a one-line report about a nearby
+-- entry and sends it to the chosen chat channel.
+local function ClassLocalized(classFile)
+  if not classFile then return nil end
+  if LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[classFile] then
+    return LOCALIZED_CLASS_NAMES_MALE[classFile]
+  end
+  return classFile
+end
+
+-- Approximate coordinates for the announce message. Like Spy, this favors the
+-- coordinates captured when the target was first spotted (see Nearby:Seen);
+-- if an entry has none (e.g. wasn't created through nameplate detection),
+-- fall back to our current position as a proxy.
+local function GetPlayerCoords()
+  if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then
+    return nil
+  end
+  local mapID = C_Map.GetBestMapForUnit("player")
+  if not mapID then return nil end
+  local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+  if not pos then return nil end
+  local x, y = pos:GetXY()
+  if not x or not y then return nil end
+  return math.floor(x * 100), math.floor(y * 100)
+end
+
+local function GetAnnounceCoords(e)
+  if e and e.mapX and e.mapY then
+    return math.floor(e.mapX * 100), math.floor(e.mapY * 100)
+  end
+  return GetPlayerCoords()
+end
+
+local function BuildAnnounceMessage(e)
+  if not e then return "" end
+  local parts = {}
+
+  if e.kosType == L.KOS then
+    parts[#parts+1] = "[" .. L.KOS .. "]"
+  elseif e.kosType == L.GUILD_KOS then
+    parts[#parts+1] = "[" .. L.GUILD_KOS .. "]"
+  end
+
+  parts[#parts+1] = e.name or "?"
+
+  local details = {}
+  local lvl = (e.level and e.level > 0) and tostring(e.level) or "??"
+  details[#details+1] = "Lv" .. lvl
+  local className = ClassLocalized(e.class)
+  if className then details[#details+1] = className end
+  parts[#parts+1] = "- " .. table.concat(details, " ")
+
+  if e.guild and e.guild ~= "" then
+    parts[#parts+1] = "<" .. e.guild .. ">"
+  end
+
+  if e.zone and e.zone ~= "" then
+    parts[#parts+1] = "- " .. e.zone
+  end
+
+  local x, y = GetAnnounceCoords(e)
+  if x and y then
+    parts[#parts+1] = "(" .. x .. "," .. y .. ")"
+  end
+
+  return table.concat(parts, " ")
+end
+
+-- The "LocalDefense" channel is an automatic Blizzard channel named
+-- "LocalDefense - <Zone>". You have to already be in range/joined to it for
+-- GetChannelName to resolve an index, same as Spy relies on.
+local function GetLocalDefenseChannelIndex()
+  local zone = (GetZoneText and GetZoneText()) or ""
+  if zone == "" then return nil end
+  local idx = GetChannelName("LocalDefense - " .. zone)
+  if idx and idx > 0 then return idx end
+  return nil
+end
+
+local function AnnounceTarget(e, channel)
+  if not e then return end
+  local msg = BuildAnnounceMessage(e)
+  if msg == "" then return end
+
+  if channel == "SAY" then
+    SendChatMessage(msg, "SAY")
+  elseif channel == "PARTY" then
+    if GetNumGroupMembers() > 0 and not IsInRaid() then
+      SendChatMessage(msg, "PARTY")
+    end
+  elseif channel == "RAID" then
+    if IsInRaid() then
+      SendChatMessage(msg, "RAID")
+    end
+  elseif channel == "GUILD" then
+    if IsInGuild() then
+      SendChatMessage(msg, "GUILD")
+    end
+  elseif channel == "LOCAL" then
+    local idx = GetLocalDefenseChannelIndex()
+    if idx then
+      SendChatMessage(msg, "CHANNEL", nil, idx)
+    end
+  end
+end
+
+local ANNOUNCE_MENU_KEY = "KOS_ANNOUNCE"
+
 local function ShowMenuFor(self, e)
   if not e then return end
   local DB = GetDB()
@@ -1122,6 +1231,8 @@ local function ShowMenuFor(self, e)
   local has = (DB.LookupPlayer and DB:LookupPlayer(e.name)) and true or false
   local menu = {
     { text = e.name, isTitle = true, notCheckable = true },
+    { text = L.UI_ANNOUNCE, notCheckable = true, hasArrow = true,
+      value = { key = ANNOUNCE_MENU_KEY } },
     { text = L.UI_ADD_KOS, notCheckable = true, disabled = has, func = function()
         DB:AddPlayer(e.name, L.KOS, nil, UnitName("player"), nil, e.realm, e.fullName, e.guild)
         e.kosType = L.KOS
@@ -1142,7 +1253,36 @@ local function ShowMenuFor(self, e)
     { text = CLOSE, notCheckable = true },
   }
 
+  -- Submenu shown when hovering "Announce" above.
+  local announceMenu = {
+    { text = L.UI_ANNOUNCE_SAY, notCheckable = true,
+      func = function() AnnounceTarget(e, "SAY") end },
+    { text = L.UI_ANNOUNCE_PARTY, notCheckable = true,
+      disabled = not (GetNumGroupMembers() > 0 and not IsInRaid()),
+      func = function() AnnounceTarget(e, "PARTY") end },
+    { text = L.UI_ANNOUNCE_RAID, notCheckable = true,
+      disabled = not IsInRaid(),
+      func = function() AnnounceTarget(e, "RAID") end },
+    { text = L.UI_ANNOUNCE_GUILD, notCheckable = true,
+      disabled = not IsInGuild(),
+      func = function() AnnounceTarget(e, "GUILD") end },
+    { text = L.UI_ANNOUNCE_LOCAL, notCheckable = true,
+      disabled = not GetLocalDefenseChannelIndex(),
+      func = function() AnnounceTarget(e, "LOCAL") end },
+  }
+
   UIDropDownMenu_Initialize(self.menu, function(_, level)
+    if level == 2 and UIDROPDOWNMENU_MENU_VALUE
+       and type(UIDROPDOWNMENU_MENU_VALUE) == "table"
+       and UIDROPDOWNMENU_MENU_VALUE.key == ANNOUNCE_MENU_KEY then
+      for _, item in ipairs(announceMenu) do
+        local info = UIDropDownMenu_CreateInfo()
+        for k, v in pairs(item) do info[k] = v end
+        UIDropDownMenu_AddButton(info, level)
+      end
+      return
+    end
+
     for _, item in ipairs(menu) do
       local info = UIDropDownMenu_CreateInfo()
       for k, v in pairs(item) do info[k] = v end
@@ -1852,6 +1992,25 @@ function Nearby:Seen(name, classFile, guild, kosType, level)
     e = { name = name, firstSeen = now, order = self.orderCounter, state = "active" }
     self.entries[key] = e
     isNew = true
+
+    -- Capture where *we* were standing the moment this target was first
+    -- spotted (same approach Spy uses for its announce coordinates) so a
+    -- later "Announce" reflects the sighting location, not wherever we've
+    -- wandered to by the time we click it.
+    if C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition then
+      local mapID = C_Map.GetBestMapForUnit("player")
+      if mapID then
+        local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+        if pos then
+          local x, y = pos:GetXY()
+          if x and y and (x ~= 0 or y ~= 0) then
+            e.mapX = x
+            e.mapY = y
+            e.mapID = mapID
+          end
+        end
+      end
+    end
   end
 
   e.fullName = rawName or e.fullName

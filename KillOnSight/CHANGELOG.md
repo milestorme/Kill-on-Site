@@ -1,5 +1,17 @@
 # KillOnSight – Changelog
 
+## 3.3.0
+
+### Added
+- Added an **Announce** submenu to the Nearby list's right-click menu (Say / Party / Raid / Guild / Local Defense).
+- Announce messages include KoS/Guild-KoS tag, name, level, class, guild, zone, and approximate `(x,y)` coordinates.
+- Coordinates are captured once, at the moment a target is first spotted (`Nearby:Seen`), and stored on the entry — so announcing later reflects the sighting location, not wherever you've since moved to. Falls back to current position if an entry has none.
+- "Local Defense" option auto-resolves the zone's `LocalDefense - <Zone>` channel via `GetChannelName`, and is disabled in the menu when that channel isn't currently available.
+- Added `UI_ANNOUNCE`, `UI_ANNOUNCE_SAY`, `UI_ANNOUNCE_PARTY`, `UI_ANNOUNCE_RAID`, `UI_ANNOUNCE_GUILD`, `UI_ANNOUNCE_LOCAL` locale strings.
+
+### Changed
+- `Modules/NearbyFrame.lua` `ShowMenuFor`: rebuilt the dropdown to support a real two-level `UIDropDownMenu` (previously flat), so submenus like Announce can be added going forward.
+
 ## 3.2.8
 - Avoid TargetFrame reflow in portrait styling
 - Stop calling Blizzard's TargetFrame_CheckClassification for empty, non-KoS player, and normal NPC targets. This keeps the custom portrait border logic compatible with frame-skinning addons like Easy Frames while preserving existing KoS/Guild highlighting and rare/elite dragon styling for relevant targets.
