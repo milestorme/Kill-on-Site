@@ -1,3 +1,17 @@
+## 3.4.8 - WoW Forever name, targeting and KoS list fixes
+
+### Fixed
+- Nearby list: clicking a player now targets their full First Last character name on WoW Forever.
+- Nearby list: display full First Last names rather than only first names when the surname is available.
+- Nearby list: resolve known surnames from Stats and refresh the displayed full name promptly when targeting or detecting a player.
+- KoS Players list: show class colours and class icons using matching Stats records, including previously saved KoS entries.
+- KoS Players list: display recovered First Last names for older entries where the surname was stored in the Stats realm field.
+- KoS Players list: match both legacy first-name keys and newer full-name keys against Stats, including newly added players.
+
+### Compatibility
+- Preserve existing KoS entries and encounter statistics without requiring players to be removed and re-added.
+- Retain existing SavedVariables and avoid changing standard realm-based behaviour on other WoW clients.
+
 ## 3.4.7 - WoW Forever Nearby targeting fix
 - Fixed Nearby left-click targeting for Forever two-part character names by using the complete `First Last` name and not treating the surname as a realm.
 - WoW Forever: Nearby now displays the full First Last character name, matching Stats and targeting.

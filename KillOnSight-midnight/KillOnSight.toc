@@ -2,7 +2,7 @@
 ## Title: Kill on Sight: Midnight
 ## Notes: Midnight & Forever fork (WPVP focused)
 ## Author: Milestorme
-## Version: 3.4.7
+## Version: 3.4.8
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB

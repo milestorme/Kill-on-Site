@@ -1968,6 +1968,18 @@ function Nearby:Create()
         if UnitGUID and UnitExists and UnitExists("target") then
           local guid = UnitGUID("target")
           TryQueueForGuid(guid, "target")
+          if IsRegionalUniqueNamesEnabled() then
+            local ok, validGuid = pcall(_ValidPlayerGUID, guid)
+            local key = ok and validGuid and Nearby.guidToKey[validGuid]
+            local e = key and Nearby.entries[key]
+            local full = e and GetForeverFullUnitName("target")
+            if full and full ~= e.name then
+              e.name = full
+              e.fullName = full
+              e.realm = nil
+              Nearby:ScheduleRefresh(true)
+            end
+          end
         end
       elseif event == "UPDATE_MOUSEOVER_UNIT" then
         if UnitGUID and UnitExists and UnitExists("mouseover") then
@@ -2696,8 +2708,23 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
 
   e.fullName = rawName or e.fullName
   if IsRegionalUniqueNamesEnabled() then
+    -- Resolve the surname at sighting time, not later when the tooltip opens.
+    -- Stats may already know the surname before a live unit token is available.
     local full = GetForeverFullUnitName(unit)
+    if not full then
+      local stats = DB.StatsGetPlayer and DB:StatsGetPlayer(normName)
+      if stats then
+        local first = stats.name or normName
+        local surname = stats.realm
+        if type(surname) == "string" and surname ~= "" then
+          full = first .. " " .. surname
+        elseif type(stats.fullName) == "string" and stats.fullName:find("%-") then
+          full = stats.fullName:gsub("%-", " ", 1)
+        end
+      end
+    end
     if full then
+      e.name = full
       e.fullName = full
       e.realm = nil
     end
