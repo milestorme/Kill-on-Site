@@ -7,6 +7,22 @@ local L = KillOnSight_L
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 
+local function IsRegionalUniqueNamesEnabled()
+  -- WoW Forever uses region-unique First Last names. UnitName/UnitFullName's
+  -- second return is the surname there, not a realm.
+  if type(_G.RegionalUniqueNamesEnabled) ~= "function" then return false end
+  local ok, enabled = pcall(_G.RegionalUniqueNamesEnabled)
+  return ok and enabled == true
+end
+
+local function GetForeverFullUnitName(unit)
+  if not unit or unit == "" or type(_G.GetUnitName) ~= "function" then return nil end
+  local ok, name = pcall(_G.GetUnitName, unit)
+  if not ok or type(name) ~= "string" or name == "" then return nil end
+  return name
+end
+
+
 -- Retail can return protected/"secret" GUID values in certain PvP/instance contexts.
 -- Never use non-string GUIDs as table keys or in comparisons.
 local function _ValidPlayerGUID(guid)
@@ -380,8 +396,22 @@ end
   end
 
 
+  -- Forever's full character name is returned by GetUnitName as "First Last".
+  -- UnitFullName's second return is a surname on that client, not a realm.
+  if IsRegionalUniqueNamesEnabled() and e.guid then
+    local unit = self._FindUnitByGuid and self:_FindUnitByGuid(e.guid)
+    local full = GetForeverFullUnitName(unit)
+    if full then
+      e.fullName = full
+      -- WoW Forever's surname is part of the character name, not a realm.
+      -- Keep the full First Last form in the Nearby row as well as targeting.
+      e.name = full
+      e.realm = nil
+    end
+  end
+
   -- Realm resolution (handles cases where Blizzard shows Guild-Realm instead of Name-Realm)
-  if (not e.realm or e.realm == "") and e.guid then
+  if not IsRegionalUniqueNamesEnabled() and (not e.realm or e.realm == "") and e.guid then
     -- Prefer live unit full name when available
     local unit = self._FindUnitByGuid and self:_FindUnitByGuid(e.guid)
     if unit and unit ~= "" and UnitExists and UnitExists(unit) and GetUnitFullNameSafe then
@@ -657,6 +687,13 @@ local function BuildTargetName(entry)
              :gsub("|T.-|t", "")
              :gsub("^%s+", "")
              :gsub("%s+$", "")
+
+  if IsRegionalUniqueNamesEnabled() then
+    -- Forever targeting requires the complete character name, including the
+    -- surname, separated by a space. Never append or interpret a realm here.
+    return name
+  end
+
   if entry.realm and entry.realm ~= "" and not name:find("%-") then
     name = name .. "-" .. entry.realm
   end
@@ -2658,10 +2695,18 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   self.nameToKey[lowerName] = key
 
   e.fullName = rawName or e.fullName
-  e.realm = ExtractRealm(rawName) or e.realm
+  if IsRegionalUniqueNamesEnabled() then
+    local full = GetForeverFullUnitName(unit)
+    if full then
+      e.fullName = full
+      e.realm = nil
+    end
+  else
+    e.realm = ExtractRealm(rawName) or e.realm
+  end
 
   -- If we have a live unit token, prefer UnitFullName for realm detection (titles/tooltip layout can hide it).
-  if unit and GetUnitFullNameSafe then
+  if not IsRegionalUniqueNamesEnabled() and unit and GetUnitFullNameSafe then
     local fn, r = GetUnitFullNameSafe(unit)
     if fn and r and r ~= "" then
       e.fullName = fn .. "-" .. r

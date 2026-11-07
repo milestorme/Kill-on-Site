@@ -1,3 +1,10 @@
+## 3.4.7 - WoW Forever Nearby targeting fix
+- Fixed Nearby left-click targeting for Forever two-part character names by using the complete `First Last` name and not treating the surname as a realm.
+- WoW Forever: Nearby now displays the full First Last character name, matching Stats and targeting.
+
+## 3.4.6
+- updated to work with forever
+
 ## 3.4.5
 
 - Added _IsDisabledInstance() hard gate at top of Detector:CheckUnit and OnNameplateRemoved as defense-in-depth against instance detection leaks

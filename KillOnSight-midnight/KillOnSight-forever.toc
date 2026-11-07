@@ -1,0 +1,45 @@
+## Interface: 16001
+## Title: Kill on Sight: Forever
+## Notes: Midnight & Forever fork (WPVP focused)
+## Author: Milestorme
+## Version: 3.4.7
+## Category: Combat
+## IconTexture: Interface/AddOns/KillOnSight/icon.tga
+## SavedVariables: KillOnSightDB
+## OptionalDeps: LibSharedMedia-3.0
+## X-Localizations: enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
+
+embeds.xml
+
+Locale\enUS.lua
+Locale\deDE.lua
+Locale\frFR.lua
+Locale\esES.lua
+Locale\esMX.lua
+Locale\itIT.lua
+Locale\ptBR.lua
+Locale\ptPT.lua
+Locale\ruRU.lua
+Locale\koKR.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
+Locale\jaJP.lua
+Locale\nlNL.lua
+Locale\daDK.lua
+Locale\plPL.lua
+
+Midnight_Init.lua
+
+Modules\Util.lua
+Modules\Database.lua
+Modules\Notifier.lua
+Modules\NearbyFrame.lua
+Modules\Detector.lua
+Modules\Activity.lua
+Modules\Sync.lua
+Modules\GUI.lua
+Modules\Minimap.lua
+Modules\Portrait.lua
+Modules\SpyImport.lua
+Modules\Midnight_Stats.lua
+Modules\Core.lua
