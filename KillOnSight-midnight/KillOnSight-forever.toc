@@ -2,7 +2,7 @@
 ## Title: Kill on Sight: Forever
 ## Notes: Midnight & Forever fork (WPVP focused)
 ## Author: Milestorme
-## Version: 3.4.8
+## Version: 3.4.9
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
@@ -36,7 +36,6 @@ Modules\Notifier.lua
 Modules\NearbyFrame.lua
 Modules\Detector.lua
 Modules\Activity.lua
-Modules\Sync.lua
 Modules\GUI.lua
 Modules\Minimap.lua
 Modules\Portrait.lua

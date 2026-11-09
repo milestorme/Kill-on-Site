@@ -1,3 +1,25 @@
+## 3.4.9 - Nearby responsiveness and player announcements
+
+### Added
+- Restored the Nearby player right-click Announce submenu from 3.3.0, with Say, Party, Raid, Guild and LocalDefense destinations where available.
+- Announcements include available enemy details such as name, level, class, guild, location and KoS status.
+
+### Fixed
+- Changed Nearby Announce to prefill the chat input for manual sending, avoiding protected automatic chat sends.\n- Improved Nearby refresh scheduling to reduce uneven or laggy updates.
+- Improved Nearby sorting responsiveness for newly detected players while preserving safe mouseover row-order protection and combat behavior.
+- Prevented duplicated class text in Nearby player tooltips when specialization information repeats the class name.
+- Hardened Nearby GUID handling and sorting-cache maintenance.
+- Improved Nearby refresh error visibility.
+
+### Removed
+- Removed the unused peer-to-peer Sync module, its addon-message listener, `/kos sync` command, and minimap Sync Now action.
+- Removed Sync-specific menu/help translations in all supported locales.
+- Stopped generating Sync change-log entries for KoS and guild edits; retained legacy SavedVariables fields for compatibility and did not erase existing KoS data.
+
+### Compatibility
+- Preserved existing KoS data, SavedVariables, and Nearby window behavior.
+- Retained existing client Interface compatibility declarations pending verification against the exact game build.
+
 ## 3.4.8 - WoW Forever name, targeting and KoS list fixes
 
 ### Fixed

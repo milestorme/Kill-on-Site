@@ -35,10 +35,6 @@ end
 
 
 
--- Change log retention (for diff-based sync).
--- Keeping this bounded prevents SavedVariables bloat and slows downs over long play sessions.
-local CHANGELOG_KEEP = 800      -- how many recent changes to retain
-local CHANGELOG_PRUNE_EVERY = 25 -- prune every N local changes
 
 
 local function Now() return time() end
@@ -101,7 +97,6 @@ stealthDetectAddToNearby = true,
   data = {
     revision = 0,          -- global revision
     statsRevision = 0,     -- enemy stats revision (for UI caching)
-    changeSeq = 0,         -- monotonically increasing change id
     players = {},          -- [lowerName] = entry
     guilds  = {},          -- [lowerGuild] = entry
     changes = {},          -- [seq] = { op="upsert"/"delete", kind="P"/"G", key, entry, rev }
@@ -319,22 +314,6 @@ function DB:Init()
     end
   end
 
-  -- prune very old change log if it grew huge
-  local data = realmDB.data
-  local changes = data.changes or {}
-  local count = 0
-  for _ in pairs(changes) do count = count + 1 end
-  if count > (CHANGELOG_KEEP + 200) then
-    -- keep last ~CHANGELOG_KEEP
-    local keys = {}
-    for k in pairs(changes) do keys[#keys+1] = k end
-    table.sort(keys)
-    for i=1, (#keys-CHANGELOG_KEEP) do
-      changes[keys[i]] = nil
-    end
-    data.oldestSeq = keys[#keys-CHANGELOG_KEEP+1] or 0
-  end
-
   -- Optional stats pruning (prevents long-term SV bloat)
   if self.PruneStatsPlayers then
     self:PruneStatsPlayers()
@@ -374,57 +353,6 @@ end
 function DB:GetData()
   local realmDB = self:_EnsureRealmDB()
   return realmDB.data
-end
-
-function DB:GetOldestChangeSeq()
-  local d = self:GetData()
-  if d.oldestSeq then return d.oldestSeq end
-  local minSeq = nil
-  local changes = d.changes or {}
-  for s in pairs(changes) do
-    s = tonumber(s)
-    if s and (not minSeq or s < minSeq) then minSeq = s end
-  end
-  d.oldestSeq = minSeq or 0
-  return d.oldestSeq
-end
-
-function DB:PruneChangeLog()
-  local d = self:GetData()
-  d.changes = d.changes or {}
-  local seq = d.changeSeq or 0
-  if seq <= CHANGELOG_KEEP then
-    d.oldestSeq = d.oldestSeq or 0
-    return
-  end
-
-  local cutoff = seq - CHANGELOG_KEEP
-  for s in pairs(d.changes) do
-    local n = tonumber(s)
-    if n and n <= cutoff then
-      d.changes[s] = nil
-    end
-  end
-  -- Record an approximate oldest seq so Sync can detect "too far behind".
-  d.oldestSeq = cutoff + 1
-end
-
-function DB:_IncRevision()
-  local d = self:GetData()
-  d.revision = (d.revision or 0) + 1
-  return d.revision
-end
-
-function DB:_PushChange(op, kind, key, entry)
-  local d = self:GetData()
-  d.changeSeq = (d.changeSeq or 0) + 1
-  local seq = d.changeSeq
-  d.changes[seq] = { op=op, kind=kind, key=key, entry=entry, rev=d.revision }
-
-  -- Keep the change log bounded so diff-sync stays fast and SavedVariables don't balloon.
-  if (seq % CHANGELOG_PRUNE_EVERY) == 0 then
-    self:PruneChangeLog()
-  end
 end
 
 local function MakePlayerEntry(name, listType, reason, addedBy, existing, class)
@@ -470,8 +398,6 @@ function DB:AddPlayer(name, listType, reason, addedBy, class)
   local existing = d.players[key]
   local entry = MakePlayerEntry(name, listType, reason, addedBy, existing, class)
   d.players[key] = entry
-  self:_IncRevision()
-  self:_PushChange("upsert","P",key,entry)
   local N = _G.KillOnSight_Nearby
   if N and N.OnListChanged then
     pcall(function() N:OnListChanged("P", key) end)
@@ -501,8 +427,6 @@ function DB:RemovePlayer(name)
 
   if removedKey then
     d.players[removedKey] = nil
-    self:_IncRevision()
-    self:_PushChange("delete","P",removedKey,nil)
     local N = _G.KillOnSight_Nearby
     if N and N.OnListChanged then
       -- Notify both full and short keys so Nearby retags immediately regardless of how the entry was stored.
@@ -521,8 +445,6 @@ function DB:AddGuild(guild, listType, reason, addedBy)
   local existing = d.guilds[key]
   local entry = MakeGuildEntry(guild, listType, reason, addedBy, existing)
   d.guilds[key] = entry
-  self:_IncRevision()
-  self:_PushChange("upsert","G",key,entry)
   local N = _G.KillOnSight_Nearby
   if N and N.OnListChanged then pcall(function() N:OnListChanged("G", key) end) end
   return true
@@ -534,8 +456,6 @@ function DB:RemoveGuild(guild)
   local d = self:GetData()
   if d.guilds[key] then
     d.guilds[key] = nil
-    self:_IncRevision()
-    self:_PushChange("delete","G",key,nil)
     local N = _G.KillOnSight_Nearby
     if N and N.OnListChanged then pcall(function() N:OnListChanged("G", key) end) end
     return true
@@ -562,8 +482,6 @@ function DB:SetPlayerClass(name, class)
   if e.class == class then return false end
   e.class = class
   e.modifiedAt = Now()
-  self:_IncRevision()
-  self:_PushChange("upsert","P",key,e)
   return true
 end
 
@@ -582,8 +500,6 @@ function DB:SetPlayerReason(name, reason)
 
   e.reason = r
   e.modifiedAt = Now()
-  self:_IncRevision()
-  self:_PushChange("upsert","P",key,e)
   return true
 end
 function DB:HasPlayer(name)
@@ -609,7 +525,7 @@ function DB:MarkSeenGuild(guild)
   end
 end
 
--- Enemy encounter stats (separate from KoS/Guild lists; not synced)
+-- Enemy encounter stats (separate from KoS/Guild lists)
 local function _StatsKey(name)
   if not name or name == "" then return nil end
   local matched = name:match("^[^-]+")
@@ -752,39 +668,6 @@ function DB:HasStatsPlayer(name)
   if not key then return false end
   return d.statsPlayers[key] ~= nil
 end
-
--- Apply changes received from sync
-function DB:ApplyRemoteChange(sender, change)
-  local d = self:GetData()
-  if not change or not change.kind or not change.key then return end
-
-  if change.kind == "P" then
-    if change.op == "delete" then
-      d.players[change.key] = nil
-    elseif change.op == "upsert" and change.entry then
-      d.players[change.key] = change.entry
-    end
-  elseif change.kind == "G" then
-    if change.op == "delete" then
-      d.guilds[change.key] = nil
-    elseif change.op == "upsert" and change.entry then
-      d.guilds[change.key] = change.entry
-    end
-  end
-
-  -- keep our revision monotonic
-  d.revision = math.max(tonumber(d.revision or 0), tonumber(change.rev or 0))
-
-  -- record remote changes locally so we can forward them to peers
-  d.changes = d.changes or {}
-  d.changeSeq = (d.changeSeq or 0) + 1
-  local seq = d.changeSeq
-  d.changes[seq] = { op = change.op, kind = change.kind, key = change.key, entry = change.entry, rev = change.rev }
-  if (seq % CHANGELOG_PRUNE_EVERY) == 0 then
-    self:PruneChangeLog()
-  end
-end
-
 
 function DB:AddLastAttacker(name, guid, zone, guild, classFile)
   if not name or name == "" then return end

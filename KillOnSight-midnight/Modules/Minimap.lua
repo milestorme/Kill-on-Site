@@ -75,7 +75,6 @@ function dataobj:OnClick(btn)
           end
         end
       },
-      { text = L.UI_SYNC, notCheckable = true, func = function() KillOnSight_Sync:RequestDiff() end },
       { text = L.UI_CLOSE, notCheckable = true, func = function() if KillOnSight_GUI then KillOnSight_GUI:Hide() end end },
     }
     ShowDropdown(menu)
