@@ -1,3 +1,15 @@
+## 3.5.0 - Class-aware Hidden detection
+
+### Fixed
+- Restricted disappearance-based Hidden inference to Rogues, Druids, and Hunters to reduce false-positive stealth alerts from other classes.
+- Prevented unknown-class enemies from triggering inferred Hidden alerts.
+- Applied the class restriction to nameplate-removal detection using previously recorded class information.
+- Preserved confirmed stealth-aura detection for all classes, including racial abilities such as Shadowmeld.
+
+### Compatibility
+- No SavedVariables migration required.
+- Inferred Hidden detection remains heuristic and may still produce alerts when eligible classes disappear for reasons other than stealth.
+
 ## 3.4.9 - Nearby responsiveness and player announcements
 
 ### Added
