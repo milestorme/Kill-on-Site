@@ -1,0 +1,174 @@
+-- Locale/itIT.lua
+local ADDON_NAME = ...
+KillOnSight_L_data = KillOnSight_L_data or {}
+KillOnSight_L_used = KillOnSight_L_used or {}
+KillOnSight_L = KillOnSight_L or {}
+
+if not KillOnSight_L.__kos_proxy then
+  KillOnSight_L.__kos_proxy = true
+  setmetatable(KillOnSight_L, {
+    __index = function(_, k)
+      KillOnSight_L_used[k] = true
+      local v = KillOnSight_L_data[k]
+      if v == nil then
+        return k -- fallback so missing keys are obvious
+      end
+      return v
+    end,
+  })
+end
+
+local L = KillOnSight_L_data
+
+if not (GetLocale() == "itIT") then return end
+
+L.ACTIVITY = "%s nelle vicinanze: %s (%s)%s"
+L.ADDED_GUILD = "Gilda aggiunta a %s: %s"
+L.ADDED_PLAYER = "Giocatore aggiunto a %s: %s"
+L.ADDON_PREFIX = "KILLONSIGHT"
+L.CMD_HELP = "Comandi: /kos help | show | add [nome] | remove <nome> | addguild <gilda> | removeguild <gilda> | list | statsprune"
+L.GUILD_KOS = "Gilda-KoS"
+L.HIDDEN = "Nascosto"
+L.KOS = "KoS"
+L.NOT_FOUND = "Non trovato: %s"
+L.REMOVED_GUILD = "Gilda rimossa: %s"
+L.REMOVED_PLAYER = "Giocatore rimosso: %s"
+L.SEEN = "%s avvistato nelle vicinanze: %s%s"
+L.SEEN_GUILD = "Gilda di %s avvistata nelle vicinanze: %s (%s)%s"
+L.SEEN_HIDDEN = "Nascosto rilevato: %s"
+L.UI_ADD = "Aggiungi"
+L.UI_ADD_GUILD = "Aggiungi gilda"
+L.UI_ADD_KOS = "Aggiungi KoS"
+L.UI_ALERT_NEW = "Avvisa per nuovo nemico nelle vicinanze"
+L.UI_ATTACKED_AT = "Attaccato"
+L.UI_CLEAR = "Pulisci"
+L.UI_CLOSE = "Chiudi"
+L.UI_COPY_NAME = "Copia nome"
+L.UI_COPY_NAME_TITLE = "Copia nome"
+L.UI_COPY_NAME_HINT = "Premi Ctrl+C per copiare"
+L.UI_FLASH = "Lampeggia"
+L.UI_GUILD = "Gilda"
+L.UI_FACTION = "Fazione"
+L.UI_INSTANCES = "Notifica nelle istanze"
+L.UI_ALERTS = "KoS / Gilda"
+L.UI_NEARBY_HEADING = "Nelle vicinanze"
+L.UI_LAST_SEEN = "Ultima volta visto"
+L.UI_CLASS = "Classe"
+L.UI_NAME = "Nome"
+L.UI_NEARBY_ALPHA = "Trasparenza vicinanze"
+L.UI_NEARBY_AUTOHIDE = "Nascondi automaticamente se vuoto"
+L.UI_DISABLE_GOBLIN_TOWNS = "Disattiva avvisi a Baia del Bottino / Gadgetzan"
+L.SUBZONE_BOOTY_BAY = "Baia del Bottino"
+L.SUBZONE_GADGETZAN = "Gadgetzan"
+L.UI_NEARBY_FADE = "Dissolvenza in/​out"
+L.UI_NEARBY_FRAME = "Finestra vicinanze"
+L.UI_NEARBY_LOCK = "Blocca finestra vicinanze"
+L.UI_NEARBY_MINIMAL = "Finestra vicinanze ultra-minimale"
+L.UI_NEARBY_ROWFADE = "Timer dissolvenza per riga"
+L.UI_NEARBY_ROWICONS = "Icone riga (classe/teschio)"
+L.UI_NEARBY_SCALE = "Scala finestra vicinanze"
+L.UI_NEARBY_BACKGROUND = "Sfondo (Vicini)"
+L.UI_NEARBY_NAME_FONT = "Carattere dei nomi vicini"
+L.UI_NEARBY_NAME_SIZE = "Dimensione carattere dei nomi vicini"
+L.UI_NEARBY_MAX_ROWS = "Righe massime nei vicini"
+L.UI_OPTIONS = "Opzioni"
+
+L.UI_OPTIONS_TITLE = "Opzioni"
+L.UI_REMOVE = "Rimuovi"
+L.UI_SOUND = "Suono"
+L.UI_STEALTH = "Rilevamento furtività"
+L.UI_STEALTH_ADD_NEARBY = "Aggiungi nascosti alla lista Vicinanze"
+L.UI_STEALTH_BANNER = "Mostra avviso centrale"
+L.UI_STEALTH_CHAT = "Notifica in chat"
+L.UI_STEALTH_ENABLE = "Abilita rilevamento furtività"
+L.UI_STEALTH_FADE = "Dissolvenza banner (secondi)"
+L.UI_STEALTH_HOLD = "Durata banner (secondi)"
+L.UI_STEALTH_SOUND = "Riproduci suono furtività"
+L.UI_TAB_ATTACKERS = "Aggressori"
+L.UI_TAB_GUILDS = "Gilde"
+L.UI_TAB_PLAYERS = "Giocatori"
+L.UI_TAB_STATS = "Statistiche"
+L.UI_THROTTLE = "Limitazione (sec)"
+L.UI_TITLE = "Uccidi a Vista"
+L.UI_TYPE = "Tipo"
+L.UI_ZONE = "Zona"
+L.UI_REMOVE_KOS = "Rimuovi KoS"
+L.UI_CLEAR_NEARBY = "Svuota lista vicinanze"
+L.UI_NEARBY_COUNT = "Vicinanze: %d"
+L.UI_ADD_KOS_TARGET = "Aggiungi KoS (bersaglio)"
+L.ERR_NO_PLAYER_TARGET = "Nessun giocatore selezionato."
+L.UI_BANNER_TIMING = "Tempi banner"
+L.UI_BANNER_HOLD_HELP = "Quanto a lungo l'avviso resta completamente visibile prima di dissolversi."
+L.UI_BANNER_FADE_HELP = "Quanto a lungo l'avviso si dissolve gradualmente."
+L.UI_LIST_PLAYERS = "Giocatori: %s"
+L.UI_LIST_GUILDS = "Gilde: %s"
+L.MSG_LOADED = "Caricato. Digita /kos show"
+L.UI_NEARBY_HEADER = "Nome / Livello / Tempo"
+L.STEALTH_DETECTED_TITLE = "Giocatore in furtività rilevato!"
+L.UI_STATS_TITLE = "Statistiche nemici"
+L.UI_STATS_KOS_TAG = "KoS"
+L.UI_TAG_KOS = "KoS"
+L.UI_TAG_GUILD = "Gilda"
+L.UI_STATS_KOS_ONLY = "Solo KoS"
+L.UI_STATS_PVP_ONLY = "Solo PvP"
+L.UI_STATS_RESET = "Reimposta"
+L.UI_STATS_RESET_CONFIRM = "Reimpostare le statistiche dei nemici? Non può essere annullato."
+L.UI_STATS_FIRSTSEEN = "Prima volta visto"
+L.UI_STATS_SORT_LASTSEEN = "Ultima vista"
+L.UI_STATS_SORT_NAME = "Nome"
+L.UI_STATS_SORT_SEEN = "Visto"
+L.UI_STATS_SORT_WINS = "Vittorie"
+L.UI_STATS_SORT_LOSES = "Sconfitte"
+L.UI_STATS_SEEN = "Visto"
+L.UI_STATS_WINS = "Vittoria"
+L.UI_STATS_LOSES = "Sconfitta"
+L.TT_MINIMAP_TITLE = "Uccidi a Vista"
+L.TT_MINIMAP_LEFTCLICK = "Clic sx: Apri/Chiudi"
+L.TT_MINIMAP_RIGHTCLICK = "Clic dx: Menu"
+L.TT_ON_KOS = "Nella lista KoS"
+L.TT_GUILD_KOS = "Gilda-KoS"
+L.TT_LEVEL_FMT = "Livello %s"
+L.UI_NEARBY_SOUND = "Suono lista vicinanze"
+L.UI_ATTACKERS_TITLE = "Aggressori"
+
+-- Notes / Spy import
+L.UI_NOTE = L.UI_NOTE or "Note"
+L.UI_NOTE_EDIT = L.UI_NOTE_EDIT or "Edit Note"
+L.UI_NOTE_SAVE = L.UI_NOTE_SAVE or "Save"
+L.UI_NOTE_CLEAR = L.UI_NOTE_CLEAR or "Clear"
+L.UI_NOTE_CANCEL = L.UI_NOTE_CANCEL or "Cancel"
+L.UI_NOTE_EMPTY = L.UI_NOTE_EMPTY or "(No note)"
+L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS entries found."
+L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
+L.UI_NOTES = "Note"
+
+L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Vicini è limitato perché le barre dei nomi nemiche sono DISATTIVATE. Abilita le barre dei nomi nemiche (Interfaccia > Nomi) per il rilevamento completo. Puoi alternarle con il tasto V."
+L.NEARBY_DISABLED_INSTANCE = "Nearby è disattivato in campi di battaglia e arene."
+L.TT_SPEC_LOADING = "Ispezione…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Inserisci un nome per il nuovo profilo:"
+
+-- Nearby right-click announcements (v3.4.9)
+L.UI_ANNOUNCE = "Annuncia"
+L.UI_ANNOUNCE_SAY = "Dì"
+L.UI_ANNOUNCE_PARTY = "Gruppo"
+L.UI_ANNOUNCE_RAID = "Incursione"
+L.UI_ANNOUNCE_GUILD = "Gilda"
+L.UI_ANNOUNCE_LOCAL = "Difesa locale"
+
+
+-- Honor list and Stats actions (v3.5.1)
+L.UI_TAB_HONOR = "Onore"
+L.UI_ADD_HONOR = "Aggiungi alla lista d’onore"
+L.UI_REMOVE_HONOR = "Rimuovi dalla lista d’onore"
+L.UI_ADD_GUILD_KOS = "Aggiungi gilda alla lista KoS"
+L.UI_HONOURED = "Onorato"
+L.UI_HON_TAG = "Hon"

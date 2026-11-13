@@ -1,0 +1,174 @@
+-- Locale/zhTW.lua
+local ADDON_NAME = ...
+KillOnSight_L_data = KillOnSight_L_data or {}
+KillOnSight_L_used = KillOnSight_L_used or {}
+KillOnSight_L = KillOnSight_L or {}
+
+if not KillOnSight_L.__kos_proxy then
+  KillOnSight_L.__kos_proxy = true
+  setmetatable(KillOnSight_L, {
+    __index = function(_, k)
+      KillOnSight_L_used[k] = true
+      local v = KillOnSight_L_data[k]
+      if v == nil then
+        return k -- fallback so missing keys are obvious
+      end
+      return v
+    end,
+  })
+end
+
+local L = KillOnSight_L_data
+
+if not (GetLocale() == "zhTW") then return end
+
+L.ACTIVITY = "%s 附近: %s (%s)%s"
+L.ADDED_GUILD = "已將公會加入 %s: %s"
+L.ADDED_PLAYER = "已將玩家加入 %s: %s"
+L.ADDON_PREFIX = "KILLONSIGHT"
+L.CMD_HELP = "指令: /kos help | show | add [名字] | remove <名字> | addguild <公會> | removeguild <公會> | list | statsprune"
+L.GUILD_KOS = "公會-KoS"
+L.HIDDEN = "隱藏"
+L.KOS = "KoS"
+L.NOT_FOUND = "找不到: %s"
+L.REMOVED_GUILD = "已移除公會: %s"
+L.REMOVED_PLAYER = "已移除玩家: %s"
+L.SEEN = "%s 附近發現: %s%s"
+L.SEEN_GUILD = "%s 的公會附近發現: %s (%s)%s"
+L.SEEN_HIDDEN = "偵測到隱藏: %s"
+L.UI_ADD = "新增"
+L.UI_ADD_GUILD = "新增公會"
+L.UI_ADD_KOS = "新增 KoS"
+L.UI_ALERT_NEW = "附近出現新敵人時提醒"
+L.UI_ATTACKED_AT = "被攻擊"
+L.UI_CLEAR = "清除"
+L.UI_CLOSE = "關閉"
+L.UI_COPY_NAME = "複製名字"
+L.UI_COPY_NAME_TITLE = "複製名字"
+L.UI_COPY_NAME_HINT = "按 Ctrl+C 複製"
+L.UI_FLASH = "閃爍"
+L.UI_GUILD = "公會"
+L.UI_FACTION = "陣營"
+L.UI_INSTANCES = "副本內提醒"
+L.UI_ALERTS = "KoS / 公會"
+L.UI_NEARBY_HEADING = "附近"
+L.UI_LAST_SEEN = "最後出現"
+L.UI_CLASS = "職業"
+L.UI_NAME = "名稱"
+L.UI_NEARBY_ALPHA = "附近視窗透明度"
+L.UI_NEARBY_AUTOHIDE = "空白時自動隱藏"
+L.UI_DISABLE_GOBLIN_TOWNS = "在藏寶海灣 / 加基森停用警報"
+L.SUBZONE_BOOTY_BAY = "藏寶海灣"
+L.SUBZONE_GADGETZAN = "加基森"
+L.UI_NEARBY_FADE = "淡入/淡出"
+L.UI_NEARBY_FRAME = "附近視窗"
+L.UI_NEARBY_LOCK = "鎖定附近視窗"
+L.UI_NEARBY_MINIMAL = "超精簡附近視窗"
+L.UI_NEARBY_ROWFADE = "每列淡出計時"
+L.UI_NEARBY_ROWICONS = "列圖示 (職業/骷髏)"
+L.UI_NEARBY_SCALE = "附近視窗縮放"
+L.UI_NEARBY_BACKGROUND = "附近背景"
+L.UI_NEARBY_NAME_FONT = "附近名字字體"
+L.UI_NEARBY_NAME_SIZE = "附近名字字號"
+L.UI_NEARBY_MAX_ROWS = "附近最大行數"
+L.UI_OPTIONS = "選項"
+
+L.UI_OPTIONS_TITLE = "選項"
+L.UI_REMOVE = "移除"
+L.UI_SOUND = "音效"
+L.UI_STEALTH = "潛行偵測"
+L.UI_STEALTH_ADD_NEARBY = "將隱藏加入附近清單"
+L.UI_STEALTH_BANNER = "顯示中央警告橫幅"
+L.UI_STEALTH_CHAT = "聊天提醒"
+L.UI_STEALTH_ENABLE = "啟用潛行偵測"
+L.UI_STEALTH_FADE = "橫幅淡出 (秒)"
+L.UI_STEALTH_HOLD = "橫幅停留 (秒)"
+L.UI_STEALTH_SOUND = "播放潛行音效"
+L.UI_TAB_ATTACKERS = "攻擊者"
+L.UI_TAB_GUILDS = "公會"
+L.UI_TAB_PLAYERS = "玩家"
+L.UI_TAB_STATS = "統計"
+L.UI_THROTTLE = "間隔 (秒)"
+L.UI_TITLE = "格殺勿論"
+L.UI_TYPE = "類型"
+L.UI_ZONE = "區域"
+L.UI_REMOVE_KOS = "移除 KoS"
+L.UI_CLEAR_NEARBY = "清除附近清單"
+L.UI_NEARBY_COUNT = "附近: %d"
+L.UI_ADD_KOS_TARGET = "新增 KoS (目標)"
+L.ERR_NO_PLAYER_TARGET = "未選取玩家目標。"
+L.UI_BANNER_TIMING = "橫幅時間"
+L.UI_BANNER_HOLD_HELP = "警告保持完全顯示多久後才開始淡出。"
+L.UI_BANNER_FADE_HELP = "警告平滑淡出的時間長度。"
+L.UI_LIST_PLAYERS = "玩家: %s"
+L.UI_LIST_GUILDS = "公會: %s"
+L.MSG_LOADED = "已載入。輸入 /kos show"
+L.UI_NEARBY_HEADER = "名稱 / 等級 / 時間"
+L.STEALTH_DETECTED_TITLE = "偵測到潛行玩家!"
+L.UI_STATS_TITLE = "敵方統計"
+L.UI_STATS_KOS_TAG = "KoS"
+L.UI_TAG_KOS = "KoS"
+L.UI_TAG_GUILD = "公會"
+L.UI_STATS_KOS_ONLY = "僅 KoS"
+L.UI_STATS_PVP_ONLY = "僅 PvP"
+L.UI_STATS_RESET = "重置"
+L.UI_STATS_RESET_CONFIRM = "重置敵方統計？此操作無法復原。"
+L.UI_STATS_FIRSTSEEN = "首次出現"
+L.UI_STATS_SORT_LASTSEEN = "最後出現"
+L.UI_STATS_SORT_NAME = "名稱"
+L.UI_STATS_SORT_SEEN = "出現次數"
+L.UI_STATS_SORT_WINS = "勝利"
+L.UI_STATS_SORT_LOSES = "失敗"
+L.UI_STATS_SEEN = "出現次數"
+L.UI_STATS_WINS = "勝"
+L.UI_STATS_LOSES = "敗"
+L.TT_MINIMAP_TITLE = "格殺勿論"
+L.TT_MINIMAP_LEFTCLICK = "左鍵：開啟/關閉"
+L.TT_MINIMAP_RIGHTCLICK = "右鍵：選單"
+L.TT_ON_KOS = "在 KoS 清單"
+L.TT_GUILD_KOS = "公會-KoS"
+L.TT_LEVEL_FMT = "等級 %s"
+L.UI_NEARBY_SOUND = "附近清單音效"
+L.UI_ATTACKERS_TITLE = "攻擊者"
+
+-- Notes / Spy import
+L.UI_NOTE = L.UI_NOTE or "Note"
+L.UI_NOTE_EDIT = L.UI_NOTE_EDIT or "Edit Note"
+L.UI_NOTE_SAVE = L.UI_NOTE_SAVE or "Save"
+L.UI_NOTE_CLEAR = L.UI_NOTE_CLEAR or "Clear"
+L.UI_NOTE_CANCEL = L.UI_NOTE_CANCEL or "Cancel"
+L.UI_NOTE_EMPTY = L.UI_NOTE_EMPTY or "(No note)"
+L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS entries found."
+L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
+L.UI_NOTES = "備註"
+
+L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "附近偵測受限，因為敵方名條已關閉。請在「介面 > 名稱」中啟用敵方名條以獲得完整偵測。可按 V 鍵切換。"
+L.NEARBY_DISABLED_INSTANCE = "在戰場與競技場中，Nearby 已停用。"
+L.TT_SPEC_LOADING = "檢查中…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "輸入新設定檔名稱："
+
+-- Nearby right-click announcements (v3.4.9)
+L.UI_ANNOUNCE = "通報"
+L.UI_ANNOUNCE_SAY = "說"
+L.UI_ANNOUNCE_PARTY = "隊伍"
+L.UI_ANNOUNCE_RAID = "團隊"
+L.UI_ANNOUNCE_GUILD = "公會"
+L.UI_ANNOUNCE_LOCAL = "本地防務"
+
+
+-- Honor list and Stats actions (v3.5.1)
+L.UI_TAB_HONOR = "榮譽"
+L.UI_ADD_HONOR = "加入榮譽名單"
+L.UI_REMOVE_HONOR = "從榮譽名單移除"
+L.UI_ADD_GUILD_KOS = "將公會加入仇殺名單"
+L.UI_HONOURED = "受尊敬"
+L.UI_HON_TAG = "Hon"

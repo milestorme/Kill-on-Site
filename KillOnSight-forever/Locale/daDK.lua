@@ -1,0 +1,209 @@
+-- Locale/daDK.lua
+local ADDON_NAME = ...
+KillOnSight_L_data = KillOnSight_L_data or {}
+KillOnSight_L_used = KillOnSight_L_used or {}
+KillOnSight_L = KillOnSight_L or {}
+
+if not KillOnSight_L.__kos_proxy then
+  KillOnSight_L.__kos_proxy = true
+  setmetatable(KillOnSight_L, {
+    __index = function(_, k)
+      KillOnSight_L_used[k] = true
+      local v = KillOnSight_L_data[k]
+      if v == nil then
+        return k -- fallback so missing keys are obvious
+      end
+      return v
+    end,
+  })
+end
+
+local L = KillOnSight_L_data
+
+if not (GetLocale() == "daDK") then return end
+
+L.ACTIVITY = "%s i nærheden: %s (%s)%s"
+L.ADDED_GUILD = "Guild tilføjet til %s: %s"
+L.ADDED_PLAYER = "Spiller tilføjet til %s: %s"
+L.ADDON_PREFIX = "KILLONSIGHT"
+L.CMD_HELP = "Kommandoer: /kos help | show | add [navn] | remove <navn> | addguild <guild> | removeguild <guild> | list | statsprune"
+L.GUILD_KOS = "Guild-KoS"
+L.HIDDEN = "Skjult"
+L.KOS = "KoS"
+L.NOT_FOUND = "Ikke fundet: %s"
+L.REMOVED_GUILD = "Guild fjernet: %s"
+L.REMOVED_PLAYER = "Spiller fjernet: %s"
+L.SEEN = "%s set i nærheden: %s%s"
+L.SEEN_GUILD = "%s's guild set i nærheden: %s (%s)%s"
+L.SEEN_HIDDEN = "Skjult registreret: %s"
+L.UI_ADD = "Add"
+L.UI_ADD_GUILD = "Tilføj guild"
+L.UI_ADD_KOS = "Tilføj KoS"
+L.UI_ALERT_NEW = "Alert on new nearby enemy"
+L.UI_ATTACKED_AT = "Angrebet"
+L.UI_CLEAR = "Ryd"
+L.UI_CLOSE = "Luk"
+L.UI_COPY_NAME = "Kopiér navn"
+L.UI_COPY_NAME_TITLE = "Kopiér navn"
+L.UI_COPY_NAME_HINT = "Tryk Ctrl+C for at kopiere"
+L.UI_FLASH = "Blink"
+L.UI_GUILD = "Guild"
+L.UI_FACTION = "Faction"
+L.UI_INSTANCES = "Notificér i instances"
+L.UI_LAST_SEEN = "Sidst set"
+L.UI_CLASS = "Klasse"
+L.UI_NAME = "Navn"
+L.UI_NEARBY_ALPHA = "Nær-gennemsigtighed"
+L.UI_NEARBY_AUTOHIDE = "Skjul automatisk når tom"
+L.UI_DISABLE_GOBLIN_TOWNS = "Deaktiver advarsler i Booty Bay / Gadgetzan"
+L.SUBZONE_BOOTY_BAY = "Booty Bay"
+L.SUBZONE_GADGETZAN = "Gadgetzan"
+L.UI_NEARBY_FADE = "Fade ind/ud"
+L.UI_NEARBY_FRAME = "Nær-vindue"
+L.UI_NEARBY_LOCK = "Lås nær-vindue"
+L.UI_NEARBY_MINIMAL = "Ultra-minimalt nær-vindue"
+L.UI_NEARBY_ROWFADE = "Fade-timere pr. række"
+L.UI_NEARBY_ROWICONS = "Rækkeikoner (klasse/kranie)"
+L.UI_NEARBY_SCALE = "Skala for nær-vindue"
+L.UI_NEARBY_BACKGROUND = "Nearby Background"
+L.UI_NEARBY_NAME_FONT = "Skrifttype for navne i nærheden"
+L.UI_NEARBY_NAME_SIZE = "Skriftstørrelse for navne i nærheden"
+L.UI_NEARBY_MAX_ROWS = "Maks. rækker i nærheden"
+L.UI_OPTIONS = "Options"
+
+L.UI_OPTIONS_TITLE = "Indstillinger"
+L.UI_REMOVE = "Remove"
+L.UI_SOUND = "Lyd"
+L.UI_STEALTH = "Stealth-detektion"
+L.UI_STEALTH_ADD_NEARBY = "Tilføj skjulte til Nær-liste"
+L.UI_STEALTH_BANNER = "Vis central advarsel"
+L.UI_STEALTH_ENABLE = "Aktivér stealth-detektion"
+L.UI_STEALTH_FADE = "Advarsel fade (sek)"
+L.UI_STEALTH_HOLD = "Advarsel varighed (sek)"
+L.UI_STEALTH_SOUND = "Afspil stealth-lyd"
+L.UI_TAB_ATTACKERS = "Angribere"
+L.UI_TAB_GUILDS = "Guilds"
+L.UI_TAB_PLAYERS = "Spillere"
+L.UI_TAB_STATS = "Statistik"
+L.UI_THROTTLE = "Begrænsning (s)"
+L.UI_TITLE = "Kill on Sight"
+L.UI_TYPE = "Type"
+L.UI_ZONE = "Zone"
+L.UI_REMOVE_KOS = "Fjern KoS"
+L.UI_CLEAR_NEARBY = "Ryd nærliste"
+L.UI_NEARBY_COUNT = "I nærheden: %d"
+L.UI_ADD_KOS_TARGET = "Tilføj KoS (mål)"
+L.ERR_NO_PLAYER_TARGET = "Ingen spiller er målrettet."
+L.UI_BANNER_TIMING = "Banner-timing"
+L.UI_BANNER_HOLD_HELP = "Hvor længe advarslen forbliver fuldt synlig før den toner ud."
+L.UI_BANNER_FADE_HELP = "Hvor længe advarslen toner blødt ud."
+L.UI_LIST_PLAYERS = "Spillere: %s"
+L.UI_LIST_GUILDS = "Guilds: %s"
+
+
+L.MSG_LOADED = "Indlæst. Skriv /kos show"
+L.UI_NEARBY_HEADER = "Navn / Level / Tid"
+
+
+
+L.STEALTH_DETECTED_TITLE = "Skjult spiller opdaget!"
+
+L.UI_STATS_TITLE = "Fjendestatistik"
+L.UI_STATS_KOS_TAG = "KoS"
+L.UI_TAG_KOS = "KoS"
+L.UI_TAG_GUILD = "Gilde"
+L.UI_STATS_KOS_ONLY = "Kun KoS"
+L.UI_STATS_PVP_ONLY = "Kun PvP"
+L.UI_STATS_RESET = "Nulstil"
+L.UI_STATS_SEEN = "Set"
+L.UI_STATS_WINS = "Sejr"
+L.UI_STATS_LOSES = "Nederlag"
+L.UI_STATS_RESET_CONFIRM = "Nulstil fjendestatistik?"
+L.UI_STATS_FIRSTSEEN = "Først set"
+L.UI_STATS_SORT_LASTSEEN = "Sidst set"
+L.UI_STATS_SORT_NAME = "Navn"
+L.UI_STATS_SORT_SEEN = "Set"
+L.UI_STATS_SORT_WINS = "Sejre"
+L.UI_STATS_SORT_LOSES = "Nederlag"
+
+L.TT_MINIMAP_TITLE = 'Kill on Sight'
+
+L.TT_MINIMAP_LEFTCLICK = 'Venstreklik: Åbn/Luk'
+
+L.TT_MINIMAP_RIGHTCLICK = 'Højreklik: Menu'
+
+L.TT_ON_KOS = 'På KoS-listen'
+
+L.TT_GUILD_KOS = 'Gilde-KoS'
+
+L.TT_LEVEL_FMT = 'Niveau %s'
+
+L.UI_STEALTH_CHAT = "Chat notification"
+
+L.UI_NEARBY_SOUND = "Nearby list sound"
+
+
+-- Added/updated for new 3.0.x UI & features
+L.UI_ADD = "Tilføj"
+L.UI_REMOVE = "Fjern"
+L.UI_OPTIONS = "Indstillinger"
+L.UI_GUILD = "Gilde"
+L.UI_TYPE = "Type"
+L.UI_ZONE = "Zone"
+L.UI_TAB_GUILDS = "Gilder"
+L.UI_LIST_GUILDS = "Gilder: %s"
+L.GUILD_KOS = "Gilde-KoS"
+L.UI_ALERT_NEW = "Advar ved ny fjende i nærheden"
+L.UI_STEALTH_CHAT = "Chat-besked"
+L.UI_NEARBY_SOUND = "Lyd for nærhedsliste"
+L.UI_ALERTS = "KoS / Gilde"
+L.UI_NEARBY_HEADING = "I nærheden"
+L.TT_MINIMAP_TITLE = "Kill on Sight"
+L.TT_MINIMAP_LEFTCLICK = "Venstreklik: Åbn/Luk"
+L.TT_MINIMAP_RIGHTCLICK = "Højreklik: Menu"
+L.TT_ON_KOS = "På KoS-listen"
+L.TT_GUILD_KOS = "Gilde-KoS"
+L.TT_LEVEL_FMT = "Niveau %s"
+L.UI_ATTACKERS_TITLE = "Angribere"
+
+-- Notes / Spy import
+L.UI_NOTE = L.UI_NOTE or "Note"
+L.UI_NOTE_EDIT = L.UI_NOTE_EDIT or "Edit Note"
+L.UI_NOTE_SAVE = L.UI_NOTE_SAVE or "Save"
+L.UI_NOTE_CLEAR = L.UI_NOTE_CLEAR or "Clear"
+L.UI_NOTE_CANCEL = L.UI_NOTE_CANCEL or "Cancel"
+L.UI_NOTE_EMPTY = L.UI_NOTE_EMPTY or "(No note)"
+L.UI_IMPORTSPY_NONE = L.UI_IMPORTSPY_NONE or "Spy import complete - no new KoS entries found."
+L.UI_IMPORTSPY_RESULT = L.UI_IMPORTSPY_RESULT or "Spy import complete: %d added, %d already existed."
+L.UI_NOTES = "Noter"
+
+L.RETAIL_NEARBY_LIMITED_NAMEPLATES_OFF = "Nearby er begrænset fordi Fjendtlige navneskilte er SLÅET FRA. Aktivér Fjendtlige navneskilte (Interface > Navne) for fuld registrering. Du kan skifte med V-tasten."
+L.NEARBY_DISABLED_INSTANCE = "Nearby er deaktiveret i slagmarker og arenaer."
+L.TT_SPEC_LOADING = "Inspicerer…"
+
+-- Profiles (options presets)
+L.UI_PROFILES = L.UI_PROFILES or "Profiles"
+L.UI_PROFILE_NEW = L.UI_PROFILE_NEW or "New"
+L.UI_PROFILE_COPY = L.UI_PROFILE_COPY or "Copy"
+L.UI_PROFILE_RESET = L.UI_PROFILE_RESET or "Reset"
+L.UI_PROFILE_DELETE = L.UI_PROFILE_DELETE or "Delete"
+
+-- Profiles UI
+L.UI_PROFILE_NEW_NAME = "Indtast et navn til den nye profil:"
+
+-- Nearby right-click announcements (v3.4.9)
+L.UI_ANNOUNCE = "Annoncér"
+L.UI_ANNOUNCE_SAY = "Sig"
+L.UI_ANNOUNCE_PARTY = "Gruppe"
+L.UI_ANNOUNCE_RAID = "Raid"
+L.UI_ANNOUNCE_GUILD = "Gilde"
+L.UI_ANNOUNCE_LOCAL = "Lokalt forsvar"
+
+
+-- Honor list and Stats actions (v3.5.1)
+L.UI_TAB_HONOR = "Ære"
+L.UI_ADD_HONOR = "Føj til æreslisten"
+L.UI_REMOVE_HONOR = "Fjern fra æreslisten"
+L.UI_ADD_GUILD_KOS = "Føj guild til KoS"
+L.UI_HONOURED = "Hædret"
+L.UI_HON_TAG = "Hon"
