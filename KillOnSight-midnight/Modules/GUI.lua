@@ -511,64 +511,21 @@ local function _GuessClassFor(name, guid)
   return nil
 end
 
--- WoW Forever stores surnames in the legacy Stats realm/fullName fields.
--- Resolve KoS entries for display only; never rewrite synced keys or saved data.
-local function _ForeverDisplayName(name)
-  if type(name) ~= "string" then return "" end
-  -- Stats fullName uses First-Last, while Forever displays First Last.
-  return (name:gsub("%-", " "))
-end
-
-local function _StatsForKoS(data, name)
-  if type(name) ~= "string" or name == "" then return nil end
-  local stats = data and data.statsPlayers
-  if type(stats) ~= "table" then return nil end
-  local lower = name:lower()
-  local first = lower:match("^([^%s%-]+)")
-  if not first then return nil end
-  local record = stats[first]
-  if type(record) ~= "table" then return nil end
-
-  -- Full-name KoS entries must match the Stats surname too. Do not
-  -- accidentally colour a different player who shares a first name.
-  local full = record.fullName
-  if type(full) ~= "string" or full == "" then
-    full = record.name or first
-    if type(record.realm) == "string" and record.realm ~= "" then
-      full = full .. "-" .. record.realm
-    end
-  end
-  local display = _ForeverDisplayName(full)
-  if lower ~= first and lower ~= display:lower() and lower ~= full:lower() then
-    return nil
-  end
-  return record, display
-end
-
 local function BuildPlayers()
   local out = {}
   local data = DB:GetData()
   local sorted = SortPairs(data.players, function(v) return (v.name or ""):lower() end)
   for _,it in ipairs(sorted) do
     local e = it.v
-    local stats, statsName = _StatsForKoS(data, e.name)
-    local classFile = _NormalizeClass(e.class)
-      or (stats and _NormalizeClass(stats.classFile or stats.class))
-      or _NormalizeClass(_GuessClassFor(e.name, nil))
-    -- Expand legacy first-only entries to First Last using the Stats record.
-    -- Keep the original KoS name/key for removal, syncing, and persistence.
-    local displayName = e.name or ""
-    if stats and statsName and statsName ~= "" then
-      displayName = statsName
-    end
     out[#out+1] = {
       _key = it.k,
       _nameRaw = e.name,
-      _class = classFile,
+      _class = (e and e.class) or _GuessClassFor(e.name, nil),
       _reason = e.reason,
-      name = _ColorizeName(displayName, classFile),
+      name = _ColorizeName(e.name, (e and e.class) or _GuessClassFor(e.name, nil)),
       type = e.type,
       note = "", -- icon-only column
+
       lastSeen = FormatTime(e.lastSeenAt),
       zone = e.lastSeenZone or "",
     }

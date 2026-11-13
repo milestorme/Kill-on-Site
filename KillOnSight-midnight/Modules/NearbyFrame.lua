@@ -7,22 +7,6 @@ local L = KillOnSight_L
 local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 
-local function IsRegionalUniqueNamesEnabled()
-  -- WoW Forever uses region-unique First Last names. UnitName/UnitFullName's
-  -- second return is the surname there, not a realm.
-  if type(_G.RegionalUniqueNamesEnabled) ~= "function" then return false end
-  local ok, enabled = pcall(_G.RegionalUniqueNamesEnabled)
-  return ok and enabled == true
-end
-
-local function GetForeverFullUnitName(unit)
-  if not unit or unit == "" or type(_G.GetUnitName) ~= "function" then return nil end
-  local ok, name = pcall(_G.GetUnitName, unit)
-  if not ok or type(name) ~= "string" or name == "" then return nil end
-  return name
-end
-
-
 -- Retail can return protected/"secret" GUID values in certain PvP/instance contexts.
 -- Never use non-string GUIDs as table keys or in comparisons.
 local function _ValidPlayerGUID(guid)
@@ -113,7 +97,7 @@ local Nearby = {
   headerFrame = nil,
   bottomButtons = nil,
   ticker = nil,
-  tickerInterval = 1.0,
+  tickerInterval = 0.5,
   orderCounter = 0,
 
   -- Midnight perf: keep a stable sorted list and refresh at a capped rate.
@@ -121,7 +105,7 @@ local Nearby = {
   _sortedDirty = true,
   _refreshTimer = nil,
   _nextAllowedRefresh = 0,
-  refreshInterval = 0.08, -- coalesce event bursts, up to 12.5 redraws/sec
+  refreshInterval = 0.10, -- seconds (10 fps max)
 }
 
 -- Font choices for Nearby list player names.
@@ -377,14 +361,9 @@ end
     GameTooltip:AddLine(className, c.r, c.g, c.b)
   end
 
-  -- Spec: suppress duplicate class-only values when inspect data is unavailable.
-  local localizedClass = e.class and ((LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[e.class])
-    or (LOCALIZED_CLASS_NAMES_FEMALE and LOCALIZED_CLASS_NAMES_FEMALE[e.class])) or nil
-  local specText = type(e.spec) == "string" and e.spec:match("^%s*(.-)%s*$") or nil
-  local duplicateClass = specText and (specText:lower() == tostring(localizedClass or ""):lower()
-    or specText:upper() == tostring(e.class or ""):upper())
-  if specText and specText ~= "" and not duplicateClass then
-    GameTooltip:AddLine(specText, 0.7, 0.9, 1)
+  -- Spec (Retail inspect; present when known)
+  if e.spec and e.spec ~= "" then
+    GameTooltip:AddLine(e.spec, 0.7, 0.9, 1)
   elseif e.guid then
     -- Only show "Inspecting..." if we actually have an active request queued/pending for this GUID.
     local mgr = self._inspectMgr
@@ -401,22 +380,8 @@ end
   end
 
 
-  -- Forever's full character name is returned by GetUnitName as "First Last".
-  -- UnitFullName's second return is a surname on that client, not a realm.
-  if IsRegionalUniqueNamesEnabled() and e.guid then
-    local unit = self._FindUnitByGuid and self:_FindUnitByGuid(e.guid)
-    local full = GetForeverFullUnitName(unit)
-    if full then
-      e.fullName = full
-      -- WoW Forever's surname is part of the character name, not a realm.
-      -- Keep the full First Last form in the Nearby row as well as targeting.
-      e.name = full
-      e.realm = nil
-    end
-  end
-
   -- Realm resolution (handles cases where Blizzard shows Guild-Realm instead of Name-Realm)
-  if not IsRegionalUniqueNamesEnabled() and (not e.realm or e.realm == "") and e.guid then
+  if (not e.realm or e.realm == "") and e.guid then
     -- Prefer live unit full name when available
     local unit = self._FindUnitByGuid and self:_FindUnitByGuid(e.guid)
     if unit and unit ~= "" and UnitExists and UnitExists(unit) and GetUnitFullNameSafe then
@@ -479,9 +444,7 @@ function Nearby:StartTicker()
   if self.ticker then return end
   self.ticker = C_Timer.NewTicker(self.tickerInterval or 0.5, function()
     -- periodic refresh so TTL prune + autohide works even when no new events happen
-    local db = GetDB()
-    local profile = db and db:GetProfile()
-    if self.frame and (self.frame:IsShown() or (profile and profile.showNearbyFrame ~= false)) then
+    if self.frame and (self.frame:IsShown() or (GetDB() and GetDB():GetProfile().showNearbyFrame ~= false)) then
       self:Refresh()
     end
   end)
@@ -694,13 +657,6 @@ local function BuildTargetName(entry)
              :gsub("|T.-|t", "")
              :gsub("^%s+", "")
              :gsub("%s+$", "")
-
-  if IsRegionalUniqueNamesEnabled() then
-    -- Forever targeting requires the complete character name, including the
-    -- surname, separated by a space. Never append or interpret a realm here.
-    return name
-  end
-
   if entry.realm and entry.realm ~= "" and not name:find("%-") then
     name = name .. "-" .. entry.realm
   end
@@ -1131,17 +1087,8 @@ end
 
 -- Freeze ordering while hovered or in combat (Spy-stable clickability).
 function Nearby:IsSortFrozen()
-  -- Keep clickable rows stable during combat or while the Nearby window is hovered.
+  if self._sortFreezeHover then return true end
   if InCombatLockdown and InCombatLockdown() then return true end
-  if self._sortFreezeHover == true then
-    -- OnLeave may be missed when rows are hidden/rebuilt under the cursor.
-    -- Never let a stale hover flag hold sorting after the mouse leaves.
-    if self.frame and self.frame.IsShown and self.frame:IsShown()
-        and MouseIsOver and MouseIsOver(self.frame) then
-      return true
-    end
-    self._sortFreezeHover = false
-  end
   return false
 end
 
@@ -1196,22 +1143,10 @@ function Nearby:GetSortedList()
       return (a.order or 0) > (b.order or 0)
     end)
     self._sortedDirty = false
-    if self.debugNearbySort and print then
-      print("KoS Nearby: sorted", #self._sortedList, "entries")
-    end
   elseif frozen and self._sortedDirty then
     -- Sorting is frozen (combat / hover): keep existing order stable, but
     -- ensure newly added entries appear immediately by appending any missing
     -- ones to the end. We'll rebuild+sort properly once unfrozen.
-    -- Prune expired entries even while order is frozen; otherwise ghost rows remain.
-    for i = #self._sortedList, 1, -1 do
-      local cached = self._sortedList[i]
-      local key = cached and (cached.guid and self.guidToKey[cached.guid] or self.nameToKey[cached._lowerName])
-      if not key or self.entries[key] ~= cached then
-        self._sortedMap[cached] = nil
-        table.remove(self._sortedList, i)
-      end
-    end
     for _, e in pairs(self.entries) do
       if not self._sortedMap[e] then
         self._sortedList[#self._sortedList + 1] = e
@@ -1236,19 +1171,18 @@ function Nearby:ScheduleRefresh(immediate)
   end
 
   local delay
-  -- Even urgent event updates obey the redraw cap. A zero-delay timer is
-  -- still used when the cap has elapsed, so fresh sightings appear promptly.
-  delay = math.max(0, earliest - now)
+  if immediate then
+    delay = 0
+  else
+    delay = math.max(0, earliest - now)
+  end
 
   -- Set next allowed refresh time.
-  self._nextAllowedRefresh = now + delay + interval
+  self._nextAllowedRefresh = now + interval
 
   self._refreshTimer = C_Timer.NewTimer(delay, function()
     self._refreshTimer = nil
-    if self.Refresh then
-      local ok, err = pcall(self.Refresh, self)
-      if not ok and geterrorhandler then geterrorhandler()(err) end
-    end
+    if self.Refresh then pcall(function() self:Refresh() end) end
   end)
 end
 
@@ -1502,113 +1436,6 @@ local function ShowCopyBox(self, text)
   f.editBox:SetFocus()
 end
 
-local function ReportClassLocalized(classFile)
-  if not classFile then return nil end
-  if LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[classFile] then
-    return LOCALIZED_CLASS_NAMES_MALE[classFile]
-  end
-  return classFile
-end
-
--- Approximate coordinates for the announce message. Like Spy, this favors the
--- coordinates captured when the target was first spotted (see Nearby:Seen);
--- if an entry has none (e.g. wasn't created through nameplate detection),
--- fall back to our current position as a proxy.
-local function ReportGetPlayerCoords()
-  if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then
-    return nil
-  end
-  local mapID = C_Map.GetBestMapForUnit("player")
-  if not mapID then return nil end
-  local pos = C_Map.GetPlayerMapPosition(mapID, "player")
-  if not pos then return nil end
-  local x, y = pos:GetXY()
-  if not x or not y then return nil end
-  return math.floor(x * 100), math.floor(y * 100)
-end
-
-local function ReportGetAnnounceCoords(e)
-  if e and e.mapX and e.mapY then
-    return math.floor(e.mapX * 100), math.floor(e.mapY * 100)
-  end
-  return ReportGetPlayerCoords()
-end
-
-local function ReportBuildAnnounceMessage(e)
-  if not e then return "" end
-  local parts = {}
-
-  if e.kosType == L.KOS then
-    parts[#parts+1] = "[" .. L.KOS .. "]"
-  elseif e.kosType == L.GUILD_KOS then
-    parts[#parts+1] = "[" .. L.GUILD_KOS .. "]"
-  end
-
-  parts[#parts+1] = e.name or "?"
-
-  local details = {}
-  local lvl = (e.level and e.level > 0) and tostring(e.level) or "??"
-  details[#details+1] = "Lv" .. lvl
-  local className = ReportClassLocalized(e.class)
-  if className then details[#details+1] = className end
-  parts[#parts+1] = "- " .. table.concat(details, " ")
-
-  if e.guild and e.guild ~= "" then
-    parts[#parts+1] = "<" .. e.guild .. ">"
-  end
-
-  if e.zone and e.zone ~= "" then
-    parts[#parts+1] = "- " .. e.zone
-  end
-
-  local x, y = ReportGetAnnounceCoords(e)
-  if x and y then
-    parts[#parts+1] = "(" .. x .. "," .. y .. ")"
-  end
-
-  return table.concat(parts, " ")
-end
-
--- The "LocalDefense" channel is an automatic Blizzard channel named
--- "LocalDefense - <Zone>". You have to already be in range/joined to it for
--- GetChannelName to resolve an index, same as Spy relies on.
-local function ReportGetLocalDefenseChannelIndex()
-  local zone = (GetZoneText and GetZoneText()) or ""
-  if zone == "" then return nil end
-  local idx = GetChannelName("LocalDefense - " .. zone)
-  if idx and idx > 0 then return idx end
-  return nil
-end
-
--- Chat messages are prepared for the player to send manually.
--- Direct SendChatMessage from addon code can be blocked by Retail clients.
-local function ReportAnnounceTarget(e, channel)
-  if not e then return end
-  local msg = ReportBuildAnnounceMessage(e)
-  if msg == "" then return end
-
-  local prefix
-  if channel == "SAY" then
-    prefix = "/s "
-  elseif channel == "PARTY" and GetNumGroupMembers() > 0 and not IsInRaid() then
-    prefix = "/p "
-  elseif channel == "RAID" and IsInRaid() then
-    prefix = "/raid "
-  elseif channel == "GUILD" and IsInGuild() then
-    prefix = "/g "
-  elseif channel == "LOCAL" then
-    local idx = ReportGetLocalDefenseChannelIndex()
-    if idx then prefix = "/" .. tostring(idx) .. " " end
-  end
-
-  if prefix and ChatFrame_OpenChat then
-    ChatFrame_OpenChat(prefix .. msg)
-  end
-end
-
-local ANNOUNCE_MENU_KEY = "KOS_ANNOUNCE"
-
-
 local function ShowMenuFor(self, e)
   if not e then return end
   local DB = GetDB()
@@ -1618,7 +1445,6 @@ local function ShowMenuFor(self, e)
   local has = (DB.LookupPlayer and DB:LookupPlayer(e.name)) and true or false
   local menu = {
     { text = e.name, isTitle = true, notCheckable = true },
-    { text = L.UI_ANNOUNCE or "Announce", notCheckable = true, hasArrow = true, value = ANNOUNCE_MENU_KEY },
     { text = L.UI_COPY_NAME or "Copy Name", notCheckable = true, func = function()
         ShowCopyBox(self, e.name)
       end
@@ -1644,22 +1470,9 @@ local function ShowMenuFor(self, e)
     { text = CLOSE, notCheckable = true },
   }
 
-  local announceMenu = {
-    { text = L.UI_ANNOUNCE_SAY or "Say", notCheckable = true, func = function() ReportAnnounceTarget(e, "SAY") end },
-    { text = L.UI_ANNOUNCE_PARTY or "Party", notCheckable = true,
-      disabled = not (GetNumGroupMembers() > 0 and not IsInRaid()),
-      func = function() ReportAnnounceTarget(e, "PARTY") end },
-    { text = L.UI_ANNOUNCE_RAID or "Raid", notCheckable = true,
-      disabled = not IsInRaid(), func = function() ReportAnnounceTarget(e, "RAID") end },
-    { text = L.UI_ANNOUNCE_GUILD or "Guild", notCheckable = true,
-      disabled = not IsInGuild(), func = function() ReportAnnounceTarget(e, "GUILD") end },
-    { text = L.UI_ANNOUNCE_LOCAL or "LocalDefense", notCheckable = true,
-      disabled = not ReportGetLocalDefenseChannelIndex(),
-      func = function() ReportAnnounceTarget(e, "LOCAL") end },
-  }
-
   if EasyMenu then
-    -- Use the shared dropdown initializer below so the Announce submenu works.
+    EasyMenu(menu, self.menu, "cursor", 0, 0, "MENU")
+    return
   end
 
   if not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and UIDropDownMenu_CreateInfo and ToggleDropDownMenu) then
@@ -1667,24 +1480,14 @@ local function ShowMenuFor(self, e)
   end
 
   UIDropDownMenu_Initialize(self.menu, function(_, level)
-    local items
-    if level == 1 then
-      items = menu
-    elseif level == 2 and UIDROPDOWNMENU_MENU_VALUE == ANNOUNCE_MENU_KEY then
-      items = announceMenu
-    else
-      return
-    end
-    for _, item in ipairs(items) do
+    if level ~= 1 then return end
+    for _, item in ipairs(menu) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = item.text
       info.isTitle = item.isTitle
       info.notCheckable = item.notCheckable
       info.disabled = item.disabled
       info.func = item.func
-      info.hasArrow = item.hasArrow
-      info.value = item.value
-      info.keepShownOnClick = false
       UIDropDownMenu_AddButton(info, level)
     end
   end, "MENU")
@@ -1849,6 +1652,7 @@ function Nearby:Create()
   -- Header bar
   local header = CreateFrame("Frame", nil, f, "BackdropTemplate")
   self.headerFrame = header
+  self.headerFrame = header
   header:SetHeight(18)
   header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
   header:SetBackdropColor(1,1,1,0.06)
@@ -1883,12 +1687,15 @@ function Nearby:Create()
     UpdateScroll(self)
   end)
 
-  -- Only hovering this Nearby frame freezes ordering; world-unit mouseover does not.
+  -- Freeze ordering while hovered so rows don't shift under the mouse (Spy-stable).
   f:SetScript("OnEnter", function()
-    self:SetHoverFreeze(true)
+    self._sortFreezeHover = true
   end)
   f:SetScript("OnLeave", function()
-    self:SetHoverFreeze(false)
+    self._sortFreezeHover = false
+    if self._sortedDirty then
+      self:ScheduleRefresh(true)
+    end
   end)
 
   -- Rows
@@ -2124,18 +1931,6 @@ function Nearby:Create()
         if UnitGUID and UnitExists and UnitExists("target") then
           local guid = UnitGUID("target")
           TryQueueForGuid(guid, "target")
-          if IsRegionalUniqueNamesEnabled() then
-            local ok, validGuid = pcall(_ValidPlayerGUID, guid)
-            local key = ok and validGuid and Nearby.guidToKey[validGuid]
-            local e = key and Nearby.entries[key]
-            local full = e and GetForeverFullUnitName("target")
-            if full and full ~= e.name then
-              e.name = full
-              e.fullName = full
-              e.realm = nil
-              Nearby:ScheduleRefresh(true)
-            end
-          end
         end
       elseif event == "UPDATE_MOUSEOVER_UNIT" then
         if UnitGUID and UnitExists and UnitExists("mouseover") then
@@ -2239,7 +2034,6 @@ function Nearby:ClearAll(opts)
     wipe(self._sortedList)
   end
   self._sortedDirty = true
-  if self._sortedMap then wipe(self._sortedMap) end
   -- Hide immediately in sanctuary mode unless caller requests otherwise.
   if self.frame and not opts.keepShown then
     SafeSetShown(self.frame, false)
@@ -2801,7 +2595,10 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   local normName = NormalizeName(name) or name
   local lowerName = tostring(normName):lower()
 
-  local playerGuid = _ValidPlayerGUID(guid)
+  local playerGuid = guid and tostring(guid) or nil
+  if playerGuid and not playerGuid:match("^Player%-") then
+    playerGuid = nil
+  end
 
   local key
   if playerGuid and self.guidToKey[playerGuid] then
@@ -2861,33 +2658,10 @@ function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
   self.nameToKey[lowerName] = key
 
   e.fullName = rawName or e.fullName
-  if IsRegionalUniqueNamesEnabled() then
-    -- Resolve the surname at sighting time, not later when the tooltip opens.
-    -- Stats may already know the surname before a live unit token is available.
-    local full = GetForeverFullUnitName(unit)
-    if not full then
-      local stats = DB.StatsGetPlayer and DB:StatsGetPlayer(normName)
-      if stats then
-        local first = stats.name or normName
-        local surname = stats.realm
-        if type(surname) == "string" and surname ~= "" then
-          full = first .. " " .. surname
-        elseif type(stats.fullName) == "string" and stats.fullName:find("%-") then
-          full = stats.fullName:gsub("%-", " ", 1)
-        end
-      end
-    end
-    if full then
-      e.name = full
-      e.fullName = full
-      e.realm = nil
-    end
-  else
-    e.realm = ExtractRealm(rawName) or e.realm
-  end
+  e.realm = ExtractRealm(rawName) or e.realm
 
   -- If we have a live unit token, prefer UnitFullName for realm detection (titles/tooltip layout can hide it).
-  if not IsRegionalUniqueNamesEnabled() and unit and GetUnitFullNameSafe then
+  if unit and GetUnitFullNameSafe then
     local fn, r = GetUnitFullNameSafe(unit)
     if fn and r and r ~= "" then
       e.fullName = fn .. "-" .. r

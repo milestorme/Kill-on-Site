@@ -99,6 +99,7 @@ end
 
 local function GetDB() return _G.KillOnSight_DB end
 local function GetDetector() return _G.KillOnSight_Detector end
+local function GetSync() return _G.KillOnSight_Sync end
 local function GetGUI() return _G.KillOnSight_GUI end
 local function GetMinimap() return _G.KillOnSight_Minimap end
 local function GetNotifier() return _G.KillOnSight_Notifier end
@@ -359,6 +360,14 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
     Print("Usage: /kos statsprune on|off|maxdays N|maxentries N|now")
     return
   end
+  if cmd == "sync" then
+    local Sync = GetSync()
+    if Sync then
+      Sync:Hello(true)
+      return Sync:RequestDiff()
+    end
+    return
+  end
 
   Help()
 end
@@ -496,6 +505,7 @@ end
 
 Core:SetScript("OnEvent", function(self, event, ...)
   local Detector = GetDetector()
+  local Sync = GetSync()
   local GUI = GetGUI()
   local Minimap = GetMinimap()
 
@@ -513,6 +523,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
         end)
       end
     end
+    if Sync then Sync:Init() end
     if Minimap and Minimap.Create then Minimap:Create() end
     local Nearby = GetNearby()
     if Nearby and Nearby.Init then Nearby:Init() end
@@ -526,6 +537,10 @@ Core:SetScript("OnEvent", function(self, event, ...)
     return
   end
 
+  if event == "CHAT_MSG_ADDON" then
+    if Sync then Sync:OnMessage(...) end
+    return
+  end
 
   if event == "PLAYER_ENTERING_WORLD" then
     ApplyPvPInstanceDisableState(IsInPvPInstance())
@@ -533,6 +548,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     if Core._bgDisabled then return end
     if Detector and not Core._instDisabled then Detector:CheckUnit("target") end
     if GUI then GUI:RefreshAll() end
+    if Sync then Sync:Hello(true) end
     WarnIfEnemyNameplatesDisabled()
     return
   end
@@ -621,6 +637,7 @@ local function SafeRegisterEvent(event)
 end
 
 SafeRegisterEvent("ADDON_LOADED")
+SafeRegisterEvent("CHAT_MSG_ADDON")
 SafeRegisterEvent("PLAYER_ENTERING_WORLD")
 SafeRegisterEvent("PLAYER_TARGET_CHANGED")
 SafeRegisterEvent("UPDATE_MOUSEOVER_UNIT")

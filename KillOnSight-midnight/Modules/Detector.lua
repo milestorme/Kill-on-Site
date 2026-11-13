@@ -114,14 +114,6 @@ local function UnitIsActuallyVisible(unit)
   return true
 end
 
--- Only these classes can trigger a disappearance-based Hidden inference.
--- Confirmed stealth auras remain valid for any class (e.g. Shadowmeld).
-local INFER_HIDDEN_CLASSES = {
-  ROGUE = true,
-  DRUID = true,
-  HUNTER = true, -- Camouflage
-}
-
 local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
   if not guid or not name or name == "" then return end
 
@@ -151,7 +143,7 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
   if visiblePrev == nil then visiblePrev = true end
   visibleStateByGUID[guid] = visibleNow
 
-  if (not nowStealthed) and INFER_HIDDEN_CLASSES[classFile] and highConfidence and (visiblePrev == true) and (visibleNow == false) then
+  if (not nowStealthed) and highConfidence and (visiblePrev == true) and (visibleNow == false) then
     nowStealthed = true
     auraName = auraName or "Hidden"
   end
@@ -330,7 +322,7 @@ function Detector:OnNameplateRemoved(unit)
   if age > 5 then return end
 
   pcall(function()
-    CheckStealthTransition(unit, name, e.classFile, e.guild, guid, true)
+    CheckStealthTransition(unit, name, nil, nil, guid, true)
   end)
 end
 
@@ -482,13 +474,7 @@ function Detector:CheckUnit(unit, forceNearby)
     forceNearby = true
   end
 
-  local classFile = nil
-  if isPlayerUnit and UnitClass then
-    local okClass, _, classToken = pcall(UnitClass, unit)
-    if okClass and type(classToken) == "string" then
-      classFile = classToken
-    end
-  end
+  local classFile = isPlayerUnit and (select(2, UnitClass(unit))) or nil
   local guild = GetUnitGuild(unit)
 
   -- Stealth detection via UNIT_AURA on target/mouseover/nameplates.

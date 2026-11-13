@@ -1,8 +1,8 @@
 ## Interface: 120001, 120005
 ## Title: Kill on Sight: Midnight
-## Notes: Midnight & Forever fork (WPVP focused)
+## Notes: Retail-only Midnight fork (WPVP focused)
 ## Author: Milestorme
-## Version: 3.5.0
+## Version: 3.4.5
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
@@ -36,6 +36,7 @@ Modules\Notifier.lua
 Modules\NearbyFrame.lua
 Modules\Detector.lua
 Modules\Activity.lua
+Modules\Sync.lua
 Modules\GUI.lua
 Modules\Minimap.lua
 Modules\Portrait.lua
