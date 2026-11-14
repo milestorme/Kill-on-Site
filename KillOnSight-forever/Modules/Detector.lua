@@ -31,6 +31,15 @@ local function _IsDisabledInstance()
   return not isPvP
 end
 local function GetNearby() return _G.KillOnSight_Nearby end
+local function CanonicalName(name)
+  local util = _G.KillOnSight_Util
+  return (util and util.NormalizePlayerName and util:NormalizePlayerName(name)) or name
+end
+local function CanonicalKey(name)
+  local util = _G.KillOnSight_Util
+  if util and util.PlayerKey then return util:PlayerKey(name) end
+  return type(name) == "string" and name:lower() or nil
+end
 
 -- Stealth/vanish detection via UNIT_AURA on target/mouseover/nameplates.
 -- We use spellIDs to avoid localization issues.
@@ -159,7 +168,8 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
   if nowStealthed and not prev then
     stealthStateByGUID[guid] = true
 
-    local keyLower = name:lower()
+    local keyLower = CanonicalKey(name)
+    if not keyLower then return end
     if ShouldNotifyStealth(keyLower) then
       if (not prof) or prof.stealthDetectAddToNearby ~= false then
         local Nearby = GetNearby()
@@ -274,8 +284,8 @@ local function TrackEngagement(name, classFile, guild, guid)
   if not GetTime then return end
   if not name or name == "" then return end
 
-  local okLower, key = pcall(string.lower, name)
-  if not okLower or not key then return end
+  local key = CanonicalKey(name)
+  if not key then return end
 
   recentEngagements[key] = {
     t = GetTime(),
@@ -320,8 +330,10 @@ function Detector:OnNameplateRemoved(unit)
   local okMatch, isPlayer = pcall(function() return type(guid) == "string" and guid:match("^Player%-") ~= nil end)
   if not okMatch or not isPlayer then return end
 
-  local okLower, k = pcall(string.lower, name)
-  if not okLower or not k then return end
+  local util = _G.KillOnSight_Util
+  name = (util and util.UnitPlayerName and util:UnitPlayerName(unit)) or name
+  local k = CanonicalKey(name)
+  if not k then return end
 
   local e = recentEngagements[k]
   if not e or type(e) ~= "table" or not e.t or not GetTime then return end
@@ -356,9 +368,9 @@ end
 
 function Detector:PopEngagementForName(name)
   if not name or name == "" then return nil end
-  local clean = name:match("^[^-]+") or name
-  local okLower, key = pcall(string.lower, clean)
-  if not okLower or not key then return nil end
+  local clean = CanonicalName(name)
+  local key = CanonicalKey(clean)
+  if not key then return nil end
 
   local e = recentEngagements[key]
   if not e or type(e) ~= "table" then return nil end
@@ -440,24 +452,11 @@ function Detector:CheckUnit(unit, forceNearby)
   end
   local name = GetUnitNameSafe(unit)
   if not name then return end
-  -- Forever uses First Last as the character identity. UnitName may only
-  -- return First, whereas KoS entries are stored under the complete name.
-  if type(_G.RegionalUniqueNamesEnabled) == "function" then
-    local okMode, enabled = pcall(_G.RegionalUniqueNamesEnabled)
-    if okMode and enabled then
-      local full = nil
-      if type(_G.GetUnitName) == "function" then
-        local okFull, value = pcall(_G.GetUnitName, unit)
-        if okFull and type(value) == "string" and value ~= "" then full = value end
-      end
-      if not full or not full:find(" ", 1, true) then
-        local first, surname = GetUnitFullNameSafe(unit)
-        if first and surname and surname ~= "" then
-          full = first .. " " .. surname
-        end
-      end
-      if full and full ~= "" then name = full end
-    end
+  -- Use the same unit identity as the rest of the addon.
+  local util = _G.KillOnSight_Util
+  if util and util.UnitPlayerName then
+    local full = util:UnitPlayerName(unit)
+    if full then name = full end
   end
 
   -- Nameplates include NPCs, pets and totems. We must only track *enemy players*.
@@ -516,13 +515,11 @@ function Detector:CheckUnit(unit, forceNearby)
     CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
   end
 
+  local statsIdentityName = name
   -- Stats note (does not increment encounters; just updates last seen/class/guild).
   if isEnemyPlayer and DB.NoteEnemySeen then
     local statsName = name
-    local fullName, realm = GetUnitFullNameSafe(unit)
-    if fullName and realm and realm ~= "" then
-      statsName = fullName .. "-" .. realm
-    end
+    statsIdentityName = statsName
     DB:NoteEnemySeen(statsName, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
 
     -- Encounter tracking: increment "Seen" only once per encounter (timeout-based).
@@ -553,7 +550,7 @@ function Detector:CheckUnit(unit, forceNearby)
       local pe = DB.LookupPlayer and DB:LookupPlayer(name)
       if pe then
         kosType = pe.type or (L and L.KOS) or "KoS"
-      elseif guild and DB.LookupGuild then
+      elseif guild and DB.LookupGuild and not (DB.LookupHonor and DB:LookupHonor(name)) then
         local ge = DB:LookupGuild(guild)
         if ge then
           kosType = ge.type or (L and L.GUILD_KOS) or "Guild"
@@ -563,15 +560,6 @@ function Detector:CheckUnit(unit, forceNearby)
       local Nearby = GetNearby()
       if Nearby and Nearby.Seen then
         local nearbyName = name
-        local fullName, realm = GetUnitFullNameSafe(unit)
-        if fullName and realm and realm ~= "" then
-          local forever = false
-          if type(_G.RegionalUniqueNamesEnabled) == "function" then
-            local ok, enabled = pcall(_G.RegionalUniqueNamesEnabled)
-            forever = ok and enabled == true
-          end
-          nearbyName = fullName .. (forever and " " or "-") .. realm
-        end
         Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid, unit)
       end
     end
@@ -579,7 +567,7 @@ function Detector:CheckUnit(unit, forceNearby)
     -- Engagement tracking for win attribution (best-effort).
     local isDirectUnit = (unit == "target" or unit == "mouseover")
     if (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or isDirectUnit) then
-      TrackEngagement(name, classFile, guild, guid)
+      TrackEngagement(statsIdentityName or name, classFile, guild, guid)
     end
   end
 
@@ -590,7 +578,7 @@ function Detector:CheckUnit(unit, forceNearby)
     DB:MarkSeenPlayer(name)
     ScheduleGUIRefresh()
 
-    local key = "p:" .. name:lower()
+    local key = "p:" .. (CanonicalKey(name) or name:lower())
     if ShouldNotify(key) then
       Notifier:NotifyPlayer(playerEntry.type or (L and L.KOS) or "KoS", name, playerEntry.reason)
     end
@@ -599,6 +587,9 @@ function Detector:CheckUnit(unit, forceNearby)
 
   -- Guild notification (when guild is known and tracked)
   if guild and guild ~= "" and DB.LookupGuild then
+    -- Personal Honor exempts a player from guild-wide KoS alerts.
+    -- Personal KoS was already checked above and always takes precedence.
+    if DB.LookupHonor and DB:LookupHonor(name) then return end
     local guildEntry = DB:LookupGuild(guild)
     if guildEntry then
       DB:MarkSeenGuild(guild)

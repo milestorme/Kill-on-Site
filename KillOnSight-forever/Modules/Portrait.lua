@@ -33,29 +33,11 @@ end
 -- Forever stores surnames in the realm component of UnitFullName.
 -- Check exact full identities before any legacy first-name fallback.
 local function GetTargetIdentityKeys()
-  local keys, seen = {}, {}
-  local function add(value)
-    value = SafeToString(value)
-    if not value then return end
-    local key = value:lower()
-    if not seen[key] then seen[key] = true; keys[#keys+1] = key end
-  end
-  local n, r
-  if UnitFullName then
-    local ok, first, last = pcall(UnitFullName, "target")
-    if ok then n, r = SafeToString(first), SafeToString(last) end
-  end
-  if not n then
-    local ok, first, last = pcall(UnitName, "target")
-    if ok then n, r = SafeToString(first), SafeToString(last) end
-  end
-  if not n then return keys end
-  if r then
-    add(n .. " " .. r) -- WoW Forever first + last name
-    add(n .. "-" .. r) -- legacy realm-based identity
-  end
-  add(n)
-  return keys
+  local util = _G.KillOnSight_Util
+  local full = util and util:UnitPlayerName("target")
+  local key = util and util:PlayerKey(full)
+  -- No first-name fallback: two Forever characters may share a given name.
+  return key and {key} or {}
 end
 
 local function GetDataTables()
@@ -276,10 +258,10 @@ local function Update()
   if UnitIsPlayer("target") then
     if IsKoSTarget() then
       ApplyOverlay("rare")
-    elseif IsGuildKoSTarget() then
-      ApplyOverlay("elite")
     elseif IsHonorTarget() then
       ApplyOverlay("honor")
+    elseif IsGuildKoSTarget() then
+      ApplyOverlay("elite")
     else
       ApplyOverlay("none")
       RestoreTargetFrameArt()

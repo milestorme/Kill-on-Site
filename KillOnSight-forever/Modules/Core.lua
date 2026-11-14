@@ -219,11 +219,11 @@ local function Help()
 end
 
 local function EnsureName(rest)
-  local name = SplitFirst(rest or "")
+  local name = _G.KillOnSight_Util:NormalizePlayerName(rest or "")
   if not name or name == "" then
     local unit = "target"
     if UnitExists(unit) and UnitIsPlayer(unit) then
-      name = UnitName(unit)
+      name = _G.KillOnSight_Util:UnitPlayerName(unit)
     end
   end
   return name
@@ -237,7 +237,7 @@ local function AddPlayer(rest)
   local name = EnsureName(rest)
   if not name then return Help() end
   if DB:HasPlayer(name) then return end
-  DB:AddPlayer(name, L.KOS, nil, UnitName("player"))
+  DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
   Notifier:Chat(string.format(L.ADDED_PLAYER, L.KOS, name))
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
@@ -248,7 +248,7 @@ local function RemovePlayer(rest)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local name = SplitFirst(rest or "")
+  local name = _G.KillOnSight_Util:NormalizePlayerName(rest or "")
   if not name then return Help() end
   if DB:RemovePlayer(name) then
     Notifier:Chat(string.format(L.REMOVED_PLAYER, name))
@@ -264,10 +264,10 @@ local function AddGuild(rest)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local guild = SplitFirst(rest or "")
-  if not guild then return Help() end
+  local guild = (rest or ""):match("^%s*(.-)%s*$")
+  if guild == "" then return Help() end
   if DB:HasGuild(guild) then return end
-  DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
+  DB:AddGuild(guild, L.GUILD_KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
   Notifier:Chat(string.format(L.ADDED_GUILD, L.GUILD_KOS, guild))
   local GUI = GetGUI()
   if GUI then GUI:RefreshAll() end
@@ -278,8 +278,8 @@ local function RemoveGuild(rest)
   local Notifier = GetNotifier()
   if not DB or not Notifier then return end
 
-  local guild = SplitFirst(rest or "")
-  if not guild then return Help() end
+  local guild = (rest or ""):match("^%s*(.-)%s*$")
+  if guild == "" then return Help() end
   if DB:RemoveGuild(guild) then
     Notifier:Chat(string.format(L.REMOVED_GUILD, guild))
   else
@@ -406,14 +406,14 @@ end
 local function ResolveGuildForGuid(name, guid)
   local function Clean(n)
     if not n then return nil end
-    return (n:match('^[^-]+') or n)
+    return (_G.KillOnSight_Util and _G.KillOnSight_Util:PlayerKey(n)) or n
   end
   local cleanName = Clean(name)
   local function GuildFromUnit(unit)
     if not unit or not UnitExists or not UnitExists(unit) then return nil end
     if guid and UnitGUID and UnitGUID(unit) ~= guid then return nil end
     if (not guid) and cleanName and UnitName then
-      local un = UnitName(unit)
+      local un = _G.KillOnSight_Util:UnitPlayerName(unit)
       if not un or Clean(un) ~= cleanName then return nil end
     end
     local g = GetGuildInfo and GetGuildInfo(unit)

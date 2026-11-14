@@ -45,7 +45,10 @@ local function RealmKey()
 end
 
 local function CharKey()
-  local name = UnitName("player") or "Unknown"
+  local util = _G.KillOnSight_Util
+  local name = (util and util:UnitPlayerName("player")) or ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")) or "Unknown"
+  if util and util:IsForeverNames() then return name end
+  if name:find("-", 1, true) then return name end
   local realm = GetRealmName() or "UnknownRealm"
   return name .. "-" .. realm
 end
@@ -225,6 +228,122 @@ function DB:GetStatsRevision()
   return tonumber(d.statsRevision or 0) or 0
 end
 
+-- One-time, non-destructive migration for WoW Forever two-part identities.
+-- Keep an in-SavedVariables snapshot for recovery; never guess missing surnames.
+local NAME_SCHEMA_VERSION = 2
+local function _NameIdentity(name)
+  if type(name) ~= "string" then return nil end
+  local util = _G.KillOnSight_Util
+  if util and util.NormalizePlayerName then name = util:NormalizePlayerName(name) end
+  if type(name) ~= "string" then return nil end
+  name = name:gsub("%s*%-%s*", " "):gsub("%s+", " "):match("^%s*(.-)%s*$")
+  if name == "" then return nil end
+  return name:lower(), name
+end
+local function _LegacyFullName(oldKey, entry)
+  -- Forever originally used the legacy realm field for the SURNAME.
+  -- Only append it if the stored name is a single token. Never double-append.
+  local full = type(entry.fullName) == "string" and entry.fullName or nil
+  local name = type(entry.name) == "string" and entry.name or nil
+  local surname = type(entry.realm) == "string" and entry.realm:match("^%s*(.-)%s*$") or nil
+  if full and full ~= "" then return full end
+  if name and name ~= "" then
+    if name:find("[ %-]") then return name end
+    if surname and surname ~= "" then return name .. " " .. surname end
+  end
+  -- Keys with two components are unambiguous even if entry.name is first-only.
+  if type(oldKey) == "string" and oldKey:find("[ %-]") then return oldKey end
+  return name or oldKey
+end
+local function _MergeMigratedEntry(dst, src, kind)
+  if kind == "statsPlayers" then
+    -- Historical duplicate counters can overlap; max avoids inventing events.
+    for _, field in ipairs({"seenCount", "wins", "loses"}) do
+      dst[field] = math.max(tonumber(dst[field]) or 0, tonumber(src[field]) or 0)
+    end
+    local first, oldFirst = tonumber(dst.firstSeenAt) or 0, tonumber(src.firstSeenAt) or 0
+    if oldFirst > 0 and (first == 0 or oldFirst < first) then dst.firstSeenAt = oldFirst end
+    if (tonumber(src.lastSeenAt) or 0) > (tonumber(dst.lastSeenAt) or 0) then dst.lastSeenAt = src.lastSeenAt end
+  end
+  -- Never discard notes or other distinct metadata when entries collide.
+  for k, v in pairs(src) do
+    if dst[k] == nil or dst[k] == "" then dst[k] = v end
+  end
+end
+local function _MigrateNameData(realmDB)
+  local util = _G.KillOnSight_Util
+  if not (util and util.IsForeverNames and util:IsForeverNames()) then return end
+  local data = realmDB.data
+  if type(data) ~= "table" or (tonumber(data.nameSchemaVersion) or 0) >= NAME_SCHEMA_VERSION then return end
+  -- Preserve the original backup from v1 and take a fresh v2 snapshot.
+  if not realmDB.nameMigrationBackupV2 then
+    local snapshot = {schema=NAME_SCHEMA_VERSION, createdAt=Now()}
+    for _, kind in ipairs({"players", "honorPlayers", "statsPlayers"}) do
+      snapshot[kind] = {}
+      for key, entry in pairs(data[kind] or {}) do
+        if type(entry) == "table" then
+          local copy = {}; _MergeInto(copy, entry); snapshot[kind][key] = copy
+        end
+      end
+    end
+    realmDB.nameMigrationBackupV2 = snapshot
+  end
+  local changed = false
+  for _, kind in ipairs({"players", "honorPlayers", "statsPlayers"}) do
+    local entries = data[kind]
+    if type(entries) == "table" then
+      local keys = {}
+      for key in pairs(entries) do keys[#keys+1] = key end
+      table.sort(keys, function(x,y) return tostring(x) < tostring(y) end)
+      for _, oldKey in ipairs(keys) do
+        local entry = entries[oldKey]
+        if type(entry) == "table" then
+          local identity = _LegacyFullName(oldKey, entry)
+          local key, full = _NameIdentity(identity)
+          -- Never merge an unqualified first name with a full identity.
+          if key and full:find(" ", 1, true) then
+            if oldKey ~= key then
+              local dst = entries[key]
+              if dst and dst ~= entry then
+                -- Only merge when both records independently resolve to the same full name.
+                local otherKey = _NameIdentity(_LegacyFullName(key, dst))
+                if otherKey == key then
+                  _MergeMigratedEntry(dst, entry, kind)
+                  entries[oldKey] = nil
+                  entry = dst
+                  changed = true
+                end
+              elseif not dst then
+                entries[key] = entry
+                entries[oldKey] = nil
+                changed = true
+              end
+            end
+            if entries[key] == entry then
+              -- Stats uses name/realm as legacy components. Do not overwrite
+              -- name with the complete identity while realm is still populated:
+              -- older display paths would append the surname a second time.
+              if kind == "statsPlayers" then
+                local first, surname = full:match("^(%S+)%s+(.+)$")
+                entry.name = first or full
+                entry.realm = surname or entry.realm
+              else
+                entry.name = full
+              end
+              entry.fullName = full
+            end
+          end
+        end
+      end
+    end
+  end
+  data.nameSchemaVersion = NAME_SCHEMA_VERSION
+  if changed then
+    data.revision = (tonumber(data.revision) or 0) + 1
+    data.statsRevision = (tonumber(data.statsRevision) or 0) + 1
+  end
+end
+
 function DB:Init()
   -- Use a single account-wide database shared across all realms/factions/characters.
   KillOnSightDB.global = KillOnSightDB.global or {}
@@ -319,6 +438,8 @@ function DB:Init()
     end
   end
 
+  _MigrateNameData(realmDB)
+
   -- Optional stats pruning (prevents long-term SV bloat)
   if self.PruneStatsPlayers then
     self:PruneStatsPlayers()
@@ -380,7 +501,7 @@ local function MakePlayerEntry(name, listType, reason, addedBy, existing, class)
     class = class or (existing and existing.class) or nil,
     type = listType or L.KOS,
     reason = norm(reason),
-    addedBy = addedBy or UnitName("player") or "Unknown",
+    addedBy = addedBy or ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")) or "Unknown",
     addedAt = existing and existing.addedAt or Now(),
     addedOrder = existing and existing.addedOrder or nil,
     modifiedAt = Now(),
@@ -394,7 +515,7 @@ local function MakeGuildEntry(guild, listType, reason, addedBy, existing)
     guild = guild,
     type = listType or L.GUILD_KOS,
     reason = norm(reason),
-    addedBy = addedBy or UnitName("player") or "Unknown",
+    addedBy = addedBy or ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")) or "Unknown",
     addedAt = existing and existing.addedAt or Now(),
     addedOrder = existing and existing.addedOrder or nil,
     modifiedAt = Now(),
@@ -404,17 +525,22 @@ local function MakeGuildEntry(guild, listType, reason, addedBy, existing)
 end
 
 -- Honor is a private, independent list (not part of KoS sync or alerts).
+local function CanonicalPlayerKey(name)
+  local util = _G.KillOnSight_Util
+  return util and util:PlayerKey(name) or (type(name) == "string" and name:lower() or nil)
+end
+
 function DB:LookupHonor(name)
   name = norm(name)
   if not name then return nil end
-  return (self:GetData().honorPlayers or {})[name:lower()]
+  return (self:GetData().honorPlayers or {})[CanonicalPlayerKey(name)]
 end
 function DB:AddHonor(name, class)
   name = norm(name)
   if not name then return false end
   local d = self:GetData()
   d.honorPlayers = d.honorPlayers or {}
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   if d.honorPlayers[key] then return false end
   d.honorPlayers[key] = {name=name, class=class, addedAt=Now(), addedOrder=NextListOrder(d)}
   local N = _G.KillOnSight_Nearby
@@ -426,7 +552,7 @@ function DB:RemoveHonor(name)
   if not name then return false end
   local d = self:GetData()
   d.honorPlayers = d.honorPlayers or {}
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   if not d.honorPlayers[key] then return false end
   d.honorPlayers[key] = nil
   local N = _G.KillOnSight_Nearby
@@ -436,7 +562,7 @@ end
 
 function DB:AddPlayer(name, listType, reason, addedBy, class)
   name = norm(name); if not name then return false end
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   -- Retail/Midnight: some UI surfaces provide full names (Name-Realm) while Nearby normalizes
   -- to short names. Notify Nearby for both keys so tags update immediately either way.
   local shortKey
@@ -461,7 +587,7 @@ end
 
 function DB:RemovePlayer(name)
   name = norm(name); if not name then return false end
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   local shortKey
   if _G.Ambiguate then
     local s = Ambiguate(name, "short")
@@ -519,7 +645,7 @@ end
 
 function DB:LookupPlayer(name)
   if not name then return nil end
-  return self:GetData().players[name:lower()]
+  return self:GetData().players[CanonicalPlayerKey(name)]
 end
 
 function DB:LookupGuild(guild)
@@ -529,7 +655,7 @@ end
 
 function DB:SetPlayerClass(name, class)
   if not name or not class then return false end
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   local d = self:GetData()
   local e = d.players[key]
   if not e then return false end
@@ -543,7 +669,7 @@ end
 -- This is metadata only and does not affect detection.
 function DB:SetPlayerReason(name, reason)
   name = norm(name); if not name then return false end
-  local key = name:lower()
+  local key = CanonicalPlayerKey(name)
   local d = self:GetData()
   local e = d.players[key]
   if not e then return false end
@@ -614,15 +740,15 @@ local function _ConsolidateForeverStats(data, fullKey)
   local stats = data.statsPlayers or {}
   -- Consolidate alternative separators and old first-name-only records.
   -- Never merge two distinct full names merely because they share a first name.
-  local first = fullKey:match("^(%S+) ")
   local target = stats[fullKey]
   for oldKey, entry in pairs(stats) do
     if oldKey ~= fullKey and type(entry) == "table" then
       local canonical = _StatsKey(entry.fullName or ((entry.name or "") .. ((entry.realm and entry.realm ~= "") and (" " .. entry.realm) or "")))
       local keyCanonical = _StatsKey(oldKey)
       local exact = canonical == fullKey or keyCanonical == fullKey
-      local legacyFirst = first and oldKey == first and (not entry.realm or entry.realm == "")
-      if exact or legacyFirst then
+      -- A first-name-only record is never proof of the same player.
+      -- Merge only when both records explicitly resolve to the same full identity.
+      if exact then
         if not target then target = entry; stats[fullKey] = target
         else _MergeStatsRecord(target, entry) end
         stats[oldKey] = nil
@@ -638,7 +764,6 @@ function DB:ConsolidateStatsDuplicates()
   if not _ForeverStatsMode() then return 0 end
   local data = self:GetData()
   local stats = data.statsPlayers or {}
-  local groups, ambiguous = {}, {}
   local function canonical(k, e)
     local name = type(e.fullName) == "string" and e.fullName or ""
     if name == "" then
@@ -654,16 +779,6 @@ function DB:ConsolidateStatsDuplicates()
     if key and key:find(" ", 1, true) then return key end
     return nil
   end
-  for k, e in pairs(stats) do
-    if type(e) == "table" then
-      local c = canonical(k, e)
-      if c then
-        local first = c:match("^(%S+) ")
-        if groups[first] and groups[first] ~= c then ambiguous[first] = true end
-        groups[first] = c
-      end
-    end
-  end
   local changes = 0
   local keys = {}
   for k in pairs(stats) do keys[#keys+1] = k end
@@ -671,12 +786,6 @@ function DB:ConsolidateStatsDuplicates()
     local e = stats[k]
     if type(e) == "table" then
       local c = canonical(k, e)
-      if not c then
-        local first = _StatsKey(k)
-        if first and not first:find(" ", 1, true) and not ambiguous[first] then
-          c = groups[first]
-        end
-      end
       if c and c ~= k then
         if type(stats[c]) == "table" then _MergeStatsRecord(stats[c], e)
         else stats[c] = e end
@@ -838,7 +947,7 @@ function DB:AddLastAttacker(name, guid, zone, guild, classFile)
   if not name or name == "" then return end
   local d = self:GetData()
   d.lastAttackers = d.lastAttackers or {}
-  local keyName = name:lower()
+  local keyName = CanonicalPlayerKey(name)
   local keyGUID = (guid and guid ~= "") and guid or nil
 
 
@@ -854,7 +963,7 @@ function DB:AddLastAttacker(name, guid, zone, guild, classFile)
     if e then
       if keyGUID and e.guid == keyGUID then
         table.remove(d.lastAttackers, j)
-      elseif (not keyGUID) and e.name and e.name:lower() == keyName then
+      elseif (not keyGUID) and e.name and CanonicalPlayerKey(e.name) == keyName then
         table.remove(d.lastAttackers, j)
       end
     end
@@ -880,7 +989,7 @@ function DB:UpdateLastAttackerGuild(name, guild)
   local d = self:GetData()
   d.lastAttackers = d.lastAttackers or {}
 
-  local keyName = (name and name ~= "") and name:lower() or nil
+  local keyName = (name and name ~= "") and CanonicalPlayerKey(name) or nil
   local keyGUID = (name and name:find("^Player%-")) and name or nil
   -- If caller passed a GUID in the first arg, match by GUID; otherwise match by name.
   for j = 1, #d.lastAttackers do
@@ -892,7 +1001,7 @@ function DB:UpdateLastAttackerGuild(name, guild)
           self:NoteEnemySeen(e.name or name, e.class, guild, e.guid)
         end
         return
-      elseif (not keyGUID) and keyName and e.name and e.name:lower() == keyName then
+      elseif (not keyGUID) and keyName and e.name and CanonicalPlayerKey(e.name) == keyName then
         e.guild = guild
         if self.NoteEnemySeen then
           self:NoteEnemySeen(e.name or name, e.class, guild, e.guid)

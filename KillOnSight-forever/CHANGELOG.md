@@ -1,3 +1,45 @@
+## 3.5.4 - Honor overrides Guild KoS
+
+### Changed
+- Honored players are exempt from guild-wide KoS alerts even when their guild is listed in Guild KoS.
+- Honor takes priority over Guild KoS for the Nearby status and target portrait, showing the green Honor dragon and `[Hon]` tag.
+- Personal KoS retains highest priority: an individually KoS-listed player is still treated as KoS even when honored.
+- Updating Honor membership refreshes Nearby status without requiring a reload.
+- Guild KoS list membership is unchanged; the exemption applies to the honored player only.
+
+### Compatibility
+- No SavedVariables migration or reset required.
+
+## 3.5.3 - Honor List and WoW Forever identity consolidation
+
+### Added
+- Added an independent Honor List for respected opposing-faction players, with add/remove actions from Nearby and Stats.
+- Added Honor indicators in Nearby: a green dragon portrait overlay and `[Hon]` tag, without triggering KoS alerts.
+- Added Stats actions to manage Honor membership and add a recorded enemy guild to Guild-KoS.
+- Added localized interface text for the Honor feature across all 16 supported locales.
+
+### Fixed
+- Fixed missing Honor List class icons by passing resolved class information to the icon renderer.
+- Standardized full First Last character identities across KoS, Honor, Nearby, Stats and Attackers lookups.
+- Migrated legacy WoW Forever Stats identities where the old `realm` field contained the player's surname, with a separate migration backup.
+- Prevented duplicate surnames from appearing when migrated full names were displayed alongside legacy surname fields.
+- Prevented unsafe first-name-only Stats merges, preserving separate characters with the same given name.
+- Improved full-name matching for class lookups, KoS alerts, portrait indicators, and historical PvP statistics.
+- Retained existing saved data and avoided resetting encounter counts, win/loss totals, or tracked lists.
+
+### Compatibility
+- SavedVariables migration is automatic; backing up `WTF/Account/.../SavedVariables/KillOnSight.lua` before updating is recommended.
+- No manual database reset is required. In-game regression testing remains recommended for legacy data.
+
+<!-- 3.5.2 DEV: Forever legacy name/realm-as-surname schema v2 migration; new SavedVariables snapshot; safe full-identity consolidation. -->
+
+### 3.5.2 – Full-name consolidation (development follow-up)
+- Centralised canonical player-name comparison for portrait targets, Stats group filtering, guild detection and database list operations.
+- Prevented first-name-only portrait matching from selecting another player with the same given name.
+- Retained the existing one-time saved-data migration and its backup; no new destructive conversion is performed.
+- Kept existing Honor, KoS and Guild-KoS behaviour and release version unchanged.
+
+<!-- 3.5.2 DEV: Added one-time, backed-up WoW Forever identity migration for KoS, Honor and Stats. Conservative merge; ambiguous first-name entries retained. -->
 ## 3.5.2 - Honor List, Stats actions and data fixes
 - KoS, Guild-KoS, and Honor management tabs now show newest additions first, with stable ordering for entries added in the same second. Existing saved entries retain their original added timestamps.
 
@@ -10,6 +52,7 @@
 - Disabled the Guild-KoS action when guild information is unavailable or the guild is already listed.
 
 ### Fixed
+- Corrected PvP win/loss and encounter attribution to use full WoW Forever character identities, preventing first-name-only Stats records from receiving outcomes.
 - Restored target portrait dragon overlays for KoS and Guild-KoS using WoW Forever full-name identity matching; added the green Honor portrait overlay.
 - Corrected WoW Forever Stats identity handling to avoid creating duplicate records for the same First Last player.
 - Added a Stats migration to consolidate existing duplicate player records when opening Stats, retaining available encounter and player information.
@@ -667,3 +710,4 @@ This is a design limitation, not an addon bug.
 - Retail target-frame support with safe fallbacks
 - Improved stealth detection handling
 - Performance optimizations and throttling improvements
+

@@ -9,12 +9,15 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
 ## Features
 
 - **KoS list**: Add/remove players and get alerts when they’re seen nearby.
+- **Honor List**: Track respected opposing-faction players separately from KoS. Add/remove players by right-clicking Nearby entries or through Stats; honoured players display a green dragon portrait indicator and `[Hon]` tag without triggering KoS alerts.
+- **Honor List tab**: Review saved honoured players, including class icons when class information is known.
 - **Guild tracking**: Track hostile players belonging to specific guilds ("Guild-KoS").
 - **Nearby window**
   - Sorts by most recent **Last seen**
   - Optional row icons (class/skull), per-row fade timers, scaling, transparency
   - Auto-hide when empty
-  - One-click actions (Add KoS) with visual tags
+  - Click to target; right-click for KoS, Honor and available announcement actions
+  - Full First Last names for WoW Forever characters, with KoS/Honor visual tags
 - **Notifications**
   - Chat message, screen flash, and optional sound
   - Separate stealth detection banner + sound (when enabled)
@@ -22,9 +25,8 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
 - **Stats UI**
   - Enemy statistics: first seen, last seen, seen count, wins/losses
   - Sorting and reset controls
-- **Sync**
-  - Sync KoS/Guild entries with guild (when available)
-  - Changelog pruning to reduce SavedVariables bloat
+  - Actions to add/remove Honor players and add a known enemy guild to Guild-KoS
+  - Full-name identity matching and conservative legacy Stats migration
 
 - **Notes (KoS)**
   - Optional per-player note icon on the KoS tab
@@ -59,14 +61,13 @@ KillOnSight can import KoS entries from **Spy** if Spy has been enabled at least
 - `/kos addguild <guild>` — Add a guild to Guild-KoS
 - `/kos removeguild <guild>` — Remove a guild from Guild-KoS
 - `/kos list` — List current entries
-- `/kos sync` — Trigger a sync
 - `/kos importspy` — Import KoS entries from Spy
 
 ## Installation
 
 1. Download the addon [Curseforge](https://www.curseforge.com/wow/addons/kill-on-sight).
 2. Extract into your WoW AddOns folder:
-   - Retail: `World of Warcraft/_retail_/Interface/AddOns/`
+   - Your WoW Forever client's `Interface/AddOns/` directory
 3. Ensure the folder is **exactly**: `Interface/AddOns/KillOnSight/`
 4. Restart WoW (or `/reload`).
 
@@ -76,5 +77,5 @@ Included locales (major languages):
 
 - enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
 
-If a translation is missing for a key, the addon falls back to showing the key name (so gaps are obvious).
+The Honor List interface strings are included across all 16 supported locale files.
 

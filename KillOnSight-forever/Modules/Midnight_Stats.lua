@@ -30,33 +30,26 @@ local function ScheduleGUIRefresh()
 end
 
 local function CleanName(n)
-  if not n or n == "" then return nil end
-  if type(_G.RegionalUniqueNamesEnabled) == "function" then
-    local ok, enabled = pcall(_G.RegionalUniqueNamesEnabled)
-    if ok and enabled then return (n:gsub("%-", " ")) end
-  end
-  return (n:match("^[^-]+") or n)
+  local util = _G.KillOnSight_Util
+  return util and util:NormalizePlayerName(n) or n
 end
 
 local function IsGroupOrSelfByName(name)
   if not name or name == "" then return true end
-  local clean = name:match("^[^-]+") or name
-  local playerName = UnitName and UnitName("player")
-  if playerName and clean == (playerName:match("^[^-]+") or playerName) then
-    return true
+  local util = _G.KillOnSight_Util
+  local key = util and util:PlayerKey(name)
+  if not key then return false end
+  local function same(unit)
+    return util:PlayerKey(util:UnitPlayerName(unit)) == key
   end
+  if same("player") then return true end
   if IsInGroup and IsInGroup() then
     if IsInRaid and IsInRaid() then
-      local n = GetNumGroupMembers and GetNumGroupMembers() or 0
-      for i = 1, n do
-        local rn = UnitName("raid"..i)
-        if rn and (rn:match("^[^-]+") or rn) == clean then return true end
+      for i = 1, (GetNumGroupMembers and GetNumGroupMembers() or 0) do
+        if same("raid"..i) then return true end
       end
     else
-      for i = 1, 4 do
-        local pn = UnitName("party"..i)
-        if pn and (pn:match("^[^-]+") or pn) == clean then return true end
-      end
+      for i = 1, 4 do if same("party"..i) then return true end end
     end
   end
   return false
@@ -86,9 +79,9 @@ function Stats:TouchEncounter(guid, name, classFile, guild)
   local now = time()
   local e = activeEncounters[guid]
   if not e then
-    activeEncounters[guid] = { name = cn, nameLower = cn:lower(), lastTouchAt = now }
+    activeEncounters[guid] = { name = name, nameLower = cn:lower(), lastTouchAt = now }
   else
-    e.name = e.name or cn
+    if name and (not e.name or #name > #e.name) then e.name = name end
     e.nameLower = e.nameLower or cn:lower()
     e.lastTouchAt = now
   end

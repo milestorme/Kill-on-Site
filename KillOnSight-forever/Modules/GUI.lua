@@ -511,8 +511,19 @@ end
 local function _GuessClassFor(name, guid)
   -- 1) Prefer Nearby cache (fast + reliable when recently seen)
   if name and KillOnSight_Nearby and KillOnSight_Nearby.entries then
-    local e = KillOnSight_Nearby.entries[name:lower()]
-    if e and e.class then return e.class end
+    local util = _G.KillOnSight_Util
+    local key = util and util:PlayerKey(name) or name:lower()
+    local e = KillOnSight_Nearby.entries[key]
+    if not e then
+      for _, candidate in pairs(KillOnSight_Nearby.entries) do
+        if type(candidate) == "table" and util and
+           (util:SamePlayer(candidate.fullName, name) or util:SamePlayer(candidate.name, name)) then
+          e = candidate
+          break
+        end
+      end
+    end
+    if e and e.class then return _NormalizeClass(e.class) end
   end
 
   -- 2) Try GUID lookup (works when GUID is known/resolvable)
@@ -530,14 +541,15 @@ end
 local function _ForeverDisplayName(name)
   if type(name) ~= "string" then return "" end
   -- Stats fullName uses First-Last, while Forever displays First Last.
-  return (name:gsub("%-", " "))
+  return (_G.KillOnSight_Util and _G.KillOnSight_Util:NormalizePlayerName(name:gsub("%-", " "))) or name
 end
 
 local function _StatsForKoS(data, name)
   if type(name) ~= "string" or name == "" then return nil end
   local stats = data and data.statsPlayers
   if type(stats) ~= "table" then return nil end
-  local lower = name:lower():gsub("%-", " "):gsub("%s+", " "):match("^%s*(.-)%s*$")
+  local util = _G.KillOnSight_Util
+  local lower = (util and util:PlayerKey(name)) or name:lower()
   local first = lower:match("^(%S+)")
   if not first then return nil end
 
@@ -760,10 +772,22 @@ local function BuildStats(opts)
     if e then
       local name = (e.name) or k
       local displayName = name
-      if e.realm and e.realm ~= "" then
+      local util = _G.KillOnSight_Util
+      if util and util.IsForeverNames and util:IsForeverNames() then
+        -- Forever's legacy realm is the surname, but migrated name may
+        -- already contain it. Prefer the canonical two-part database key.
+        displayName = tostring(k):gsub("%s*%-%s*", " ")
+        if not displayName:find(" ", 1, true) then
+          local full = e.fullName or name
+          full = tostring(full):gsub("%s*%-%s*", " ")
+          if not full:find(" ", 1, true) and e.realm and e.realm ~= "" then
+            full = full .. " " .. e.realm
+          end
+          displayName = full
+        end
+      elseif e.realm and e.realm ~= "" then
         displayName = name .. "-" .. e.realm
       elseif e.fullName and e.fullName:find("-", 1, true) then
-        -- Back-compat: if older records only have fullName
         displayName = e.fullName
       end
       local guild = (e.guild) or ""
@@ -889,7 +913,7 @@ local function UpdateAddState()
   if txt ~= "" then
     exists = ((DB.HasPlayer and DB:HasPlayer(txt)) or (DB.LookupPlayer and DB:LookupPlayer(txt) ~= nil) or false)
   elseif (not (nameBox.HasFocus and nameBox:HasFocus())) and UnitExists("target") and UnitIsPlayer("target") then
-    local tName = UnitName("target")
+    local tName = _G.KillOnSight_Util:UnitPlayerName("target")
     if tName and tName ~= "" then
       exists = ((DB.HasPlayer and DB:HasPlayer(tName)) or (DB.LookupPlayer and DB:LookupPlayer(tName) ~= nil) or false)
     end
@@ -1090,7 +1114,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   addBtn:SetScript("OnClick", function()
     local name = (nameBox:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
   local classFile
-  local targetName = (UnitExists("target") and UnitIsPlayer("target")) and (UnitName("target")) or nil
+  local targetName = (UnitExists("target") and UnitIsPlayer("target")) and (_G.KillOnSight_Util:UnitPlayerName("target")) or nil
   local targetClass = (targetName and select(2, UnitClass("target"))) or nil
 
   -- If we are targeting the same player we're adding (or name is blank), prefer the target's class.
@@ -1113,7 +1137,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     if name == "" then
       -- If nothing typed, add current target (player only)
       if UnitExists("target") and UnitIsPlayer("target") then
-        local tName = UnitName("target")
+        local tName = _G.KillOnSight_Util:UnitPlayerName("target")
         if tName and tName ~= "" then
           name = tName
           nameBox:SetText(name)
@@ -1122,7 +1146,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
     if name == "" then return end
     if ((DB.HasPlayer and DB:HasPlayer(name)) or (DB.LookupPlayer and DB:LookupPlayer(name) ~= nil) or false) then UpdateAddState(); return end
-    DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
+    DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")), classFile)
     nameBox:SetText("")
     GUI:RefreshAll()
     UpdateAddState()
@@ -1180,7 +1204,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     local name = (honorBox:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
     local class
     if name == "" and UnitExists("target") and UnitIsPlayer("target") and UnitIsEnemy("player", "target") then
-      name = (GetUnitName and GetUnitName("target")) or UnitName("target") or ""
+      name = (GetUnitName and Get_G.KillOnSight_Util:UnitPlayerName("target")) or _G.KillOnSight_Util:UnitPlayerName("target") or ""
       class = select(2, UnitClass("target"))
     end
     if name == "" then return end
@@ -1238,7 +1262,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   end
 
   gAddBtn:SetScript("OnClick", function()
-    DB:AddGuild(guildBox:GetText(), L.GUILD_KOS, nil, UnitName("player"))
+    DB:AddGuild(guildBox:GetText(), L.GUILD_KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
     guildBox:SetText("")
     GUI:RefreshAll()
   end)
@@ -1366,7 +1390,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       UpdateAtkButtons()
       return
     end
-    DB:AddPlayer(e.name, L.KOS, nil, UnitName("player"), _NormalizeClass(e.class) or _GuessClassFor(e.name, e.guid))
+    DB:AddPlayer(e.name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")), _NormalizeClass(e.class) or _GuessClassFor(e.name, e.guid))
     GUI:RefreshAll()
     UpdateAtkButtons()
   end)
@@ -1382,7 +1406,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       UpdateAtkButtons()
       return
     end
-    DB:AddGuild(guild, L.GUILD_KOS, nil, UnitName("player"))
+    DB:AddGuild(guild, L.GUILD_KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
     GUI:RefreshAll()
     UpdateAtkButtons()
   end)
@@ -1595,7 +1619,7 @@ local factionLabel = "-"
 
     btnGuildKos:SetScript("OnClick", function()
       if guildName == "" or not DB.AddGuild or (DB.HasGuild and DB:HasGuild(guildName)) then return end
-      DB:AddGuild(guildName, L.GUILD_KOS, nil, UnitName("player"))
+      DB:AddGuild(guildName, L.GUILD_KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
       if GUI and GUI.RefreshAll then GUI:RefreshAll() end
       if RefreshStatsList then RefreshStatsList() end
       RefreshDetail(keyLower)
@@ -1603,7 +1627,7 @@ local factionLabel = "-"
 
     btnAdd:SetScript("OnClick", function()
       if name and name ~= "" and DB.AddPlayer and not DB:HasPlayer(name) then
-        DB:AddPlayer(name, L.KOS, nil, UnitName("player"), classFile)
+        DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")), classFile)
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
         if RefreshStatsList then RefreshStatsList() end
         RefreshDetail(keyLower)
@@ -2487,7 +2511,7 @@ function GUI:RefreshAll()
     for key, e in pairs(data.honorPlayers or {}) do
       local stats = _StatsForKoS(data, e.name)
       local class = _NormalizeClass(e.class) or (stats and _NormalizeClass(stats.classFile or stats.class))
-      out[#out+1] = {_key=key, name=_ColorizeName(e.name, class), type=L.UI_HONOURED, lastSeen=FormatTime(e.lastSeenAt), addedAt=e.addedAt, addedOrder=e.addedOrder}
+      out[#out+1] = {_key=key, _class=class, name=_ColorizeName(e.name, class), type=L.UI_HONOURED, lastSeen=FormatTime(e.lastSeenAt), addedAt=e.addedAt, addedOrder=e.addedOrder}
     end
     SortNewestEntries(out)
     frame._honorPanel._list:SetData(out)

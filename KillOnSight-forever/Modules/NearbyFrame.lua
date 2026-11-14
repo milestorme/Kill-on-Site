@@ -8,18 +8,13 @@ local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 
 local function IsRegionalUniqueNamesEnabled()
-  -- WoW Forever uses region-unique First Last names. UnitName/UnitFullName's
-  -- second return is the surname there, not a realm.
-  if type(_G.RegionalUniqueNamesEnabled) ~= "function" then return false end
-  local ok, enabled = pcall(_G.RegionalUniqueNamesEnabled)
-  return ok and enabled == true
+  local util = _G.KillOnSight_Util
+  return util and util:IsForeverNames() or false
 end
 
 local function GetForeverFullUnitName(unit)
-  if not unit or unit == "" or type(_G.GetUnitName) ~= "function" then return nil end
-  local ok, name = pcall(_G.GetUnitName, unit)
-  if not ok or type(name) ~= "string" or name == "" then return nil end
-  return name
+  local util = _G.KillOnSight_Util
+  return util and util:UnitPlayerName(unit) or nil
 end
 
 
@@ -86,6 +81,7 @@ local function ComputeKoSTypeForEntry(e, DB)
   end
   local g = e.guild
   if g and g ~= "" and DB.LookupGuild and DB:LookupGuild(g) then
+    if IsHonored(e, DB) then return nil end
     return L.GUILD_KOS
   end
   return nil
@@ -1084,7 +1080,8 @@ function Nearby:AlertNewEnemy(e)
   if isKoS then
     -- Mark strong alert as consumed for this presence so Notifier does not
     -- re-fire sound/flash while the player remains in the Nearby list.
-    local key = (e.name and e.name:lower()) or nil
+    local util = _G.KillOnSight_Util
+    local key = e.name and ((util and util:PlayerKey(e.fullName or e.name)) or e.name:lower())
     if key then self.strongAlerted[key] = true end
     if prof.enableSound ~= false then N:Sound() end
     if prof.enableScreenFlash ~= false then N:Flash() end
@@ -1653,6 +1650,7 @@ local function ShowMenuFor(self, e)
     { text = (L.UI_ADD_HONOR), notCheckable = true, disabled = honored, func = function()
         DB:AddHonor(playerName, e.class)
         e.honored = true
+        if e.kosType == L.GUILD_KOS then e.kosType = nil end
         self:ScheduleRefresh(true)
         if _G.KillOnSight_GUI then _G.KillOnSight_GUI:RefreshAll() end
       end },
@@ -2311,10 +2309,13 @@ function Nearby:OnListChanged(kind, keyLower)
   local DB = GetDB()
   if not DB then return end
 
+  local util = _G.KillOnSight_Util
+  local canonical = function(n) return n and ((util and util:PlayerKey(n)) or n:lower()) end
+  local changedKey = canonical(keyLower)
   local dirty = false
   for _, e in pairs(self.entries) do
     if kind == "P" then
-      if (e._lowerName and e._lowerName == keyLower) or (e.name and e.name:lower() == keyLower) or (e.fullName and e.fullName:lower() == keyLower) then
+      if canonical(e._lowerName) == changedKey or canonical(e.name) == changedKey or canonical(e.fullName) == changedKey then
         local newType = ComputeKoSTypeForEntry(e, DB)
         if e.kosType ~= newType then
           e.kosType = newType
@@ -2334,8 +2335,9 @@ function Nearby:OnListChanged(kind, keyLower)
 
   if kind == "H" then
     for _, e in pairs(self.entries) do
-      if (e.fullName and e.fullName:lower() == keyLower) or (e.name and e.name:lower() == keyLower) then
+      if canonical(e.fullName) == changedKey or canonical(e.name) == changedKey then
         e.honored = IsHonored(e, DB)
+        e.kosType = ComputeKoSTypeForEntry(e, DB)
         dirty = true
       end
     end
@@ -3017,6 +3019,10 @@ end
   -- sighting. This also repairs tags on previously cached Nearby entries.
   e.honored = IsHonored(e, DB)
   local resolvedType = ComputeKoSTypeForEntry(e, DB)
+  if e.honored and kosType == L.GUILD_KOS and resolvedType ~= L.KOS then
+    kosType = nil
+    e.kosType = nil
+  end
   if resolvedType then
     kosType = resolvedType
   elseif kosType == nil then

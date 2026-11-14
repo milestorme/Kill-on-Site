@@ -45,7 +45,7 @@ function dataobj:OnClick(btn)
     prof.minimap = prof.minimap or { hide=false, minimapPos=220 }
 
     local isPlayerTarget = UnitExists("target") and UnitIsPlayer("target")
-    local tName = isPlayerTarget and UnitName("target") or nil
+    local tName = isPlayerTarget and _G.KillOnSight_Util:UnitPlayerName("target") or nil
     local already = false
     if tName and tName ~= "" then
       if DB.HasPlayer then
@@ -62,11 +62,11 @@ function dataobj:OnClick(btn)
             DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..L.ADDON_PREFIX..":|r "..L.ERR_NO_PLAYER_TARGET)
             return
           end
-          local name = UnitName("target")
+          local name = _G.KillOnSight_Util:UnitPlayerName("target")
           if (DB.HasPlayer and DB:HasPlayer(name)) or (DB.LookupPlayer and DB:LookupPlayer(name)) then
             return
           end
-          DB:AddPlayer(name, L.KOS, nil, UnitName("player"))
+          DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
           if KillOnSight_Notifier and KillOnSight_Notifier.Chat then
             KillOnSight_Notifier:Chat(string.format(L.ADDED_PLAYER, L.KOS, name))
           end
