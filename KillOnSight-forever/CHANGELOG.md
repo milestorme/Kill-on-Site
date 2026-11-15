@@ -1,3 +1,15 @@
+## 3.5.5 - Improved stealth and Vanish detection
+
+### Fixed
+- Fixed missing stealth notifications when a targeted enemy Rogue vanishes or another stealth-capable enemy disappears from nameplate range.
+- Cached visible nameplate player identity, class, guild and GUID before nameplate removal so detection does not rely on an already-invalid unit token.
+- Improved recent-target and engagement tracking for disappearance-based hidden alerts.
+- Restricted inferred hidden alerts to supported stealth-capable classes and recent observations to reduce false positives from ordinary nameplate loss.
+- Preserved existing stealth notifications and Nearby hidden-state integration.
+
+### Compatibility
+- No SavedVariables migration or reset required.
+
 ## 3.5.4 - Honor overrides Guild KoS
 
 ### Changed

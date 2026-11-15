@@ -55,6 +55,9 @@ local stealthStateByGUID = {} -- guid -> true (stealthed)
 local lastStealthNotifyAt = {} -- nameLower -> time
 local visibleStateByGUID = {} -- guid -> true (visible)
 local stealthLastSeenByGUID = {} -- guid -> last seen timestamp
+local nameplateStealthCache = {} -- unit token -> last known non-secret player identity
+local recentTargetGUID = nil
+local recentTargetAt = 0
 
 local STEALTH_STATE_TTL = 120
 local STEALTH_NOTIFY_TTL = 120
@@ -303,47 +306,51 @@ local Detector = {}
 -- infer a hidden transition to keep stealth/prowl announcements working without CLEU.
 function Detector:OnNameplateRemoved(unit)
   if not unit or unit == "" then return end
+  local cached = nameplateStealthCache[unit]
+  nameplateStealthCache[unit] = nil -- never carry a reused nameplate token forward
+  if not cached then return end
   if _IsDisabledInstance() then return end
-  if _G.KillOnSight_Core and (_G.KillOnSight_Core._bgDisabled or _G.KillOnSight_Core._instDisabled) then return end
-  if not UnitGUID or not UnitName then return end
+  local Core = GetCore()
+  if Core and (Core._bgDisabled or Core._instDisabled) then return end
+  local DB, Notifier = GetDB(), GetNotifier()
+  if not DB or not Notifier then return end
+  local prof = DB.GetProfile and DB:GetProfile()
+  if prof and prof.stealthDetectEnabled == false then return end
+  if not INFER_HIDDEN_CLASSES[cached.classFile] then return end
+  if stealthStateByGUID[cached.guid] then return end
 
-  local okG, guid = pcall(UnitGUID, unit)
-  if not okG or not guid then return end
+  -- Nameplate loss alone is not proof of stealth. Only infer when the player
+  -- was just targeted, or we have an exceptionally recent hostile engagement.
+  local now = GetTime and GetTime() or 0
+  local targeted = recentTargetGUID == cached.guid and (now - recentTargetAt) <= 2
+  local engagement = recentEngagements[cached.key]
+  local engaged = engagement and engagement.guid == cached.guid
+    and (now - engagement.t) <= 2
+  if not targeted and not engaged then return end
+  if (now - cached.seenAt) > 3 then return end
 
-  -- Midnight: guid can be a protected "secret" value that passes nil checks
-  -- but throws "table index is secret" when used as a table key or in string ops.
-  local okType, isStr = pcall(function() return type(guid) == "string" end)
-  if not okType or not isStr then return end
-
-  local now = Now()
-  local okSet, _ = pcall(function() stealthLastSeenByGUID[guid] = now end)
-  if not okSet then return end
-  CleanupStealthState(now)
-
-  local okN, name = pcall(UnitName, unit)
-  if not okN or name == nil then return end
-
-  -- Some Midnight builds return protected "secret values" that can throw on compare or string ops.
-  local okEmpty, isEmpty = pcall(function() return name == "" end)
-  if not okEmpty or isEmpty then return end
-
-  local okMatch, isPlayer = pcall(function() return type(guid) == "string" and guid:match("^Player%-") ~= nil end)
-  if not okMatch or not isPlayer then return end
-
-  local util = _G.KillOnSight_Util
-  name = (util and util.UnitPlayerName and util:UnitPlayerName(unit)) or name
-  local k = CanonicalKey(name)
-  if not k then return end
-
-  local e = recentEngagements[k]
-  if not e or type(e) ~= "table" or not e.t or not GetTime then return end
-
-  local age = GetTime() - e.t
-  if age > 5 then return end
-
+  -- If the same player is still our visible target, the plate simply dropped.
+  local stillTargeted = false
   pcall(function()
-    CheckStealthTransition(unit, name, e.classFile, e.guild, guid, true)
+    stillTargeted = UnitExists("target") and UnitGUID("target") == cached.guid
+      and UnitIsVisible("target") ~= false
   end)
+  if stillTargeted then return end
+
+  stealthLastSeenByGUID[cached.guid] = Now()
+  CleanupStealthState(Now())
+  stealthStateByGUID[cached.guid] = true
+  if not ShouldNotifyStealth(cached.key) then return end
+  if not prof or prof.stealthDetectAddToNearby ~= false then
+    local Nearby = GetNearby()
+    if Nearby and Nearby.Seen then
+      pcall(Nearby.Seen, Nearby, cached.name, cached.classFile, cached.guild,
+        (L and L.HIDDEN) or "Hidden", nil, cached.guid, nil)
+    end
+  end
+  if Notifier.NotifyHidden then
+    pcall(Notifier.NotifyHidden, Notifier, cached.name, "Hidden", cached.guid)
+  end
 end
 
 function Detector:PopMostRecentEngagement(maxAge)
@@ -508,6 +515,25 @@ function Detector:CheckUnit(unit, forceNearby)
     end
   end
   local guild = GetUnitGuild(unit)
+
+  -- Snapshot identities BEFORE the nameplate unit token becomes invalid.
+  -- Target observations also keep a short-lived GUID association for Vanish.
+  if isEnemyPlayer and guid and name and classFile then
+    local okCache = pcall(function()
+      local key = CanonicalKey(name)
+      if key then
+        local t = GetTime and GetTime() or 0
+        if unit == "target" then
+          recentTargetGUID, recentTargetAt = guid, t
+        elseif type(unit) == "string" and unit:match("^nameplate%d+$") then
+          nameplateStealthCache[unit] = {
+            guid = guid, name = name, key = key, classFile = classFile,
+            guild = guild, seenAt = t,
+          }
+        end
+      end
+    end)
+  end
 
   -- Stealth detection via UNIT_AURA on target/mouseover/nameplates.
   if isEnemyPlayer then
