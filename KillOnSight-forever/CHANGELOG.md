@@ -1,3 +1,28 @@
+## 3.5.7 - Stealth detection accuracy and combat-safe Nearby updates
+
+### Fixed
+- Reworked Hidden detection to prioritise observed successful Stealth, Prowl and Vanish spell casts rather than inferring stealth solely from disappearing nameplates, reducing false alerts during normal movement and mounted travel.
+- Retained a short-lived cache of recently removed nameplate identities to associate late spell-cast events with the correct player.
+- Prevented protected Nearby frame height changes during combat, avoiding ADDON_ACTION_BLOCKED errors from SetHeight().
+
+### Changed
+- Nearby continues recording new players while combat sorting is frozen. Rows remain within the current frame height during combat, with overflow available via scrolling.
+- Deferred Nearby height updates and normal player sorting resume after combat.
+- Preserved existing Hidden notifications, cooldown and Nearby integration.
+
+### Compatibility
+- No SavedVariables migration or reset required.
+
+## 3.5.6 - Prevent death-triggered Hidden alerts
+
+### Fixed
+- Fixed false "Hidden Detected" notifications when a recently targeted stealth-capable enemy dies and their nameplate disappears.
+- Added death-state checks before inferring stealth from nameplate disappearance, including cached death information and target death status where available.
+- Preserved the improved Vanish/Prowl detection and existing stealth notification behavior from 3.5.5.
+
+### Compatibility
+- No SavedVariables migration or reset required.
+
 ## 3.5.5 - Improved stealth and Vanish detection
 
 ### Fixed

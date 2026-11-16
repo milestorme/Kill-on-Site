@@ -870,6 +870,19 @@ function Nearby:AutoFitHeight(visibleCount)
   if desired > maxRows then desired = maxRows end
   if desired > cap then desired = cap end
 
+  local targetRows = desired
+
+  -- Combat lockdown can prevent resizing the Nearby frame.  Keep the
+  -- rendered row count within the *actual* frame height until the queued
+  -- resize is applied, so new players never draw below the window.
+  local inCombat = InCombatLockdown and InCombatLockdown()
+  if inCombat and self.frame.GetHeight then
+    local currentHeight = self.frame:GetHeight() or 0
+    local baseHeight = minimal and 14 or 44
+    local fitting = math.floor((currentHeight - baseHeight) / 22)
+    if fitting < 1 then fitting = 1 end
+    if desired > fitting then desired = fitting end
+  end
   self.visibleRows = desired
 
   -- Keep existing layout feel:
@@ -879,7 +892,13 @@ function Nearby:AutoFitHeight(visibleCount)
   local h = base + (desired * 22)
   if h < 60 then h = 60 end
 
-  self:_SetFrameHeightSafe(h)
+  if inCombat then
+    local fullHeight = base + (targetRows * 22)
+    if fullHeight < 60 then fullHeight = 60 end
+    self:_SetFrameHeightSafe(fullHeight)
+  else
+    self:_SetFrameHeightSafe(h)
+  end
 end
 
 function Nearby:SetMinimized(mini)

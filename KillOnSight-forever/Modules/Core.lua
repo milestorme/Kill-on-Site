@@ -607,7 +607,10 @@ Core:SetScript("OnEvent", function(self, event, ...)
       ApplyPvEInstanceDisableState(false)
     end
     if Core._bgDisabled then return end
-    local unit = ...
+    local unit, castGUID, spellID = ...
+    if event == "UNIT_SPELLCAST_SUCCEEDED" and Detector and Detector.OnStealthSpellCast then
+      Detector:OnStealthSpellCast(unit, spellID)
+    end
     if unit and (unit == "target" or unit == "mouseover" or unit:match('^nameplate')) then
       if Detector and not Core._instDisabled then Detector:CheckUnit(unit) end
     end

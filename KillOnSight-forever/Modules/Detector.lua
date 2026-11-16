@@ -134,6 +134,33 @@ local INFER_HIDDEN_CLASSES = {
   HUNTER = true, -- Camouflage
 }
 
+-- A dead enemy can lose its nameplate exactly like a vanishing enemy.
+-- Guard API values because newer clients may return restricted values.
+local function IsUnitConfirmedDead(unit)
+  if not unit then return false end
+  local dead = false
+  pcall(function()
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) == true then dead = true end
+    if UnitIsDead and UnitIsDead(unit) == true then dead = true end
+    if UnitHealth and UnitHealth(unit) == 0 then dead = true end
+  end)
+  return dead
+end
+
+-- Mounted players and transport transitions can temporarily lose nameplates.
+-- These are not evidence of a stealth transition.
+local function IsUnitConfirmedMounted(unit)
+  if not unit then return false end
+  local mounted = false
+  pcall(function()
+    if IsMounted and unit == "player" and IsMounted() == true then mounted = true end
+    if UnitIsMounted and UnitIsMounted(unit) == true then mounted = true end
+    if UnitOnTaxi and UnitOnTaxi(unit) == true then mounted = true end
+    if UnitInVehicle and UnitInVehicle(unit) == true then mounted = true end
+  end)
+  return mounted
+end
+
 local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
   if not guid or not name or name == "" then return end
 
@@ -151,23 +178,17 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
     return
   end
 
+  if IsUnitConfirmedDead(unit) then
+    stealthStateByGUID[guid] = nil
+    visibleStateByGUID[guid] = nil
+    return
+  end
+
   local nowStealthed, auraName = UnitHasStealthAura(unit)
   local prev = stealthStateByGUID[guid] == true
 
-  -- Fallback inference: when an enemy player goes from visible -> not visible while we have
-  -- high confidence they were engaged/near (targeted, targeting us, or in combat window),
-  -- treat this as a "hidden" transition (Vanish/Prowl/Shadowmeld). This covers cases where
-  -- hostile buff auras are not queryable.
-  local visibleNow = UnitIsActuallyVisible(unit)
-  local visiblePrev = visibleStateByGUID[guid]
-  if visiblePrev == nil then visiblePrev = true end
-  visibleStateByGUID[guid] = visibleNow
-
-  if (not nowStealthed) and INFER_HIDDEN_CLASSES[classFile] and highConfidence and (visiblePrev == true) and (visibleNow == false) then
-    nowStealthed = true
-    auraName = auraName or "Hidden"
-  end
-
+  -- Spell casts are authoritative; visibility/nameplate loss alone is not stealth.
+  -- Retain the aura path for confirmed stealth auras only.
   if nowStealthed and not prev then
     stealthStateByGUID[guid] = true
 
@@ -301,14 +322,38 @@ end
 
 local Detector = {}
 
--- NAME_PLATE_UNIT_REMOVED does not reliably fire UNIT_AURA/UNIT_FLAGS transitions in all cases.
--- When a recently engaged enemy player's nameplate disappears abruptly (common for Vanish/Prowl),
--- infer a hidden transition to keep stealth/prowl announcements working without CLEU.
+-- Preserve the last identity briefly, but never infer stealth from plate loss.
+local goneNameplates = {}
+local recentStealthCasts = {}
+local STEALTH_CAST_IDS = {
+  [1784] = "Stealth", [1785] = "Stealth", [1786] = "Stealth", [1787] = "Stealth",
+  [1856] = "Vanish", [1857] = "Vanish",
+  [5215] = "Prowl", [6783] = "Prowl", [9913] = "Prowl",
+}
+local function StealthCastName(spellID)
+  local kind = STEALTH_CAST_IDS[spellID]
+  if kind then return kind end
+  if C_Spell and C_Spell.GetSpellName then
+    local ok, name = pcall(C_Spell.GetSpellName, spellID)
+    if ok and type(name) == "string" and (name == "Stealth" or name == "Prowl" or name == "Vanish") then
+      return name
+    end
+  end
+end
+
 function Detector:OnNameplateRemoved(unit)
-  if not unit or unit == "" then return end
+  if type(unit) ~= "string" then return end
   local cached = nameplateStealthCache[unit]
-  nameplateStealthCache[unit] = nil -- never carry a reused nameplate token forward
-  if not cached then return end
+  nameplateStealthCache[unit] = nil
+  if cached then
+    goneNameplates[unit] = { info = cached, at = GetTime and GetTime() or 0 }
+  end
+end
+
+function Detector:OnStealthSpellCast(unit, spellID)
+  if type(unit) ~= "string" or not (unit == "target" or unit == "focus" or unit == "mouseover" or unit:match("^nameplate%d+$")) then return end
+  local okSpell, kind = pcall(StealthCastName, spellID)
+  if not okSpell or not kind then return end
   if _IsDisabledInstance() then return end
   local Core = GetCore()
   if Core and (Core._bgDisabled or Core._instDisabled) then return end
@@ -316,40 +361,40 @@ function Detector:OnNameplateRemoved(unit)
   if not DB or not Notifier then return end
   local prof = DB.GetProfile and DB:GetProfile()
   if prof and prof.stealthDetectEnabled == false then return end
-  if not INFER_HIDDEN_CLASSES[cached.classFile] then return end
-  if stealthStateByGUID[cached.guid] then return end
 
-  -- Nameplate loss alone is not proof of stealth. Only infer when the player
-  -- was just targeted, or we have an exceptionally recent hostile engagement.
-  local now = GetTime and GetTime() or 0
-  local targeted = recentTargetGUID == cached.guid and (now - recentTargetAt) <= 2
-  local engagement = recentEngagements[cached.key]
-  local engaged = engagement and engagement.guid == cached.guid
-    and (now - engagement.t) <= 2
-  if not targeted and not engaged then return end
-  if (now - cached.seenAt) > 3 then return end
-
-  -- If the same player is still our visible target, the plate simply dropped.
-  local stillTargeted = false
-  pcall(function()
-    stillTargeted = UnitExists("target") and UnitGUID("target") == cached.guid
-      and UnitIsVisible("target") ~= false
+  local info
+  local okLive, live = pcall(function()
+    if not UnitExists(unit) or not UnitIsPlayer(unit) or not UnitIsEnemy("player", unit) then return nil end
+    local name, guid = UnitName(unit), UnitGUID(unit)
+    if type(name) ~= "string" or name == "" or type(guid) ~= "string" then return nil end
+    local _, classFile = UnitClass(unit)
+    return { name = CanonicalName(name), guid = guid, classFile = classFile, guild = GetUnitGuild(unit) }
   end)
-  if stillTargeted then return end
-
-  stealthLastSeenByGUID[cached.guid] = Now()
+  if okLive then info = live end
+  if not info and unit:match("^nameplate%d+$") then
+    local gone = goneNameplates[unit]
+    local now = GetTime and GetTime() or 0
+    if gone and now - gone.at <= 1.5 then info = gone.info end
+  end
+  if not info or not info.name or not info.guid then return end
+  local now = GetTime and GetTime() or 0
+  local key = (CanonicalKey(info.name) or info.name:lower()) .. ":" .. tostring(spellID)
+  if recentStealthCasts[key] and now - recentStealthCasts[key] < 1 then return end
+  recentStealthCasts[key] = now
+  stealthStateByGUID[info.guid] = true
+  stealthLastSeenByGUID[info.guid] = Now()
   CleanupStealthState(Now())
-  stealthStateByGUID[cached.guid] = true
-  if not ShouldNotifyStealth(cached.key) then return end
+  local nameKey = CanonicalKey(info.name)
+  if not nameKey or not ShouldNotifyStealth(nameKey) then return end
   if not prof or prof.stealthDetectAddToNearby ~= false then
     local Nearby = GetNearby()
     if Nearby and Nearby.Seen then
-      pcall(Nearby.Seen, Nearby, cached.name, cached.classFile, cached.guild,
-        (L and L.HIDDEN) or "Hidden", nil, cached.guid, nil)
+      pcall(Nearby.Seen, Nearby, info.name, info.classFile, info.guild,
+        (L and L.HIDDEN) or "Hidden", nil, info.guid, nil)
     end
   end
   if Notifier.NotifyHidden then
-    pcall(Notifier.NotifyHidden, Notifier, cached.name, "Hidden", cached.guid)
+    pcall(Notifier.NotifyHidden, Notifier, info.name, kind, info.guid)
   end
 end
 
@@ -526,9 +571,11 @@ function Detector:CheckUnit(unit, forceNearby)
         if unit == "target" then
           recentTargetGUID, recentTargetAt = guid, t
         elseif type(unit) == "string" and unit:match("^nameplate%d+$") then
+          goneNameplates[unit] = nil
           nameplateStealthCache[unit] = {
             guid = guid, name = name, key = key, classFile = classFile,
-            guild = guild, seenAt = t,
+            guild = guild, seenAt = t, dead = IsUnitConfirmedDead(unit),
+            mounted = IsUnitConfirmedMounted(unit),
           }
         end
       end
