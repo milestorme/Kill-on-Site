@@ -56,6 +56,9 @@ end
 local DEFAULTS = {
   profile = {
     enableSound = true,
+    targetedAlert = true,
+    targetedAlertSound = true,
+    alertVolume = 100,
     enableScreenFlash = true,
     throttleSeconds = 12,
     printToChat = true,

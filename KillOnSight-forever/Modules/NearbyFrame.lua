@@ -1110,7 +1110,7 @@ function Nearby:AlertNewEnemy(e)
     -- NOTE: Nearby sound is intentionally independent from the main KoS/Guild sound toggle.
     if prof.nearbySound ~= false then
       -- Play the bundled Nearby sound (addon folder name is KillOnSight).
-      PlaySoundFile("Interface\\AddOns\\KillOnSight\\Sounds\\detected-nearby.mp3", "Master")
+      KillOnSight_AlertAudio:Play("nearby")
     end
   end
 end

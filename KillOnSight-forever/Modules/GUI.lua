@@ -1066,7 +1066,7 @@ end
   end
 
   -- Tab layout: place tabs BELOW the frame (so they don't overlap the window content)
-  local tabs = {t1, t2, t3, t4, t5, t6}
+  local tabs = {t1, t2, t3, t4, t6, t5}
   frame.tabs = tabs
   frame:LayoutTabs()
 
@@ -2051,16 +2051,32 @@ local factionLabel = "-"
   cSound:SetPoint("TOPLEFT", tAlerts, "BOTTOMLEFT", 0, -10)
   cSound:SetChecked(prof.enableSound)
 
+  local cTargeted = MakeCheck(opt, L.UI_TARGETED_ALERT)
+  _W("cTargeted", cTargeted)
+  cTargeted:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
+  cTargeted:SetChecked(prof.targetedAlert ~= false)
+
   local cFlash = MakeCheck(opt, L.UI_FLASH)
   _W("cFlash", cFlash)
-  cFlash:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
+  cFlash:SetPoint("TOPLEFT", cTargeted, "BOTTOMLEFT", 0, -8)
   cFlash:SetChecked(prof.enableScreenFlash)
+
+  local sAlertVolume = MakeSlider(opt, L.UI_ALERT_VOLUME or "Alert Volume", 0, 100, 10)
+  sAlertVolume:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 8, -34)
+  sAlertVolume:SetValue(prof.alertVolume or 100)
+  sAlertVolume:SetScript("OnValueChanged", function(self, value)
+    local v = math.floor(value / 10 + 0.5) * 10
+    ActiveProfile().alertVolume = v
+    _G[self:GetName().."Text"]:SetText((L.UI_ALERT_VOLUME or "Alert Volume") .. ": " .. v .. "%")
+  end)
+  _G[sAlertVolume:GetName().."Text"]:SetText((L.UI_ALERT_VOLUME or "Alert Volume") .. ": " .. (prof.alertVolume or 100) .. "%")
+
 
 
 
   -- Nearby
   local tNearby = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  tNearby:SetPoint("TOPLEFT", cFlash, "BOTTOMLEFT", 0, -18)
+  tNearby:SetPoint("TOPLEFT", sAlertVolume, "BOTTOMLEFT", -8, -28)
   tNearby:SetText(L.UI_NEARBY_HEADING or "Nearby")
 
   -- Nearby window options
@@ -2353,7 +2369,9 @@ end)
 
     -- Alerts
     if cSound and cSound.SetChecked then cSound:SetChecked(prof.enableSound) end
+    if cTargeted then cTargeted:SetChecked(prof.targetedAlert ~= false) end
     if cFlash and cFlash.SetChecked then cFlash:SetChecked(prof.enableScreenFlash) end
+    if sAlertVolume then sAlertVolume:SetValue(prof.alertVolume or 100) end
 
     -- Nearby section
     if cNearby and cNearby.SetChecked then cNearby:SetChecked(prof.showNearbyFrame ~= false) end
@@ -2438,6 +2456,7 @@ end)
     self._kosSync = true
 
     if w.cSound and w.cSound.SetChecked then w.cSound:SetChecked(p.enableSound) end
+    if w.cTargeted then w.cTargeted:SetChecked(p.targetedAlert ~= false) end
     if w.cFlash and w.cFlash.SetChecked then w.cFlash:SetChecked(p.enableScreenFlash) end
     if w.cNearby and w.cNearby.SetChecked then w.cNearby:SetChecked(p.showNearbyFrame ~= false) end
 
@@ -2472,6 +2491,9 @@ if KillOnSight_Nearby and KillOnSight_Nearby.ApplyMinimalMode then
   KillOnSight_Nearby:ApplyMinimalMode()
 end
 
+  cTargeted:SetScript("OnClick", function(self)
+    ActiveProfile().targetedAlert = self:GetChecked()
+  end)
   cSound:SetScript("OnClick", function(self)
     local p = ActiveProfile()
     p.enableSound = self:GetChecked()

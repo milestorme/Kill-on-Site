@@ -1,3 +1,23 @@
+## 3.6.1 - Enemy targeting alerts
+
+### Added
+- Added an optional Enemy Targeting You alert for visible hostile players, including enemies not on the KoS list.
+- Added a class-coloured targeting warning popup styled consistently with stealth alerts.
+- Added the detected enemy to the Nearby list when available, retaining known player details and KoS classification.
+- Added an enemy-targeting sound using the existing Nearby alert sound and alert volume slider.
+- Added localized settings and warning text across all supported languages.
+- Added duplicate-warning suppression with a per-player cooldown.
+
+## 3.6.0 - Alert volume control and tab layout
+
+### Added
+- Added a persistent 0–100% alert volume slider in Options for KoS, Guild KoS, Nearby enemy, and stealth warning sounds.
+- Added volume-adjusted copies of the original Raid Warning sound so KoS and Guild KoS alerts retain their familiar audio at lower volume settings.
+
+### Changed
+- Moved the Honor tab before Options, leaving Options as the final tab.
+- Preserved the existing individual alert sound enable/disable settings.
+
 ## 3.5.9 - Mouseover performance and stealth detection stability
 
 ### Performance

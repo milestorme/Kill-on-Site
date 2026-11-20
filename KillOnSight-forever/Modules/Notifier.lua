@@ -145,10 +145,11 @@ local function EnsureFlashFrame()
 end
 
 
-local function EnsureSpyAlertWindow()
-  if Notifier._spyAlertWindow then return Notifier._spyAlertWindow end
+local function EnsureSpyAlertWindow(targeted)
+  local field = targeted and "_targetAlertWindow" or "_spyAlertWindow"
+  if Notifier[field] then return Notifier[field] end
 
-  local f = CreateFrame("Frame", "KillOnSight_SpyAlertWindow", UIParent, "BackdropTemplate")
+  local f = CreateFrame("Frame", targeted and "KillOnSight_TargetAlertWindow" or "KillOnSight_SpyAlertWindow", UIParent, "BackdropTemplate")
   f:ClearAllPoints()
   f:SetPoint("TOP", UIParent, "TOP", 0, -215)
   f:SetClampedToScreen(true)
@@ -166,7 +167,7 @@ local function EnsureSpyAlertWindow()
   f.Icon:ClearAllPoints()
   f.Icon:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -5)
   f.Icon:SetSize(32, 32)
-  f.Icon:SetBackdrop({ bgFile = "Interface\\Icons\\Ability_Stealth" })
+  f.Icon:SetBackdrop({ bgFile = targeted and "Interface\\Icons\\Ability_Hunter_SniperShot" or "Interface\\Icons\\Ability_Stealth" })
   f.Icon:SetBackdropColor(1, 1, 1, 0.5)
 
   f.Title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -191,7 +192,7 @@ local function EnsureSpyAlertWindow()
   f.Name:SetTextColor(1, 1, 1, 1)           -- Name Text
   f.Location:SetTextColor(1, 0.82, 0, 1)    -- Location Text (unused for stealth)
 
-  Notifier._spyAlertWindow = f
+  Notifier[field] = f
   return f
 end
 
@@ -227,19 +228,27 @@ local function _FlashWindow(f)
   flash:Show()
 end
 
-function Notifier:ShowSpyStealthAlert(name, classFile)
-  local f = EnsureSpyAlertWindow()
+function Notifier:ShowSpyStealthAlert(name, classFile, targeted)
+  local f = EnsureSpyAlertWindow(targeted)
 
   -- Title (localized)
   if f.Title and f.Title.SetText then
-    f.Title:SetText(L.STEALTH_DETECTED_TITLE)
+    f.Title:SetText(targeted and ((L.UI_TARGETED_WARNING or "ENEMY TARGETING YOU: %s"):gsub("%%s", "")) or L.STEALTH_DETECTED_TITLE)
   end
 
+  if targeted then
+    f:SetBackdropBorderColor(1, 0.2, 0.2, 0.7)
+    f.Title:SetTextColor(1, 0.2, 0.2, 1)
+  else
+    f:SetBackdropBorderColor(0.6, 0.2, 1, 0.4)
+    f.Title:SetTextColor(0.6, 0.2, 1, 1)
+  end
   -- Apply class-colored name (Spy-style)
   local coloredName = ColorizeName(name, classFile)
   if f.Name and f.Name.SetText then
     f.Name:SetText(coloredName or (name or ""))
     -- Name position (no class icon)
+    f.Name:ClearAllPoints()
     f.Name:SetPoint("TOPLEFT", f, "TOPLEFT", 42, -15)
   end
 
@@ -262,7 +271,7 @@ function Notifier:ShowSpyStealthAlert(name, classFile)
   f:SetAlpha(1)
 
   local hold, fade = 6.0, 1.2
-  if self.GetStealthTiming then
+  if not targeted and self.GetStealthTiming then
     local h, fd = self:GetStealthTiming()
     if h then hold = h end
     if fd then fade = fd end
@@ -298,7 +307,9 @@ function Notifier:ShowSpyStealthAlert(name, classFile)
   end
 end
 
-
+function Notifier:ShowTargetingAlert(name, classFile)
+  self:ShowSpyStealthAlert(name, classFile, true)
+end
 
 -------------------------------------------------
 -- Spy-style Stealth Alert Frame
@@ -311,7 +322,13 @@ end
 
 function Notifier:Sound()
   if not DB:GetProfile().enableSound then return end
-  PlaySound(SOUNDKIT.RAID_WARNING, "Master")
+  -- Play the original Raid Warning recording at the selected addon volume.
+  -- Avoid replacing it with the Nearby sound or affecting WoW's global volume.
+  if KillOnSight_AlertAudio and KillOnSight_AlertAudio.Play then
+    KillOnSight_AlertAudio:Play("kos")
+  else
+    PlaySound(SOUNDKIT.RAID_WARNING, "Master")
+  end
 end
 
 function Notifier:Flash()
@@ -500,10 +517,7 @@ function Notifier:NotifyHidden(name, spellName, guid)
   end
   -- Stealth sound (independent of the main KoS/Guild sound toggle)
   if prof.stealthDetectSound ~= false then
-    local ok = pcall(PlaySoundFile, "Interface\\AddOns\\KillOnSight\\Sounds\\detected-stealth.mp3", "Master")
-    if not ok then
-      PlaySound(SOUNDKIT.RAID_WARNING, "Master")
-    end
+    KillOnSight_AlertAudio:Play("stealth")
   end
 
   self:Flash()
