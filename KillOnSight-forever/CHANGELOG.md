@@ -1,3 +1,10 @@
+## 3.6.2 - Pet kill attribution
+
+### Added
+- Added best-effort attribution of enemy player deaths to your character when your combat pet was recently targeting that player.
+- Integrated pet-target tracking with the existing enemy scan and Stats win tracking.
+- Added safeguards to reduce duplicate win credits from overlapping kill and death events.
+
 ## 3.6.1 - Enemy targeting alerts
 
 ### Added

@@ -11,6 +11,27 @@ local ENCOUNTER_TIMEOUT = 60 -- seconds since last touch to count as one encount
 
 local encounterTicker
 local activeEncounters = {} -- [guid] = { name = "Name", nameLower = "name", lastTouchAt = epoch }
+-- Best-effort pet kill attribution. No combat-log access is required.
+local petTargets, confirmedKills, recentPlayerWins = {}, {}, {}
+local PET_TARGET_WINDOW, KILL_DEDUP_WINDOW = 4, 5
+local function SafeGUID(unit)
+  if not UnitGUID then return nil end
+  local ok, value = pcall(UnitGUID, unit)
+  return ok and type(value) == "string" and value or nil
+end
+local function Clock() return GetTime and GetTime() or 0 end
+local function TrackPetTarget()
+  if not SafeGUID("pet") then return end
+  local guid = SafeGUID("pettarget")
+  if guid and guid:match("^Player%-") then petTargets[guid] = Clock() end
+end
+
+
+-- Called from the existing one-second visible-enemy scan.
+function Stats:TrackPetTarget()
+  TrackPetTarget()
+end
+
 
 local function IsPlayerGUID(guid)
   return guid and guid:match('^Player%-') ~= nil
@@ -192,6 +213,7 @@ end
 
 function Stats:OnEvent(event, ...)
   if event == "PLAYER_PVP_KILLS_CHANGED" then
+    recentPlayerWins[#recentPlayerWins + 1] = Clock()
     TouchOutcome("win")
     return
   end
@@ -209,10 +231,68 @@ function Stats:OnResetStats()
   if Detector and Detector.ResetEngagementQueue then
     Detector:ResetEngagementQueue()
   end
+  for k in pairs(petTargets) do petTargets[k] = nil end
+  for k in pairs(confirmedKills) do confirmedKills[k] = nil end
+  for k in pairs(recentPlayerWins) do recentPlayerWins[k] = nil end
   -- Also clear encounter sessions.
   for k in pairs(activeEncounters) do
     activeEncounters[k] = nil
   end
+end
+
+-- UNIT_DIED is only useful when the client exposes a non-secret player GUID.
+-- Pet-target proximity is a heuristic, so never credit a death when a kill
+-- event already accounted for it or when the victim is unidentified.
+local petFrame = CreateFrame("Frame")
+for _, event in ipairs({"UNIT_DIED", "PARTY_KILL", "UNIT_TARGET", "UNIT_PET"}) do
+  pcall(petFrame.RegisterEvent, petFrame, event)
+end
+petFrame:SetScript("OnEvent", function(_, event, ...)
+  if event == "UNIT_TARGET" or event == "UNIT_PET" then
+    TrackPetTarget()
+    return
+  end
+  local a, b = ...
+  if event == "PARTY_KILL" then
+    local victim = type(b) == "string" and b or nil
+    if victim then confirmedKills[victim] = Clock() end
+    return
+  end
+  if event ~= "UNIT_DIED" then return end
+  local guid = type(a) == "string" and a or nil
+  if not guid or not guid:match("^Player%-") then return end
+  local last = petTargets[guid]
+  if not last or Clock() - last > PET_TARGET_WINDOW then return end
+  local encounter = activeEncounters[guid]
+  if not encounter or not encounter.name or encounter.name == "" then return end
+  local deathAt = Clock()
+  local name = encounter.name
+  if C_Timer and C_Timer.After then
+    C_Timer.After(1, function()
+      if confirmedKills[guid] and math.abs(confirmedKills[guid] - deathAt) <= KILL_DEDUP_WINDOW then return end
+      for _, at in ipairs(recentPlayerWins) do
+        if math.abs(at - deathAt) <= KILL_DEDUP_WINDOW then return end
+      end
+      local DB = GetDB()
+      if not DB or not DB.StatsAddWin then return end
+      if not petTargets[guid] or petTargets[guid] ~= last then return end
+      petTargets[guid] = nil
+      DB:StatsAddWin(name)
+      Stats:ResolveEncounter(guid)
+      if DB._BumpStatsRevision then DB:_BumpStatsRevision() end
+      ScheduleGUIRefresh()
+    end)
+  end
+end)
+if C_Timer and C_Timer.NewTicker then
+  C_Timer.NewTicker(10, function()
+    local now = Clock()
+    for guid, at in pairs(petTargets) do if now - at > 60 then petTargets[guid] = nil end end
+    for guid, at in pairs(confirmedKills) do if now - at > 60 then confirmedKills[guid] = nil end end
+    for i = #recentPlayerWins, 1, -1 do
+      if now - recentPlayerWins[i] > 10 then table.remove(recentPlayerWins, i) end
+    end
+  end)
 end
 
 _G.KillOnSight_MidnightStats = Stats

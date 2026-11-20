@@ -119,6 +119,10 @@ f:SetScript("OnUpdate", function(_, dt)
   elapsed = elapsed + dt
   if elapsed < SCAN_INTERVAL then return end
   elapsed = elapsed % SCAN_INTERVAL
+  -- Share this existing scan cadence with pet-target attribution, even when
+  -- enemy-targeting popups are disabled. Stats loads later in the TOC.
+  local stats = _G.KillOnSight_MidnightStats
+  if stats and stats.TrackPetTarget then stats:TrackPetTarget() end
   local p = profile()
   if not p or p.targetedAlert == false then
     wipe(active)
