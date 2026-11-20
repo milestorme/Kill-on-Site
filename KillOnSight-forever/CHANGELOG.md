@@ -1,3 +1,32 @@
+## 3.5.9 - Mouseover performance and stealth detection stability
+
+### Performance
+- Reduced redundant world-mouseover detection work for unchanged enemy players, improving responsiveness in crowded PvP encounters.
+- Coalesced repeated Stats and GUI refresh work for already-seen players while retaining immediate processing of new identities and changed metadata.
+- Limited repeated GUI refresh requests for tracked KoS and Guild KoS players without changing alert checks.
+- Retained specialization tooltip probe throttling and periodic cleanup of temporary inspection and mouseover caches.
+
+### Stealth detection
+- Improved short-lived recent-target identity recovery for observed Vanish spellcast events.
+- Kept stealth detection dependent on available spellcast or aura evidence; nameplate disappearance alone does not trigger Hidden alerts due to false positives.
+- Enemy Vanish may remain undetectable when WoW Forever does not expose a usable spellcast or aura event.
+
+### Compatibility
+- Preserved KoS, Honor, Guild KoS, Nearby, Stats, and existing SavedVariables without migration.
+
+## 3.5.8 - Mouseover performance and inspection cleanup
+
+### Performance
+- Reduced repeated unsuccessful specialization tooltip probes while hovering over enemy players or Nearby entries.
+- Added periodic cleanup of expired specialization cache entries, inspection retry metadata, tooltip probe timestamps and stale unit references to reduce retained temporary data.
+
+### Fixed
+- Initialized and guarded tooltip probe tracking to prevent nil-table errors in NearbyFrame.lua.
+
+### Compatibility
+- Retained the 3.5.7 stealth detection and combat-safe Nearby updates.
+- No SavedVariables migration or reset required.
+
 ## 3.5.7 - Stealth detection accuracy and combat-safe Nearby updates
 
 ### Fixed
@@ -9,6 +38,11 @@
 - Nearby continues recording new players while combat sorting is frozen. Rows remain within the current frame height during combat, with overflow available via scrolling.
 - Deferred Nearby height updates and normal player sorting resume after combat.
 - Preserved existing Hidden notifications, cooldown and Nearby integration.
+
+### Performance
+- Throttled unsuccessful specialization tooltip probes to once per player per second, reducing repeated mouseover work.
+- Added periodic cleanup of expired specialization caches, retry metadata, tooltip probe timestamps and stale inspection unit references.
+- Initialized and guarded tooltip probe bookkeeping to prevent nil-table errors.
 
 ### Compatibility
 - No SavedVariables migration or reset required.

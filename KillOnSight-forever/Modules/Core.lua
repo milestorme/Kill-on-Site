@@ -558,6 +558,27 @@ Core:SetScript("OnEvent", function(self, event, ...)
       ApplyPvEInstanceDisableState(false)
     end
     if Core._bgDisabled then return end
+    -- World mouseover can fire repeatedly for the same unit in crowded areas.
+    -- Coalesce only unchanged mouseover GUIDs; new targets run immediately.
+    -- UNIT_AURA / spellcast / flags events still use the unthrottled detection path.
+    local mouseGUID
+    if UnitGUID then
+      local ok, value = pcall(UnitGUID, "mouseover")
+      if ok and type(value) == "string" and value ~= "" then mouseGUID = value end
+    end
+    if mouseGUID and GetTime then
+      local ok, now = pcall(GetTime)
+      if ok and type(now) == "number" then
+        if Core._lastWorldMouseoverGUID == mouseGUID
+          and now - (Core._lastWorldMouseoverAt or 0) < 0.30 then
+          return
+        end
+        Core._lastWorldMouseoverGUID = mouseGUID
+        Core._lastWorldMouseoverAt = now
+      end
+    else
+      Core._lastWorldMouseoverGUID = nil
+    end
     if Detector and not Core._instDisabled then Detector:CheckUnit("mouseover") end
     return
   end

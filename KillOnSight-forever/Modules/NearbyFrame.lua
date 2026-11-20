@@ -2392,6 +2392,7 @@ function Nearby:_EnsureInspect()
     lastUnit = {},     -- guid -> last known unit token
     specCache = {},    -- guid -> { spec = "Fury", ts = GetTime() }
     backoff = {},      -- guid -> retryAt (GetTime)
+    tooltipProbeAt = {}, -- guid -> last tooltip specialization probe time
   }
   -- Retail: drive the inspect queue even when INSPECT_READY never fires.
   -- Without a heartbeat, a single stuck inspect can leave entries showing "Inspecting..." forever.
@@ -2404,6 +2405,26 @@ function Nearby:_EnsureInspect()
       acc = 0
       if not self._inspectMgr then return end
       local mgr = self._inspectMgr
+      -- Sweep expired inspection metadata periodically, even when a GUID is never revisited.
+      local now = (GetTime and GetTime()) or 0
+      if now - (mgr.lastCacheSweep or 0) >= 60 then
+        mgr.lastCacheSweep = now
+        for guid, entry in pairs(mgr.specCache) do
+          if now - (entry.ts or 0) > 3600 then mgr.specCache[guid] = nil end
+        end
+        for guid, untilAt in pairs(mgr.backoff) do
+          if untilAt < now then mgr.backoff[guid] = nil end
+        end
+        if mgr.tooltipProbeAt then
+          for guid, at in pairs(mgr.tooltipProbeAt) do
+            if now - at > 60 then mgr.tooltipProbeAt[guid] = nil end
+          end
+        end
+        -- lastUnit is a hint, not a permanent GUID registry.
+        for guid, unit in pairs(mgr.lastUnit) do
+          if not (self.guidToKey and self.guidToKey[guid]) then mgr.lastUnit[guid] = nil end
+        end
+      end
       if _InspectEnabled() and (mgr.pending or (mgr.queue and #mgr.queue > 0)) then
         self:_ProcessInspectQueue()
       end
@@ -2438,6 +2459,7 @@ function Nearby:_SpecCacheSet(guid, specName)
   self._inspectMgr.specCache[guid] = { spec = specName, ts = _Now() }
   -- Clear any backoff on success
   self._inspectMgr.backoff[guid] = nil
+  self._inspectMgr.tooltipProbeAt[guid] = nil
 end
 
 function Nearby:_InspectBackoffActive(guid)
@@ -2636,7 +2658,15 @@ function Nearby:_RequestSpecForGuid(guid, unit)
   end
 
   -- War Mode friendly: Blizzard tooltips often include spec even when NotifyInspect is blocked.
-  local tipSpec = self:_TryResolveSpecFromTooltip(unit)
+  -- Tooltip scanning can be expensive on repeated mouseover events. Avoid
+  -- rescanning an unchanged unresolved GUID many times per second.
+  local probeNow = _Now()
+  local lastProbe = self._inspectMgr.tooltipProbeAt[guid]
+  local tipSpec = nil
+  if not lastProbe or (probeNow - lastProbe) >= 1.0 then
+    self._inspectMgr.tooltipProbeAt[guid] = probeNow
+    tipSpec = self:_TryResolveSpecFromTooltip(unit)
+  end
   if tipSpec and tipSpec ~= "" then
     self:_SpecCacheSet(guid, tipSpec)
     local key = self.guidToKey and self.guidToKey[guid]

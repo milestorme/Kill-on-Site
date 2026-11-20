@@ -58,6 +58,7 @@ local stealthLastSeenByGUID = {} -- guid -> last seen timestamp
 local nameplateStealthCache = {} -- unit token -> last known non-secret player identity
 local recentTargetGUID = nil
 local recentTargetAt = 0
+local recentTargetIdentity = nil
 
 local STEALTH_STATE_TTL = 120
 local STEALTH_NOTIFY_TTL = 120
@@ -325,6 +326,7 @@ local Detector = {}
 -- Preserve the last identity briefly, but never infer stealth from plate loss.
 local goneNameplates = {}
 local recentStealthCasts = {}
+local lastCastCleanupAt = 0
 local STEALTH_CAST_IDS = {
   [1784] = "Stealth", [1785] = "Stealth", [1786] = "Stealth", [1787] = "Stealth",
   [1856] = "Vanish", [1857] = "Vanish",
@@ -371,6 +373,14 @@ function Detector:OnStealthSpellCast(unit, spellID)
     return { name = CanonicalName(name), guid = guid, classFile = classFile, guild = GetUnitGuild(unit) }
   end)
   if okLive then info = live end
+  -- Vanish may invalidate the target unit before the succeeded event is handled.
+  -- Only recover the exact recently observed target, and only for a very short window.
+  if not info and unit == "target" and recentTargetIdentity then
+    local now = GetTime and GetTime() or 0
+    if now - recentTargetAt <= 0.75 and recentTargetIdentity.guid == recentTargetGUID then
+      info = recentTargetIdentity
+    end
+  end
   if not info and unit:match("^nameplate%d+$") then
     local gone = goneNameplates[unit]
     local now = GetTime and GetTime() or 0
@@ -381,6 +391,15 @@ function Detector:OnStealthSpellCast(unit, spellID)
   local key = (CanonicalKey(info.name) or info.name:lower()) .. ":" .. tostring(spellID)
   if recentStealthCasts[key] and now - recentStealthCasts[key] < 1 then return end
   recentStealthCasts[key] = now
+  if now - lastCastCleanupAt >= 30 then
+    lastCastCleanupAt = now
+    for oldKey, at in pairs(recentStealthCasts) do
+      if now - at > 10 then recentStealthCasts[oldKey] = nil end
+    end
+    for oldUnit, gone in pairs(goneNameplates) do
+      if now - (gone.at or 0) > 3 then goneNameplates[oldUnit] = nil end
+    end
+  end
   stealthStateByGUID[info.guid] = true
   stealthLastSeenByGUID[info.guid] = Now()
   CleanupStealthState(Now())
@@ -463,6 +482,24 @@ local function ScheduleGUIRefresh()
   end
 end
 
+-- Coalesce repeated KoS/Guild GUI refresh requests for unchanged sightings.
+-- Notifications and DB seen timestamps still run on every detection.
+local trackedRefreshAt = {}
+local trackedRefreshSweepAt = 0
+local function RefreshTrackedSighting(key)
+  local now = (GetTime and GetTime()) or 0
+  if now - trackedRefreshSweepAt >= 60 then
+    for k, at in pairs(trackedRefreshAt) do
+      if now - at > 15 then trackedRefreshAt[k] = nil end
+    end
+    trackedRefreshSweepAt = now
+  end
+  local previous = trackedRefreshAt[key]
+  if previous and now - previous < 1.0 then return end
+  trackedRefreshAt[key] = now
+  ScheduleGUIRefresh()
+end
+
 -- Determine whether a unit is within Nearby range.
 local function IsWithinNearbyRange(unit, forceNearby)
   if not UnitDistanceSquared then
@@ -477,6 +514,29 @@ local function IsWithinNearbyRange(unit, forceNearby)
   end
 
   return distSq <= (maxYards * maxYards)
+end
+
+-- Avoid repeating expensive Stats writes and full GUI refreshes for an unchanged
+-- world mouseover. Other unit paths and all detection/notification logic remain live.
+local mouseoverStatsAt = {}
+local mouseoverStatsSweepAt = 0
+local MOUSEOVER_STATS_INTERVAL = 1.0
+local function ShouldUpdateMouseoverStats(unit, guid, name, classFile, guild)
+  if unit ~= "mouseover" or not guid then return true end
+  local now = (GetTime and GetTime()) or 0
+  if now - mouseoverStatsSweepAt >= 60 then
+    for key, entry in pairs(mouseoverStatsAt) do
+      if now - entry.at > 10 then mouseoverStatsAt[key] = nil end
+    end
+    mouseoverStatsSweepAt = now
+  end
+  local old = mouseoverStatsAt[guid]
+  if old and now - old.at < MOUSEOVER_STATS_INTERVAL and old.name == name
+      and old.classFile == classFile and old.guild == guild then
+    return false
+  end
+  mouseoverStatsAt[guid] = { at = now, name = name, classFile = classFile, guild = guild }
+  return true
 end
 
 -- Main entry point used by Core.lua (target/mouseover/nameplates/unit-scoped events).
@@ -570,6 +630,7 @@ function Detector:CheckUnit(unit, forceNearby)
         local t = GetTime and GetTime() or 0
         if unit == "target" then
           recentTargetGUID, recentTargetAt = guid, t
+          recentTargetIdentity = { guid = guid, name = name, classFile = classFile, guild = guild }
         elseif type(unit) == "string" and unit:match("^nameplate%d+$") then
           goneNameplates[unit] = nil
           nameplateStealthCache[unit] = {
@@ -589,8 +650,9 @@ function Detector:CheckUnit(unit, forceNearby)
   end
 
   local statsIdentityName = name
+  local updateStats = isEnemyPlayer and ShouldUpdateMouseoverStats(unit, guid, name, classFile, guild)
   -- Stats note (does not increment encounters; just updates last seen/class/guild).
-  if isEnemyPlayer and DB.NoteEnemySeen then
+  if updateStats and DB.NoteEnemySeen then
     local statsName = name
     statsIdentityName = statsName
     DB:NoteEnemySeen(statsName, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
@@ -603,7 +665,7 @@ function Detector:CheckUnit(unit, forceNearby)
   end
 
   -- Class/guild metadata can arrive late; ensure the Stats UI updates.
-  if isEnemyPlayer then
+  if updateStats then
     ScheduleGUIRefresh()
   end
 
@@ -649,9 +711,9 @@ function Detector:CheckUnit(unit, forceNearby)
   if playerEntry then
     if classFile and DB.SetPlayerClass then DB:SetPlayerClass(name, classFile) end
     DB:MarkSeenPlayer(name)
-    ScheduleGUIRefresh()
 
     local key = "p:" .. (CanonicalKey(name) or name:lower())
+    RefreshTrackedSighting(key)
     if ShouldNotify(key) then
       Notifier:NotifyPlayer(playerEntry.type or (L and L.KOS) or "KoS", name, playerEntry.reason)
     end
@@ -666,9 +728,9 @@ function Detector:CheckUnit(unit, forceNearby)
     local guildEntry = DB:LookupGuild(guild)
     if guildEntry then
       DB:MarkSeenGuild(guild)
-      ScheduleGUIRefresh()
 
       local key = "g:" .. guild:lower()
+      RefreshTrackedSighting(key)
       if ShouldNotify(key) then
         Notifier:NotifyGuild(guildEntry.type or (L and L.GUILD_KOS) or "Guild", name, guild, guildEntry.reason)
       end
