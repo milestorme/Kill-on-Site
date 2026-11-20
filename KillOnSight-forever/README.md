@@ -12,6 +12,7 @@ Kill on Sight is a lightweight PvP awareness addon that tracks hostile players y
 - **Honor List**: Track respected opposing-faction players separately from KoS. Add/remove players by right-clicking Nearby entries or through Stats; honoured players display a green dragon portrait indicator and `[Hon]` tag without triggering KoS alerts.
 - **Honor List tab**: Review saved honoured players, including class icons when class information is known.
 - **Guild tracking**: Track hostile players belonging to specific guilds ("Guild-KoS").
+- **Targetted**: Tracks when an enemy player targtes you and gives notification.
 - **Nearby window**
   - Sorts by most recent **Last seen**
   - Optional row icons (class/skull), per-row fade timers, scaling, transparency
