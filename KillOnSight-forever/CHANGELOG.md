@@ -1,3 +1,16 @@
+## 3.6.3 - Instance restrictions and protected-value safeguards
+
+### Fixed
+- Disabled live enemy detection, TargetAlert scanning, and PvP combat/statistics tracking inside dungeons, raids, delves, scenarios, battlegrounds, and arenas.
+- Aligned TargetAlert, Detector, and Midnight Stats instance checks with the addon's open-world-only detection behavior.
+- Prevented protected (secret) GUID values from being compared or used as tracking-table keys in targeting and combat event paths.
+- Guarded PARTY_KILL, UNIT_DIED, pet-target tracking, and encounter handling against unavailable or protected GUIDs.
+- Cleared temporary targeting and combat tracking state when processing is disabled in an instance.
+
+### Compatibility
+- Preserved open-world enemy alerts, Nearby integration, and best-effort pet kill attribution when usable data is available.
+- No SavedVariables reset or migration required.
+
 ## 3.6.2 - Pet kill attribution
 
 ### Added

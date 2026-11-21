@@ -1,5 +1,7 @@
 -- Enemy-targeting-you warning. Spy-style one-second visible-unit scan plus events.
 local f = CreateFrame("Frame")
+local utilGate = _G.KillOnSight_Util
+local function Disabled() return utilGate and utilGate:IsDisabledInstance() end
 local active = {} -- GUID -> last time confirmed targeting player
 local alerted = {} -- GUID -> last alert time
 local STALE = 2.5
@@ -15,9 +17,9 @@ local function profile()
   return db and db.GetProfile and db:GetProfile()
 end
 local function check(unit)
-  if type(unit) ~= "string" then return end
-  local guid = safe(UnitGUID, unit)
-  if type(guid) ~= "string" or guid == "" then return end
+  if Disabled() or type(unit) ~= "string" then return end
+  local guid = utilGate:SafePublicGUID(safe(UnitGUID, unit))
+  if not guid then return end
   local enemy = safe(UnitIsEnemy, "player", unit)
   local playerUnit = safe(UnitIsPlayer, unit)
   local targeting = safe(UnitIsUnit, unit .. "target", "player")
@@ -77,6 +79,7 @@ local function check(unit)
   end
 end
 local function scan()
+  if Disabled() then return end
   check("target")
   check("mouseover")
   if C_NamePlate and C_NamePlate.GetNamePlates then
@@ -90,6 +93,11 @@ local function scan()
   end
 end
 f:SetScript("OnEvent", function(_, event, unit)
+  if Disabled() then
+    wipe(active)
+    wipe(alerted)
+    return
+  end
   if event == "PLAYER_ENTERING_WORLD" then
     wipe(active)
     wipe(alerted)
@@ -116,6 +124,12 @@ end
 -- WoW does not deliver UNIT_TARGET for nameplate units. No continuous OnUpdate.
 local elapsed = 0
 f:SetScript("OnUpdate", function(_, dt)
+  if Disabled() then
+    elapsed = 0
+    wipe(active)
+    wipe(alerted)
+    return
+  end
   elapsed = elapsed + dt
   if elapsed < SCAN_INTERVAL then return end
   elapsed = elapsed % SCAN_INTERVAL

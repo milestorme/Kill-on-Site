@@ -14,21 +14,13 @@ local function GetDB() return _G.KillOnSight_DB end
 local function GetNotifier() return _G.KillOnSight_Notifier end
 local function GetCore() return _G.KillOnSight_Core end
 
--- Hard gate: bail out if we're in any non-PvP instance (Delves, dungeons, raids, scenarios).
--- This is defense-in-depth; Core.lua also gates, but tainted return values can slip past.
+-- Hard gate for every instance, including battlegrounds and arenas.
 local function _IsDisabledInstance()
-  if not IsInInstance then return false end
-  local ok, inInstance, instType = pcall(IsInInstance)
-  if not ok then return true end  -- assume instanced on error
-  -- inInstance may itself be tainted; use pcall for the truthiness check.
-  local okBool, isIn = pcall(function() return inInstance == true end)
-  if not okBool then return true end
-  if not isIn then return false end
-  local okCmp, isPvP = pcall(function()
-    return instType == "pvp" or instType == "arena"
-  end)
-  if not okCmp then return true end
-  return not isPvP
+  local util = _G.KillOnSight_Util
+  if util and util.IsDisabledInstance then return util:IsDisabledInstance() end
+  if type(IsInInstance) ~= "function" then return false end
+  local ok, inside = pcall(function() return IsInInstance() == true end)
+  return not ok or inside
 end
 local function GetNearby() return _G.KillOnSight_Nearby end
 local function CanonicalName(name)

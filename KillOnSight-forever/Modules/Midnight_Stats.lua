@@ -6,6 +6,9 @@
 --  * Reset safety (no resurrection)
 
 local Stats = {}
+local guard = _G.KillOnSight_Util
+local function Disabled() return guard and guard:IsDisabledInstance() end
+local function PublicGUID(value) return guard and guard:SafePublicGUID(value) end
 
 local ENCOUNTER_TIMEOUT = 60 -- seconds since last touch to count as one encounter
 
@@ -17,10 +20,11 @@ local PET_TARGET_WINDOW, KILL_DEDUP_WINDOW = 4, 5
 local function SafeGUID(unit)
   if not UnitGUID then return nil end
   local ok, value = pcall(UnitGUID, unit)
-  return ok and type(value) == "string" and value or nil
+  return ok and PublicGUID(value) or nil
 end
 local function Clock() return GetTime and GetTime() or 0 end
 local function TrackPetTarget()
+  if Disabled() then return end
   if not SafeGUID("pet") then return end
   local guid = SafeGUID("pettarget")
   if guid and guid:match("^Player%-") then petTargets[guid] = Clock() end
@@ -34,6 +38,7 @@ end
 
 
 local function IsPlayerGUID(guid)
+  guid = PublicGUID(guid)
   return guid and guid:match('^Player%-') ~= nil
 end
 
@@ -81,6 +86,8 @@ end
 -- --------------------------------------------------
 
 function Stats:TouchEncounter(guid, name, classFile, guild)
+  if Disabled() then return end
+  guid = PublicGUID(guid)
   if not guid or guid == "" then return end
   if not IsPlayerGUID(guid) then return end
 
@@ -109,6 +116,8 @@ function Stats:TouchEncounter(guid, name, classFile, guild)
 end
 
 function Stats:ResolveEncounter(guid)
+  if Disabled() then return end
+  guid = PublicGUID(guid)
   if not guid or guid == "" then return end
   local e = activeEncounters[guid]
   if not e then return end
@@ -126,6 +135,7 @@ local function StartEncounterTicker()
   if not C_Timer or not C_Timer.NewTicker then return end
 
   encounterTicker = C_Timer.NewTicker(5, function()
+    if Disabled() then return end
     local DB = GetDB()
     if not DB then return end
 
@@ -168,6 +178,7 @@ local function PopEngagementForName(name)
 end
 
 local function TouchOutcome(kind, nameHint, maxAge)
+  if Disabled() then return end
   local DB = GetDB()
   if not DB then return end
 
@@ -178,6 +189,7 @@ local function TouchOutcome(kind, nameHint, maxAge)
     name, classFile, guild, guid = PopMostRecentEngagement(maxAge)
   end
   if not name or name == "" then return end
+  guid = PublicGUID(guid)
 
   -- Hard safety: never create stats records for non-player GUIDs.
   if guid and guid ~= "" and not IsPlayerGUID(guid) then
@@ -212,6 +224,7 @@ local function TouchOutcome(kind, nameHint, maxAge)
 end
 
 function Stats:OnEvent(event, ...)
+  if Disabled() then return end
   if event == "PLAYER_PVP_KILLS_CHANGED" then
     recentPlayerWins[#recentPlayerWins + 1] = Clock()
     TouchOutcome("win")
@@ -248,18 +261,19 @@ for _, event in ipairs({"UNIT_DIED", "PARTY_KILL", "UNIT_TARGET", "UNIT_PET"}) d
   pcall(petFrame.RegisterEvent, petFrame, event)
 end
 petFrame:SetScript("OnEvent", function(_, event, ...)
+  if Disabled() then return end
   if event == "UNIT_TARGET" or event == "UNIT_PET" then
     TrackPetTarget()
     return
   end
   local a, b = ...
   if event == "PARTY_KILL" then
-    local victim = type(b) == "string" and b or nil
+    local victim = PublicGUID(b)
     if victim then confirmedKills[victim] = Clock() end
     return
   end
   if event ~= "UNIT_DIED" then return end
-  local guid = type(a) == "string" and a or nil
+  local guid = PublicGUID(a)
   if not guid or not guid:match("^Player%-") then return end
   local last = petTargets[guid]
   if not last or Clock() - last > PET_TARGET_WINDOW then return end
@@ -269,6 +283,7 @@ petFrame:SetScript("OnEvent", function(_, event, ...)
   local name = encounter.name
   if C_Timer and C_Timer.After then
     C_Timer.After(1, function()
+      if Disabled() then return end
       if confirmedKills[guid] and math.abs(confirmedKills[guid] - deathAt) <= KILL_DEDUP_WINDOW then return end
       for _, at in ipairs(recentPlayerWins) do
         if math.abs(at - deathAt) <= KILL_DEDUP_WINDOW then return end

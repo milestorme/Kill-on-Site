@@ -5,6 +5,34 @@ local L = KillOnSight_L
 
 local Util = {}
 
+-- Shared fail-closed instance gate: all instanced content, including PvP.
+function Util:IsDisabledInstance()
+  if type(IsInInstance) ~= "function" then return false end
+  local ok, disabled = pcall(function()
+    local inside = IsInInstance()
+    return inside == true
+  end)
+  return not ok or disabled == true
+end
+
+-- Compatibility alias for existing callers.
+function Util:IsPvEInstance()
+  return self:IsDisabledInstance()
+end
+
+-- A string may still be secret; pcall alone does not make it non-secret.
+function Util:SafePublicGUID(value)
+  local ok, public = pcall(function()
+    if issecretvalue and issecretvalue(value) then return nil end
+    if type(value) ~= "string" or value == "" then return nil end
+    -- Exercise the value before using it as a table key.
+    if not value:match("^[%w%-]+$") then return nil end
+    return value
+  end)
+  return ok and public or nil
+end
+
+
 -- Append unified tags to a pre-colored name.
 -- Used by Nearby / Attackers / Stats so tag logic isn't duplicated.
 function Util:AppendTags(nameText, isKoS, isGuild)
