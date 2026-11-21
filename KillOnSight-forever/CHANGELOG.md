@@ -1,3 +1,18 @@
+## 3.6.4 - Restore original outdoor targeting behavior
+
+### Fixed
+- Restored the previously working outdoor enemy-targeting detection logic without the experimental name-based fallback.
+- Retained instance restrictions so targeting alerts and combat tracking remain disabled in dungeons, raids, delves, scenarios, battlegrounds, and arenas.
+- Kept existing popup, sound, Nearby integration, and alert cooldown behavior unchanged.
+
+### Improved
+- Increased outdoor enemy-targeting scan frequency from once per second to twice per second to reduce polling delay.
+- Kept pet-target tracking at one-second intervals and retained the existing 30-second duplicate-alert cooldown.
+- Preserved the original targeting logic, notifications, Nearby integration, and instance restrictions.
+
+### Compatibility
+- No SavedVariables reset or migration required.
+
 ## 3.6.3 - Instance restrictions and protected-value safeguards
 
 ### Fixed

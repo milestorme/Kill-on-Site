@@ -6,7 +6,8 @@ local active = {} -- GUID -> last time confirmed targeting player
 local alerted = {} -- GUID -> last alert time
 local STALE = 2.5
 local ALERT_COOLDOWN = 30
-local SCAN_INTERVAL = 1
+local SCAN_INTERVAL = 0.5
+local PET_SCAN_INTERVAL = 1
 local function safe(fn, ...)
   if type(fn) ~= "function" then return nil end
   local ok, result = pcall(fn, ...)
@@ -18,8 +19,8 @@ local function profile()
 end
 local function check(unit)
   if Disabled() or type(unit) ~= "string" then return end
-  local guid = utilGate:SafePublicGUID(safe(UnitGUID, unit))
-  if not guid then return end
+  local guid = safe(UnitGUID, unit)
+  if type(guid) ~= "string" or guid == "" then return end
   local enemy = safe(UnitIsEnemy, "player", unit)
   local playerUnit = safe(UnitIsPlayer, unit)
   local targeting = safe(UnitIsUnit, unit .. "target", "player")
@@ -120,23 +121,28 @@ for _, event in ipairs({"PLAYER_ENTERING_WORLD", "UNIT_TARGET", "NAME_PLATE_UNIT
   pcall(f.RegisterEvent, f, event)
 end
 
--- Scan once per second so changes to an enemy's target are detected even when
+-- Scan twice per second so changes to an enemy's target are detected even when
 -- WoW does not deliver UNIT_TARGET for nameplate units. No continuous OnUpdate.
 local elapsed = 0
+local petElapsed = 0
 f:SetScript("OnUpdate", function(_, dt)
   if Disabled() then
     elapsed = 0
+    petElapsed = 0
     wipe(active)
     wipe(alerted)
     return
   end
   elapsed = elapsed + dt
+  petElapsed = petElapsed + dt
+  -- Preserve the existing one-second pet-target tracking cadence.
+  if petElapsed >= PET_SCAN_INTERVAL then
+    petElapsed = petElapsed % PET_SCAN_INTERVAL
+    local stats = _G.KillOnSight_MidnightStats
+    if stats and stats.TrackPetTarget then stats:TrackPetTarget() end
+  end
   if elapsed < SCAN_INTERVAL then return end
   elapsed = elapsed % SCAN_INTERVAL
-  -- Share this existing scan cadence with pet-target attribution, even when
-  -- enemy-targeting popups are disabled. Stats loads later in the TOC.
-  local stats = _G.KillOnSight_MidnightStats
-  if stats and stats.TrackPetTarget then stats:TrackPetTarget() end
   local p = profile()
   if not p or p.targetedAlert == false then
     wipe(active)
