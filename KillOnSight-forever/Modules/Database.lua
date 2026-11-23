@@ -685,6 +685,25 @@ function DB:SetPlayerReason(name, reason)
   e.modifiedAt = Now()
   return true
 end
+-- Notes for Guild KoS and Honoured entries; metadata only.
+function DB:SetGuildReason(guild, reason)
+  local e = self:LookupGuild(guild)
+  if not e then return false end
+  local r = norm(reason)
+  if r == "" then r = nil end
+  if e.reason == r then return false end
+  e.reason, e.modifiedAt = r, Now()
+  return true
+end
+function DB:SetHonorReason(name, reason)
+  local e = self:LookupHonor(name)
+  if not e then return false end
+  local r = norm(reason)
+  if r == "" then r = nil end
+  if e.reason == r then return false end
+  e.reason, e.modifiedAt = r, Now()
+  return true
+end
 function DB:HasPlayer(name)
   return self:LookupPlayer(name) ~= nil
 end

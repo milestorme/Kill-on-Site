@@ -1666,6 +1666,25 @@ local function ShowMenuFor(self, e)
         self:ScheduleRefresh(true)
       end
     },
+    { text = (L.UI_ADD_GUILD_KOS or "Add Guild to KoS"), notCheckable = true,
+      disabled = not (type(e.guild) == "string" and e.guild ~= "") or (DB.HasGuild and DB:HasGuild(e.guild)),
+      func = function()
+        if type(e.guild) ~= "string" or e.guild == "" or not DB.AddGuild then return end
+        if DB.HasGuild and DB:HasGuild(e.guild) then return end
+        DB:AddGuild(e.guild, L.GUILD_KOS)
+        self:MarkSortedDirty()
+        self:ScheduleRefresh(true)
+        if _G.KillOnSight_GUI then _G.KillOnSight_GUI:RefreshAll() end
+      end },
+    { text = (L.UI_REMOVE_GUILD_KOS or "Remove Guild from KoS"), notCheckable = true,
+      disabled = not (type(e.guild) == "string" and e.guild ~= "" and DB.HasGuild and DB:HasGuild(e.guild)),
+      func = function()
+        if type(e.guild) ~= "string" or e.guild == "" or not DB.RemoveGuild then return end
+        DB:RemoveGuild(e.guild)
+        self:MarkSortedDirty()
+        self:ScheduleRefresh(true)
+        if _G.KillOnSight_GUI then _G.KillOnSight_GUI:RefreshAll() end
+      end },
     { text = (L.UI_ADD_HONOR), notCheckable = true, disabled = honored, func = function()
         DB:AddHonor(playerName, e.class)
         e.honored = true

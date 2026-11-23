@@ -201,3 +201,5 @@ L.UI_HON_TAG = "Hon"
 
 L.UI_TARGETED_ALERT = "Enemy targeting you"
 L.UI_TARGETED_WARNING = "ENEMY TARGETING YOU: %s"
+
+L.UI_REMOVE_GUILD_KOS = "Remove Guild from KoS"

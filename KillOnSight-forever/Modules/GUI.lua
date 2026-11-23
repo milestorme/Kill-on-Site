@@ -192,12 +192,15 @@ local function EnsureNoteEditor()
   return f
 end
 
-local function OpenNoteEditor(playerName)
+local function OpenNoteEditor(playerName, listKind)
   local f = EnsureNoteEditor()
-  local e = (playerName and DB and DB.LookupPlayer and DB:LookupPlayer(playerName)) or nil
+  listKind = listKind or "player"
+  local lookup = listKind == "guild" and DB.LookupGuild or (listKind == "honor" and DB.LookupHonor or DB.LookupPlayer)
+  local e = (playerName and DB and lookup and lookup(DB, playerName)) or nil
   local cur = (e and e.reason) or ""
 
   f._playerName = playerName
+  f._listKind = listKind
   f._nameFS:SetText(playerName or "-")
   f._eb:SetText(cur or "")
   f._eb:HighlightText(0)
@@ -207,21 +210,16 @@ local function OpenNoteEditor(playerName)
     local name = f._playerName
     if not name or name == "" then f:Hide() return end
     local text = f._eb:GetText() or ""
-    if DB and DB.SetPlayerReason then
-      DB:SetPlayerReason(name, text)
-    elseif DB and DB.LookupPlayer then
-      local ent = DB:LookupPlayer(name)
-      if ent then ent.reason = text end
-    end
+    local setter = f._listKind == "guild" and DB.SetGuildReason or (f._listKind == "honor" and DB.SetHonorReason or DB.SetPlayerReason)
+    if DB and setter then setter(DB, name, text) end
     if KillOnSight_GUI and KillOnSight_GUI.RefreshAll then KillOnSight_GUI:RefreshAll() end
     f:Hide()
   end)
 
   f._btnClear:SetScript("OnClick", function()
     local name = f._playerName
-    if name and name ~= "" and DB and DB.SetPlayerReason then
-      DB:SetPlayerReason(name, nil)
-    end
+    local setter = f._listKind == "guild" and DB.SetGuildReason or (f._listKind == "honor" and DB.SetHonorReason or DB.SetPlayerReason)
+    if name and name ~= "" and DB and setter then setter(DB, name, nil) end
     if KillOnSight_GUI and KillOnSight_GUI.RefreshAll then KillOnSight_GUI:RefreshAll() end
     f:Hide()
   end)
@@ -288,7 +286,7 @@ local function CreateScrollList(parent, columns)
   -- Virtualized list: only create enough rows for the visible viewport (plus a small buffer)
   -- and reuse them while scrolling. This keeps the Stats tab smooth even with very large datasets.
   local rows = {}
-  local rowH = 18
+  local rowH = columns.rowHeight or 18
 
   local function EnsureRows(n)
     for i=#rows+1, n do
@@ -328,7 +326,7 @@ local function CreateScrollList(parent, columns)
           end)
           b:SetScript("OnClick", function(self)
             if self._playerName and self._playerName ~= "" then
-              OpenNoteEditor(self._playerName)
+              OpenNoteEditor(self._playerName, self._listKind)
             end
           end)
 
@@ -348,6 +346,12 @@ local function CreateScrollList(parent, columns)
           fs:SetWidth(col.width - 18)
           end
           fs:SetJustifyH("LEFT")
+          if col.wrap then
+            fs:SetWordWrap(true)
+            if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(true) end
+            fs:SetHeight(rowH - 4)
+            fs:SetJustifyV("MIDDLE")
+          end
           fs:SetText("")
           r.cols[col.key] = fs
         end
@@ -391,6 +395,7 @@ local function CreateScrollList(parent, columns)
           if col.key == "note" then
             if row.noteBtn then
               row.noteBtn._playerName = item._nameRaw
+              row.noteBtn._listKind = item._listKind or "player"
               row.noteBtn._noteText = item._reason
               local has = (item._reason and tostring(item._reason) ~= "")
               row.noteBtn._tex:SetAlpha(has and 1.0 or 0.3)
@@ -634,8 +639,9 @@ local function BuildGuilds()
     out[#out+1] = {
       _key = it.k,
       guild = e.guild,
+      _nameRaw = e.guild, _listKind = "guild", _reason = e.reason,
       type = e.type,
-      -- reason hidden in UI
+      note = "",
 
       lastSeen = FormatTime(e.lastSeenAt),
       zone = e.lastSeenZone or "",
@@ -801,7 +807,7 @@ local function BuildStats(opts)
 
       if ok then
         local classFile = _NormalizeClass(e.classFile) or _GuessClassFor(name, nil)
-        local isKos = (kosPlayers and kosPlayers[k]) ~= nil
+        local isKos = (kosPlayers and kosPlayers[k]) ~= nil or (DB.HasPlayer and (DB:HasPlayer(displayName) or DB:HasPlayer(name)))
         local isGuild = (guild ~= "") and hasGuild(guild)
         local nameText = _ColorizeName(displayName or name, classFile)
         if util and util.AppendTags then
@@ -1191,6 +1197,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     {key="name", title=L.UI_NAME, width=270},
     {key="type", title=L.UI_TYPE, width=100},
     {key="lastSeen", title=L.UI_LAST_SEEN, width=170},
+    {key="note", title=(L.UI_NOTES or "Notes"), width=60},
   })
   honorList:SetPoint("TOPLEFT", 0, -42)
   honorList:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -1245,12 +1252,15 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   guildBox:SetWidth(150) -- fixed width so it does not overlap the logo
   -- no reason box in UI
 
-  local gList = CreateScrollList(pGuilds, {
-    {key="guild", title=L.UI_GUILD, width=220},
-    {key="type", title=L.UI_TYPE, width=90},
-        {key="lastSeen", title=L.UI_LAST_SEEN, width=130},
-    {key="zone", title=L.UI_ZONE, width=150},
-  })
+  local guildColumns = {
+    {key="guild", title=L.UI_GUILD, width=180, wrap=true},
+    {key="type", title=L.UI_TYPE, width=70},
+    {key="lastSeen", title=L.UI_LAST_SEEN, width=115},
+    {key="zone", title=L.UI_ZONE, width=135},
+    {key="note", title=(L.UI_NOTES or "Notes"), width=60},
+  }
+  guildColumns.rowHeight = 36 -- Two lines for long guild names; other lists keep 18px rows.
+  local gList = CreateScrollList(pGuilds, guildColumns)
   gList:SetPoint("TOPLEFT", 0, -42)
   gList:SetPoint("BOTTOMRIGHT", 0, 0)
   pGuilds._list = gList
@@ -1629,6 +1639,7 @@ local factionLabel = "-"
       if name and name ~= "" and DB.AddPlayer and not DB:HasPlayer(name) then
         DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")), classFile)
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
+        if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.ScheduleRefresh then _G.KillOnSight_Nearby:ScheduleRefresh(true) end
         if RefreshStatsList then RefreshStatsList() end
         RefreshDetail(keyLower)
       end
@@ -1638,6 +1649,7 @@ local factionLabel = "-"
       if name and name ~= "" and DB.RemovePlayer and DB:HasPlayer(name) then
         DB:RemovePlayer(name)
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
+        if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.ScheduleRefresh then _G.KillOnSight_Nearby:ScheduleRefresh(true) end
         if RefreshStatsList then RefreshStatsList() end
         RefreshDetail(keyLower)
       end
@@ -2533,7 +2545,7 @@ function GUI:RefreshAll()
     for key, e in pairs(data.honorPlayers or {}) do
       local stats = _StatsForKoS(data, e.name)
       local class = _NormalizeClass(e.class) or (stats and _NormalizeClass(stats.classFile or stats.class))
-      out[#out+1] = {_key=key, _class=class, name=_ColorizeName(e.name, class), type=L.UI_HONOURED, lastSeen=FormatTime(e.lastSeenAt), addedAt=e.addedAt, addedOrder=e.addedOrder}
+      out[#out+1] = {_key=key, _class=class, _nameRaw=e.name, _listKind="honor", _reason=e.reason, note="", name=_ColorizeName(e.name, class), type=L.UI_HONOURED, lastSeen=FormatTime(e.lastSeenAt), addedAt=e.addedAt, addedOrder=e.addedOrder}
     end
     SortNewestEntries(out)
     frame._honorPanel._list:SetData(out)

@@ -1,3 +1,16 @@
+## 3.6.5 - List notes and Nearby guild actions
+
+### Added
+- Added editable, persistent notes to Guild KoS and Honoured lists using the existing note editor and tooltip.
+- Added Add Guild to KoS and Remove Guild from KoS actions to the Nearby player context menu when guild information is available.
+
+### Fixed
+- Adjusted Guild KoS column widths to keep Notes visible and wrapped long guild names onto two lines instead of truncating them.
+- Requested immediate Nearby refresh after adding or removing a player from KoS in the Statistics details panel, without waiting for another sighting.
+
+### Compatibility
+- Preserved outdoor targeting, alert logic, instance restrictions, and existing SavedVariables.
+
 ## 3.6.4 - Restore original outdoor targeting behavior
 
 ### Fixed
