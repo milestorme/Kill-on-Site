@@ -154,7 +154,7 @@ local function IsUnitConfirmedMounted(unit)
   return mounted
 end
 
-local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
+local function CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence, statsMetadataHandled)
   if not guid or not name or name == "" then return end
 
   local now = Now()
@@ -191,7 +191,7 @@ local function CheckStealthTransition(unit, name, classFile, guild, guid, highCo
       if (not prof) or prof.stealthDetectAddToNearby ~= false then
         local Nearby = GetNearby()
         if Nearby and Nearby.Seen then
-          Nearby:Seen(name, classFile, guild, (L and L.HIDDEN) or "Hidden", nil, guid, unit)
+          Nearby:Seen(name, classFile, guild, (L and L.HIDDEN) or "Hidden", nil, guid, unit, statsMetadataHandled)
         end
       end
 
@@ -531,8 +531,10 @@ local function ShouldUpdateMouseoverStats(unit, guid, name, classFile, guild)
   return true
 end
 
--- Main entry point used by Core.lua (target/mouseover/nameplates/unit-scoped events).
-function Detector:CheckUnit(unit, forceNearby)
+-- Canonical live-unit observation entry point. All detection sources submit the
+-- unit token here; source is diagnostic context only and never changes results.
+-- Keep the work synchronous so transient nameplate tokens are read while valid.
+function Detector:ObserveUnit(unit, forceNearby, source)
   if not unit or unit == "" then return end
   -- Hard gate: never run detection inside Delves/dungeons/raids/scenarios.
   if _IsDisabledInstance() then return end
@@ -599,9 +601,13 @@ function Detector:CheckUnit(unit, forceNearby)
 
   local isEnemyPlayer = (isPlayerUnit or isPlayerGUID) and (isHostile == true)
 
-  -- Confidence promotions
-  if forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() then
-    forceNearby = true
+  -- Evaluate confidence once per observation. The promoted forceNearby flag
+  -- then carries the same result into stealth and engagement handling below.
+  if not forceNearby then
+    local targetsPlayer = UnitTargetsPlayer(unit)
+    if targetsPlayer or InCombatWindow() then
+      forceNearby = true
+    end
   end
 
   local classFile = nil
@@ -612,6 +618,23 @@ function Detector:CheckUnit(unit, forceNearby)
     end
   end
   local guild = GetUnitGuild(unit)
+
+  -- Resolve the Stats refresh policy once, then perform at most one DB metadata
+  -- write for this observation. Nearby remains responsible for display state.
+  local statsIdentityName = name
+  local updateStats = isEnemyPlayer and ShouldUpdateMouseoverStats(unit, guid, name, classFile, guild)
+  local withinNearbyRange = IsWithinNearbyRange(unit, forceNearby)
+  local factionGroup = isEnemyPlayer and UnitFactionGroup and UnitFactionGroup(unit) or nil
+  local writeStats = (isEnemyPlayer and (updateStats or (withinNearbyRange and factionGroup and factionGroup ~= ""))) and true or false
+  if writeStats and DB.NoteEnemySeen then
+    DB:NoteEnemySeen(name, classFile, guild, guid, factionGroup)
+  end
+  if updateStats then
+    local Core = GetCore()
+    if Core and Core.TouchEncounter then
+      Core:TouchEncounter(guid, statsIdentityName, classFile, guild, true)
+    end
+  end
 
   -- Snapshot identities BEFORE the nameplate unit token becomes invalid.
   -- Target observations also keep a short-lived GUID association for Vanish.
@@ -637,23 +660,8 @@ function Detector:CheckUnit(unit, forceNearby)
 
   -- Stealth detection via UNIT_AURA on target/mouseover/nameplates.
   if isEnemyPlayer then
-    local highConfidence = forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or (unit == "target")
-    CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence)
-  end
-
-  local statsIdentityName = name
-  local updateStats = isEnemyPlayer and ShouldUpdateMouseoverStats(unit, guid, name, classFile, guild)
-  -- Stats note (does not increment encounters; just updates last seen/class/guild).
-  if updateStats and DB.NoteEnemySeen then
-    local statsName = name
-    statsIdentityName = statsName
-    DB:NoteEnemySeen(statsName, classFile, guild, guid, (UnitFactionGroup and UnitFactionGroup(unit)) )
-
-    -- Encounter tracking: increment "Seen" only once per encounter (timeout-based).
-    local Core = GetCore()
-    if Core and Core.TouchEncounter then
-      Core:TouchEncounter(guid, statsName, classFile, guild)
-    end
+    local highConfidence = forceNearby or (unit == "target")
+    CheckStealthTransition(unit, name, classFile, guild, guid, highConfidence, writeStats)
   end
 
   -- Class/guild metadata can arrive late; ensure the Stats UI updates.
@@ -668,38 +676,41 @@ function Detector:CheckUnit(unit, forceNearby)
     DB:UpdateLastAttackerGuild(name, guild)
   end
 
-  -- Nearby list population (hostile players)
-  local withinNearbyRange = IsWithinNearbyRange(unit, forceNearby)
+  -- Resolve list classification once for this observation and reuse it for
+  -- both Nearby tagging and notification handling. This is per-call state,
+  -- not a cache, so list edits take effect on the next observed unit event.
+  local playerEntry = DB.LookupPlayer and DB:LookupPlayer(name)
+  local honorEntry, guildEntry
+  if not playerEntry and guild and guild ~= "" and DB.LookupGuild then
+    if DB.LookupHonor then honorEntry = DB:LookupHonor(name) end
+    if not honorEntry then guildEntry = DB:LookupGuild(guild) end
+  end
 
+  -- Nearby list population (hostile players)
   if isEnemyPlayer then
     if withinNearbyRange then
       local kosType = nil
-      local pe = DB.LookupPlayer and DB:LookupPlayer(name)
-      if pe then
-        kosType = pe.type or (L and L.KOS) or "KoS"
-      elseif guild and DB.LookupGuild and not (DB.LookupHonor and DB:LookupHonor(name)) then
-        local ge = DB:LookupGuild(guild)
-        if ge then
-          kosType = ge.type or (L and L.GUILD_KOS) or "Guild"
-        end
+      if playerEntry then
+        kosType = playerEntry.type or (L and L.KOS) or "KoS"
+      elseif guildEntry then
+        kosType = guildEntry.type or (L and L.GUILD_KOS) or "Guild"
       end
 
       local Nearby = GetNearby()
       if Nearby and Nearby.Seen then
         local nearbyName = name
-        Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid, unit)
+        Nearby:Seen(nearbyName, classFile, guild, kosType, (UnitLevel and UnitLevel(unit)) or nil, guid, unit, writeStats)
       end
     end
 
     -- Engagement tracking for win attribution (best-effort).
     local isDirectUnit = (unit == "target" or unit == "mouseover")
-    if (forceNearby or UnitTargetsPlayer(unit) or InCombatWindow() or isDirectUnit) then
+    if forceNearby or isDirectUnit then
       TrackEngagement(statsIdentityName or name, classFile, guild, guid)
     end
   end
 
   -- KoS player notification
-  local playerEntry = DB.LookupPlayer and DB:LookupPlayer(name)
   if playerEntry then
     if classFile and DB.SetPlayerClass then DB:SetPlayerClass(name, classFile) end
     DB:MarkSeenPlayer(name)
@@ -716,8 +727,7 @@ function Detector:CheckUnit(unit, forceNearby)
   if guild and guild ~= "" and DB.LookupGuild then
     -- Personal Honor exempts a player from guild-wide KoS alerts.
     -- Personal KoS was already checked above and always takes precedence.
-    if DB.LookupHonor and DB:LookupHonor(name) then return end
-    local guildEntry = DB:LookupGuild(guild)
+    if honorEntry then return end
     if guildEntry then
       DB:MarkSeenGuild(guild)
 
@@ -729,6 +739,11 @@ function Detector:CheckUnit(unit, forceNearby)
       return
     end
   end
+end
+
+-- Compatibility adapter for older integrations and saved UI callbacks.
+function Detector:CheckUnit(unit, forceNearby, source)
+  return self:ObserveUnit(unit, forceNearby, source)
 end
 
 _G.KillOnSight_Detector = Detector

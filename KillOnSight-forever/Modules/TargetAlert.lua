@@ -41,26 +41,12 @@ local function check(unit)
   alerted[guid] = now
   local util = _G.KillOnSight_Util
   local name = (util and util.UnitPlayerName and safe(util.UnitPlayerName, util, unit)) or safe(UnitName, unit) or "Enemy"
-  -- Feed confirmed enemy sightings through the existing Nearby pipeline so
-  -- identity merging, KoS/Guild classification and row ordering stay consistent.
-  local nearby = _G.KillOnSight_Nearby
-  local db = _G.KillOnSight_DB
-  if nearby and nearby.Seen then
-    local _, classFile = safe(UnitClass, unit)
-    local guild = safe(GetGuildInfo, unit)
-    local level = safe(UnitLevel, unit)
-    local kind
-    if db then
-      local entry = db.LookupPlayer and safe(db.LookupPlayer, db, name)
-      if entry then
-        kind = entry.type or "KoS"
-      elseif guild and db.LookupGuild then
-        local honor = db.LookupHonor and safe(db.LookupHonor, db, name)
-        local guildEntry = not honor and safe(db.LookupGuild, db, guild)
-        if guildEntry then kind = guildEntry.type or "Guild" end
-      end
-    end
-    pcall(nearby.Seen, nearby, name, classFile, guild, kind, level, guid, unit)
+  -- Submit the confirmed targeter through the canonical detection pipeline.
+  -- This preserves Nearby insertion while keeping identity, Stats metadata,
+  -- KoS/Guild/Honor classification and encounter work on the same path.
+  local detector = _G.KillOnSight_Detector
+  if detector and detector.ObserveUnit then
+    pcall(detector.ObserveUnit, detector, unit, true, "target_alert")
   end
   -- Use the same styled banner as the stealth alert, in a separate frame.
   local notifier = _G.KillOnSight_Notifier
@@ -76,7 +62,7 @@ local function check(unit)
     end
   end
   if p.targetedAlertSound ~= false and _G.KillOnSight_AlertAudio then
-    _G.KillOnSight_AlertAudio:Play("nearby")
+    _G.KillOnSight_AlertAudio:Play("targeted")
   end
 end
 local function scan()

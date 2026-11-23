@@ -5,8 +5,8 @@ local L = KillOnSight_L
 KillOnSightDB = KillOnSightDB or {}
 
 
--- NOTE: SavedVariables are handled via KillOnSightDB.
--- Any legacy migration code was removed during cleanup because it was either a no-op or dead code.
+-- SavedVariables are handled via KillOnSightDB. Legacy realm and Forever-name
+-- migrations remain active and must preserve their source records.
 
 local DB = {}
 
@@ -58,6 +58,7 @@ local DEFAULTS = {
     enableSound = true,
     targetedAlert = true,
     targetedAlertSound = true,
+    targetedSoundChoice = "high-threat",
     alertVolume = 100,
     enableScreenFlash = true,
     throttleSeconds = 12,
@@ -158,36 +159,65 @@ local function _MergeInto(dst, src)
   end
 end
 
+local function _CopyEntry(entry)
+  if type(entry) ~= "table" then return entry end
+  local copy = {}
+  _MergeInto(copy, entry)
+  return copy
+end
+
+local function _MergeRealmEntry(dst, src, kind)
+  if type(src) ~= "table" then return dst end
+  if type(dst) ~= "table" then return _CopyEntry(src) end
+
+  local dstSeen = tonumber(dst.lastSeenAt) or 0
+  local srcSeen = tonumber(src.lastSeenAt) or 0
+  local winner, other = dst, src
+  if (kind == "players" or kind == "statsPlayers") and srcSeen > dstSeen then
+    winner, other = src, dst
+  end
+  winner = _CopyEntry(winner)
+
+  if kind == "statsPlayers" then
+    for _, field in ipairs({"seenCount", "wins", "loses"}) do
+      winner[field] = math.max(tonumber(dst[field]) or 0, tonumber(src[field]) or 0)
+    end
+    local first = tonumber(dst.firstSeenAt) or 0
+    local srcFirst = tonumber(src.firstSeenAt) or 0
+    if srcFirst > 0 and (first == 0 or srcFirst < first) then winner.firstSeenAt = srcFirst end
+    winner.lastSeenAt = math.max(dstSeen, srcSeen)
+  end
+
+  -- Retain metadata absent from the preferred entry without replacing its
+  -- current values. The original per-realm SavedVariables remain untouched.
+  for key, value in pairs(other) do
+    if winner[key] == nil or winner[key] == "" then
+      winner[key] = type(value) == "table" and _CopyEntry(value) or value
+    elseif type(winner[key]) == "table" and type(value) == "table" then
+      _MergeInto(winner[key], value)
+    end
+  end
+  return winner
+end
+
 local function _MergeData(dstData, srcData)
   if type(dstData) ~= "table" or type(srcData) ~= "table" then return end
 
   dstData.honorPlayers = dstData.honorPlayers or {}
   for k, entry in pairs(srcData.honorPlayers or {}) do
-    if dstData.honorPlayers[k] == nil then dstData.honorPlayers[k] = entry end
+    dstData.honorPlayers[k] = _MergeRealmEntry(dstData.honorPlayers[k], entry, "honorPlayers")
   end
   dstData.players = dstData.players or {}
   if type(srcData.players) == "table" then
     for k, entry in pairs(srcData.players) do
-      if dstData.players[k] == nil then
-        dstData.players[k] = entry
-      else
-        local a = dstData.players[k]
-        local b = entry
-        local aSeen = tonumber(a.lastSeenAt or 0) or 0
-        local bSeen = tonumber(b.lastSeenAt or 0) or 0
-        if bSeen > aSeen then
-          dstData.players[k] = b
-        end
-      end
+      dstData.players[k] = _MergeRealmEntry(dstData.players[k], entry, "players")
     end
   end
 
   dstData.guilds = dstData.guilds or {}
   if type(srcData.guilds) == "table" then
     for k, entry in pairs(srcData.guilds) do
-      if dstData.guilds[k] == nil then
-        dstData.guilds[k] = entry
-      end
+      dstData.guilds[k] = _MergeRealmEntry(dstData.guilds[k], entry, "guilds")
     end
   end
 
@@ -195,17 +225,7 @@ local function _MergeData(dstData, srcData)
   dstData.statsPlayers = dstData.statsPlayers or {}
   if type(srcData.statsPlayers) == "table" then
     for k, entry in pairs(srcData.statsPlayers) do
-      if dstData.statsPlayers[k] == nil then
-        dstData.statsPlayers[k] = entry
-      else
-        local a = dstData.statsPlayers[k]
-        local b = entry
-        local aSeen = tonumber(a.lastSeenAt or 0) or 0
-        local bSeen = tonumber(b.lastSeenAt or 0) or 0
-        if bSeen > aSeen then
-          dstData.statsPlayers[k] = b
-        end
-      end
+      dstData.statsPlayers[k] = _MergeRealmEntry(dstData.statsPlayers[k], entry, "statsPlayers")
     end
   end
 
@@ -235,6 +255,8 @@ end
 -- Keep an in-SavedVariables snapshot for recovery; never guess missing surnames.
 local NAME_SCHEMA_VERSION = 2
 local function _NameIdentity(name)
+  local identity = _G.KillOnSight_Identity
+  if identity and identity.MigrationIdentity then return identity:MigrationIdentity(name) end
   if type(name) ~= "string" then return nil end
   local util = _G.KillOnSight_Util
   if util and util.NormalizePlayerName then name = util:NormalizePlayerName(name) end
@@ -347,6 +369,31 @@ local function _MigrateNameData(realmDB)
   end
 end
 
+local function _PrepareRealmDataForMerge(sourceData)
+  local util = _G.KillOnSight_Util
+  if not (util and util.IsForeverNames and util:IsForeverNames()) then return sourceData end
+  if type(sourceData) ~= "table" then return sourceData end
+
+  -- Canonicalize each legacy realm independently before colliding keys are
+  -- merged. This lets First + legacy surname become distinct full identities
+  -- even when two old realm tables used the same first-name key. Work on a
+  -- copy so the original per-realm SavedVariables remain recoverable.
+  -- Copy only the identity-bearing tables that migration rewrites. Other
+  -- tables are read-only inputs to _MergeData and do not need a full snapshot.
+  local copy = {
+    players = {}, honorPlayers = {}, statsPlayers = {},
+    guilds = sourceData.guilds,
+    revision = sourceData.revision,
+    statsRevision = sourceData.statsRevision,
+    nameSchemaVersion = sourceData.nameSchemaVersion,
+  }
+  _MergeInto(copy.players, sourceData.players or {})
+  _MergeInto(copy.honorPlayers, sourceData.honorPlayers or {})
+  _MergeInto(copy.statsPlayers, sourceData.statsPlayers or {})
+  _MigrateNameData({data=copy, nameMigrationBackupV2=true})
+  return copy
+end
+
 function DB:Init()
   -- Use a single account-wide database shared across all realms/factions/characters.
   KillOnSightDB.global = KillOnSightDB.global or {}
@@ -369,7 +416,8 @@ function DB:Init()
         if type(old.data) == "table" then
           realmDB.data = realmDB.data or {}
           _MergeInto(realmDB.data, DEFAULTS.data) -- ensure structure
-          _MergeData(realmDB.data, old.data)
+          local sourceData = _PrepareRealmDataForMerge(old.data)
+          _MergeData(realmDB.data, sourceData)
         end
       end
     end
@@ -442,6 +490,10 @@ function DB:Init()
   end
 
   _MigrateNameData(realmDB)
+  -- Repair legacy Stats keys once after migrations, not every time the Stats UI redraws.
+  if self.ConsolidateStatsDuplicates then
+    self:ConsolidateStatsDuplicates()
+  end
 
   -- Optional stats pruning (prevents long-term SV bloat)
   if self.PruneStatsPlayers then
@@ -735,9 +787,10 @@ local function _ForeverStatsMode()
 end
 
 local function _StatsKey(name)
+  local identity = _G.KillOnSight_Identity
+  if identity and identity.StatsKey then return identity:StatsKey(name) end
   if type(name) ~= "string" or name == "" then return nil end
   if _ForeverStatsMode() then
-    -- In Forever the legacy realm separator represents a surname.
     return (name:gsub("%-", " "):gsub("%s+", " "):match("^%s*(.-)%s*$")):lower()
   end
   return (name:match("^[^-]+") or name):lower()
@@ -757,9 +810,24 @@ local function _MergeStatsRecord(dst, src)
   end
 end
 
+-- A measured hot-path guard: detection can revisit the same Forever identity many
+-- times while the historical Stats table remains unchanged. The startup/manual
+-- consolidation pass invalidates this cache; replacing the table also resets it.
+local _consolidatedStatsTable
+local _consolidatedStatsKeys = {}
+local _fullyConsolidatedStatsTable
+
 local function _ConsolidateForeverStats(data, fullKey)
   if not _ForeverStatsMode() then return end
   local stats = data.statsPlayers or {}
+  -- Init/repair has reconciled the entire table. All runtime Stats writes use
+  -- _StatsKey(), so a newly seen identity cannot introduce a legacy alias.
+  if _fullyConsolidatedStatsTable == stats then return end
+  if _consolidatedStatsTable ~= stats then
+    _consolidatedStatsTable = stats
+    _consolidatedStatsKeys = {}
+  end
+  if _consolidatedStatsKeys[fullKey] then return end
   -- Consolidate alternative separators and old first-name-only records.
   -- Never merge two distinct full names merely because they share a first name.
   local target = stats[fullKey]
@@ -778,6 +846,7 @@ local function _ConsolidateForeverStats(data, fullKey)
       end
     end
   end
+  _consolidatedStatsKeys[fullKey] = true
 end
 
 -- Repair historical Stats keys on demand, including records already saved before
@@ -786,6 +855,9 @@ function DB:ConsolidateStatsDuplicates()
   if not _ForeverStatsMode() then return 0 end
   local data = self:GetData()
   local stats = data.statsPlayers or {}
+  _consolidatedStatsTable = stats
+  _consolidatedStatsKeys = {}
+  _fullyConsolidatedStatsTable = nil
   local function canonical(k, e)
     local name = type(e.fullName) == "string" and e.fullName or ""
     if name == "" then
@@ -808,17 +880,24 @@ function DB:ConsolidateStatsDuplicates()
     local e = stats[k]
     if type(e) == "table" then
       local c = canonical(k, e)
-      if c and c ~= k then
-        if type(stats[c]) == "table" then _MergeStatsRecord(stats[c], e)
-        else stats[c] = e end
-        stats[k] = nil
-        changes = changes + 1
+      if c then
+        if c ~= k then
+          if type(stats[c]) == "table" then _MergeStatsRecord(stats[c], e)
+          else stats[c] = e end
+          stats[k] = nil
+          changes = changes + 1
+        end
+        _consolidatedStatsKeys[c] = true
       end
     end
   end
   if changes > 0 then
     data.statsRevision = (tonumber(data.statsRevision) or 0) + 1
   end
+  -- The complete pass ran successfully. Future DB APIs write canonical keys,
+  -- so no per-sighting full-table scan is needed until an explicit repair.
+  _consolidatedStatsTable = stats
+  _fullyConsolidatedStatsTable = stats
   return changes
 end
 
@@ -1066,6 +1145,9 @@ end
 function DB:ClearStatsPlayers()
   local d = self:GetData()
   d.statsPlayers = {}
+  _consolidatedStatsTable = d.statsPlayers
+  _consolidatedStatsKeys = {}
+  _fullyConsolidatedStatsTable = d.statsPlayers
   d.lastAttackers = {}
   self:_BumpStatsRevision()
 end

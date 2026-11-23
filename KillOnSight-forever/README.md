@@ -1,81 +1,68 @@
 # Kill on Sight (KoS)
 
-### **Author:** Milestorme
+### Author: Milestorme
 
-### **Contributor** Minstrel
+### Contributor: Minstrel
 
-Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list and alerts.
+Kill on Sight is a PvP awareness addon for WoW Forever. It records hostile players you encounter, highlights players and guilds you choose to track, and provides a nearby list and configurable alerts.
 
 ## Features
 
-- **KoS list**: Add/remove players and get alerts when they’re seen nearby.
-- **Honor List**: Track respected opposing-faction players separately from KoS. Add/remove players by right-clicking Nearby entries or through Stats; honoured players display a green dragon portrait indicator and `[Hon]` tag without triggering KoS alerts.
-- **Honor List tab**: Review saved honoured players, including class icons when class information is known.
-- **Guild tracking**: Track hostile players belonging to specific guilds ("Guild-KoS").
-- **Nearby window**
-  - Sorts by most recent **Last seen**
-  - Optional row icons (class/skull), per-row fade timers, scaling, transparency
-  - Auto-hide when empty
-  - Click to target; right-click for KoS, Honor and available announcement actions
-  - Full First Last names for WoW Forever characters, with KoS/Honor visual tags
-- **Notifications**
-  - Chat message, screen flash, and optional sound
-  - Separate stealth detection banner + sound (when enabled)
-  - Throttling to prevent spam
-- **Stats UI**
-  - Enemy statistics: first seen, last seen, seen count, wins/losses
-  - Sorting and reset controls
-  - Actions to add/remove Honor players and add a known enemy guild to Guild-KoS
-  - Full-name identity matching and conservative legacy Stats migration
+- **Player KoS list:** Add, remove, and annotate players. KoS sightings are highlighted in Nearby and can trigger chat, screen-flash, and sound alerts.
+- **Guild KoS:** Track hostile guilds and identify their members in Nearby. Guilds can be added from a player's Nearby context menu or through the Guilds tab.
+- **Honor list:** Keep a separate list of respected players. Honor entries are tagged in Nearby and Stats and use a green target-portrait marker; Honor status does not trigger a KoS alert.
+- **Nearby window:** Lists detected hostile players, shows full First Last identities, class information when known, KoS/Guild/Honor tags, and hidden-state indicators. Entries are ordered by priority and recent activity. Scroll to browse additional players; click a row to target and right-click for player, guild, Honor, and announcement actions.
+- **Nearby customization:** Configure visibility, independent nearby-detection sound, lock state, auto-hide, scale, background transparency, name font and size, and maximum visible rows. The window can be moved when unlocked.
+- **Alerts and sound:** Configure KoS/Guild sound, nearby-detection sound, enemy-targeting alerts, screen flash, and alert volume. Choose and preview a dedicated targeting sound. Alert sounds can be muted by setting volume to zero.
+- **Stealth/hidden detection:** Detect supported stealth, Vanish, Prowl, and Shadowmeld states, display the state in Nearby, and provide a separate banner and sound alert when enabled.
+- **Enemy Statistics:** Record first and last seen time, sightings, class, guild, faction, wins, and losses. Search and sort the list, inspect a selected player's details, reset Stats, and add/remove KoS or Honor entries or add the player's guild to Guild KoS.
+- **Notes:** Save notes for KoS players, tracked guilds, and Honor players. Note icons in the relevant lists show the note on hover and open the editor when clicked.
+- **Minimap button:** Left-click to open the main window. Right-click to add your current player target to KoS. Its position and visibility are managed by the minimap button library.
+- **Profiles:** Create, copy, rename, reset, and delete settings profiles. Nearby layout and alert options are saved per profile.
+- **Saved data and identity:** Uses WoW Forever's First Last player identity (there is no realm component). Existing SavedVariables are retained, and legacy first-name/last-name records are reconciled during migration to avoid splitting the same player's data.
+- **Localization:** Includes enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, and plPL.
 
-- **Notes (KoS)**
-  - Optional per-player note icon on the KoS tab
-  - Mouseover shows the full note text; click to create/edit/clear
+## Main window tabs
 
-## Spy KoS Import
+- **Players:** Manage KoS players and their notes.
+- **Guilds:** Manage tracked guilds and their notes.
+- **Stats:** Review sightings and PvP outcomes; sort, search, inspect details, reset, and manage KoS/Honor/Guild KoS status.
+- **Options:** Configure alerts, sounds, Nearby appearance, and profiles.
+- **Honor:** Manage the separate Honor list and notes.
 
-KillOnSight can import KoS entries from **Spy** if Spy has been enabled at least once.
+The legacy Attackers tab is not exposed in this build.
 
-### How to Import
-1. Enable **Spy**
-2. Log in once (or `/reload`) so Spy’s SavedVariables load
-3. Run:
-   ```
-   /kos importspy
-   ```
-4. (Optional) Disable Spy afterwards
+## Spy KoS import
 
-### Notes
-- Only **KoS entries** are imported
-- Existing KillOnSight entries are **not duplicated**
-- If Spy has no KoS entries, nothing is imported and a chat message is shown
-- Imported notes/reasons from Spy are stored safely and ignored by core KoS logic
-- KillOnSight behavior and detection logic are unchanged
+KillOnSight can import KoS entries from Spy if Spy has been enabled at least once.
+
+1. Enable Spy and log in once (or use `/reload`) so Spy's SavedVariables are available.
+2. Run `/kos importspy`.
+3. Spy can be disabled afterwards if you no longer need it.
+
+Only Spy KoS entries are imported. Existing KillOnSight entries are not duplicated. Imported notes/reasons are retained as notes and do not affect KoS logic. If Spy has no KoS entries, KillOnSight reports that nothing was imported.
 
 ## Commands
 
-- `/kos show` — Toggle the main window
-- `/kos help` — Print command help
-- `/kos add <name>` — Add a player to KoS
-- `/kos remove <name>` — Remove a player from KoS
-- `/kos addguild <guild>` — Add a guild to Guild-KoS
-- `/kos removeguild <guild>` — Remove a guild from Guild-KoS
-- `/kos list` — List current entries
-- `/kos importspy` — Import KoS entries from Spy
+- `/kos` or `/kos show` — Toggle the main window.
+- `/kos help` — Show command help.
+- `/kos add <name>` — Add a player to KoS. Use the player's First Last name.
+- `/kos remove <name>` — Remove a player from KoS.
+- `/kos addguild <guild>` — Add a guild to Guild KoS.
+- `/kos removeguild <guild>` — Remove a guild from Guild KoS.
+- `/kos list` — List current KoS and Guild KoS entries.
+- `/kos importspy` — Import Spy KoS entries.
+- `/kos statsprune` — Show the Stats retention policy.
+- `/kos statsprune on|off` — Enable or disable automatic Stats pruning.
+- `/kos statsprune maxdays <N>` — Set the maximum age of retained Stats entries.
+- `/kos statsprune maxentries <N>` — Set the maximum number of retained Stats entries.
+- `/kos statsprune now` — Prune Stats immediately using the current policy.
 
 ## Installation
 
-1. Download the addon [Curseforge](https://www.curseforge.com/wow/addons/kill-on-sight).
-2. Extract into your WoW AddOns folder:
-   - Your WoW Forever client's `Interface/AddOns/` directory
-3. Ensure the folder is **exactly**: `Interface/AddOns/KillOnSight/`
-4. Restart WoW (or `/reload`).
+1. Download the addon from [CurseForge](https://www.curseforge.com/wow/addons/kill-on-sight).
+2. Extract the addon into the WoW Forever client's `Interface/AddOns/` directory.
+3. Ensure the addon folder is exactly `Interface/AddOns/KillOnSight/`.
+4. Restart WoW or enter `/reload`.
 
-## Localization
-
-Included locales (major languages):
-
-- enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
-
-The Honor List interface strings are included across all 16 supported locale files.
-
+Install this build over the existing KillOnSight folder to keep using its SavedVariables. Do not install a second copy beside it.

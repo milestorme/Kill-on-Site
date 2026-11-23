@@ -105,8 +105,6 @@ local function GetNotifier() return _G.KillOnSight_Notifier end
 local function GetNearby() return _G.KillOnSight_Nearby end
 local function GetMidnightStats() return _G.KillOnSight_MidnightStats end
 
-local LocaleSanityCheck -- forward
-
 -- Debounced GUI refresh (safe to call from anywhere)
 local _guiRefreshQueued = {}
 local function _DoGUIRefresh()
@@ -135,10 +133,10 @@ local function _ScheduleGUIRefresh(delay, key)
 end
 
 -- Encounter tracking lives in Midnight_Stats.lua
-function Core:TouchEncounter(guid, name, classFile, guild)
+function Core:TouchEncounter(guid, name, classFile, guild, metadataHandled)
   local S = GetMidnightStats()
   if S and S.TouchEncounter then
-    S:TouchEncounter(guid, name, classFile, guild)
+    S:TouchEncounter(guid, name, classFile, guild, metadataHandled)
   end
 end
 
@@ -199,7 +197,7 @@ local function StartNearbyNameplateScan()
     for _, plate in ipairs(plates) do
       local unit = plate and plate.namePlateUnitToken
       if unit then
-        if not Core._bgDisabled and not Core._instDisabled then Detector:CheckUnit(unit) end
+        if not Core._bgDisabled and not Core._instDisabled then Detector:ObserveUnit(unit, nil, "nameplate_poll") end
       end
     end
   end)
@@ -328,10 +326,6 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
     else
       Print("Spy import is unavailable (module not loaded).")
     end
-    return
-  end
-  if cmd == 'localesanity' then
-    LocaleSanityCheck()
     return
   end
   if cmd == 'statsprune' then
@@ -520,9 +514,6 @@ Core:SetScript("OnEvent", function(self, event, ...)
     if GetMidnightStats() and GetMidnightStats().Init then GetMidnightStats():Init() end
     StartDeferredGuildResolveTicker()
     Print(L.MSG_LOADED)
-    if C_Timer and C_Timer.After and KillOnSightDB and KillOnSightDB.localeSanity == true then
-      C_Timer.After(10, LocaleSanityCheck)
-    end
     return
   end
 
@@ -531,7 +522,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     ApplyPvPInstanceDisableState(IsInPvPInstance())
     ApplyPvEInstanceDisableState(IsInPvEInstance())
     if Core._bgDisabled then return end
-    if Detector and not Core._instDisabled then Detector:CheckUnit("target") end
+    if Detector and not Core._instDisabled then Detector:ObserveUnit("target", nil, "world_enter") end
     if GUI then GUI:RefreshAll() end
     WarnIfEnemyNameplatesDisabled()
     return
@@ -545,7 +536,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
       ApplyPvEInstanceDisableState(false)
     end
     if Core._bgDisabled then return end
-    if Detector and not Core._instDisabled then Detector:CheckUnit("target") end
+    if Detector and not Core._instDisabled then Detector:ObserveUnit("target", nil, "target_changed") end
     if GUI then GUI:RefreshAll() end
     return
   end
@@ -579,7 +570,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     else
       Core._lastWorldMouseoverGUID = nil
     end
-    if Detector and not Core._instDisabled then Detector:CheckUnit("mouseover") end
+    if Detector and not Core._instDisabled then Detector:ObserveUnit("mouseover", nil, "mouseover_changed") end
     return
   end
 
@@ -601,7 +592,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
     end
     if Core._bgDisabled then return end
     local unit = ...
-    if Detector and not Core._instDisabled then Detector:CheckUnit(unit) end
+    if Detector and not Core._instDisabled then Detector:ObserveUnit(unit, nil, "nameplate_added") end
     return
   end
 
@@ -633,7 +624,7 @@ Core:SetScript("OnEvent", function(self, event, ...)
       Detector:OnStealthSpellCast(unit, spellID)
     end
     if unit and (unit == "target" or unit == "mouseover" or unit:match('^nameplate')) then
-      if Detector and not Core._instDisabled then Detector:CheckUnit(unit) end
+      if Detector and not Core._instDisabled then Detector:ObserveUnit(unit, nil, "unit_state") end
     end
     return
   end
@@ -665,25 +656,5 @@ SafeRegisterEvent("UNIT_FACTION")
 
 -- Export for other modules.
 _G.KillOnSight_Core = Core
-
--- Locale sanity checker
-LocaleSanityCheck = function()
-  if not KillOnSight_L_data or not KillOnSight_L_used then return end
-  if KillOnSightDB and KillOnSightDB.localeSanity == false then return end
-
-  local unused = {}
-  for k in pairs(KillOnSight_L_data) do
-    if k ~= '__kos_proxy' and not KillOnSight_L_used[k] then
-      unused[#unused+1] = k
-    end
-  end
-
-  if #unused > 0 then
-    table.sort(unused)
-    local prefix = (KillOnSight_L and KillOnSight_L.ADDON_PREFIX) or 'KILLONSIGHT'
-    DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r Locale sanity: '..#unused..' key(s) defined but unused. Set KillOnSightDB.localeSanity=false to silence.')
-    DEFAULT_CHAT_FRAME:AddMessage('|cff00d0ff'..prefix..':|r '..table.concat(unused, ', '))
-  end
-end
 
 _G.KillOnSight_Core._ScheduleGUIRefresh = _ScheduleGUIRefresh

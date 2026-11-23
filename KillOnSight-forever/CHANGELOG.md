@@ -1,3 +1,30 @@
+## 4.0.0 - WoW Forever architecture rebuild
+
+### Changed
+- Centralized live player observations through a shared detection entry point used by target, mouseover, nameplate, unit-state, and target-alert paths.
+- Consolidated per-observation classification and Stats metadata updates to avoid repeated database work while preserving Nearby, KoS, Guild KoS, Honor, and encounter behavior.
+- Made WoW Forever First Last identity the canonical player key across detection, lists, Nearby, Stats, and target portraits.
+- Reconciled legacy first-name/last-name SavedVariables before merging historical realm tables; retained original source tables and merged verified matching Stats without losing encounter outcomes or timestamps.
+- Removed redundant Stats-list construction and repeated list/detail refreshes. Large Stats lists use virtualized rows.
+- Completed localization coverage for all 154 English UI keys in each of the 16 included locales.
+- Updated the README to describe the current WoW Forever features and controls.
+
+### Compatibility
+- Keeps the existing `KillOnSightDB` SavedVariables name and addon folder for in-place upgrades.
+- No database reset is required. Back up the SavedVariables file before updating as a precaution.
+
+## 3.6.6 - Enemy targeting sound options
+
+### Added
+- Added a dedicated Enemy Targeting Sound selector in the Alerts options, saved per profile.
+- Added six selectable sounds: High Threat (default), Nearby Detection, Radar Sweep, Warning Siren, Double Pulse, and Alert Chime.
+- Added a Preview button to audition the selected targeting sound.
+- Bundled the new targeting sounds with volume-adjusted audio variants compatible with the existing alert volume slider.
+
+### Compatibility
+- Preserved enemy-targeting detection, popup presentation, Nearby integration, and duplicate-alert cooldown.
+- Existing profiles use High Threat by default without requiring a SavedVariables reset.
+
 ## 3.6.5 - List notes and Nearby guild actions
 
 ### Added

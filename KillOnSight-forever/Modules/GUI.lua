@@ -716,7 +716,6 @@ end
 
 
 local function BuildStats(opts)
-  if DB.ConsolidateStatsDuplicates then DB:ConsolidateStatsDuplicates() end
   opts = opts or {}
   local q = (opts.query or ""):lower()
   local sortKey = opts.sortKey or "lastSeen"
@@ -726,6 +725,8 @@ local function BuildStats(opts)
   local data = DB:GetData()
   local stats = data.statsPlayers or {}
   local kosPlayers = (data and data.players) or {}
+  local guilds = (data and data.guilds) or {}
+  local foreverNames = util and util.IsForeverNames and util:IsForeverNames() or false
   local hasGuild = (DB and DB.HasGuild) and function(g) return DB:HasGuild(g) end or function() return false end
 
   -- Cache sorted keys per sortKey so we don't re-sort on every keystroke.
@@ -807,8 +808,26 @@ local function BuildStats(opts)
 
       if ok then
         local classFile = _NormalizeClass(e.classFile) or _GuessClassFor(name, nil)
-        local isKos = (kosPlayers and kosPlayers[k]) ~= nil or (DB.HasPlayer and (DB:HasPlayer(displayName) or DB:HasPlayer(name)))
-        local isGuild = (guild ~= "") and hasGuild(guild)
+        local isKos = (kosPlayers and kosPlayers[k]) ~= nil
+        if not isKos and foreverNames then
+          -- Forever Stats keys and KoS keys share the canonical full-name key.
+          -- Check legacy display aliases directly without invoking DB lookup for
+          -- every historical Stats row on every GUI refresh.
+          local displayKey = util and util.PlayerKey and util:PlayerKey(displayName)
+          local nameKey = util and util.PlayerKey and util:PlayerKey(name)
+          isKos = (displayKey and kosPlayers[displayKey] ~= nil)
+            or (nameKey and kosPlayers[nameKey] ~= nil) or false
+        elseif not isKos then
+          isKos = DB.HasPlayer and (DB:HasPlayer(displayName) or DB:HasPlayer(name)) or false
+        end
+        local isGuild = false
+        if guild ~= "" then
+          if foreverNames then
+            isGuild = guilds[guild:lower()] ~= nil
+          else
+            isGuild = hasGuild(guild)
+          end
+        end
         local nameText = _ColorizeName(displayName or name, classFile)
         if util and util.AppendTags then
           nameText = util:AppendTags(nameText, isKos, isGuild)
@@ -1009,6 +1028,7 @@ end
     if id == 3 then
       id = 4
     end
+    self.activeTab = id
     -- Resize for certain tabs so they have room to breathe.
     if id == 4 then
       if not self._wasSize then
@@ -1057,6 +1077,11 @@ end
     end
     if self.tabPanels[id] then
       self.tabPanels[id]:Show()
+    end
+    -- Refresh the newly selected panel after data has been built. During initial
+    -- frame construction the panel references are assigned immediately after this.
+    if self._kosPanelsReady and self:IsShown() and GUI and GUI.RefreshAll then
+      GUI:RefreshAll()
     end
   end
 
@@ -1445,7 +1470,6 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       button2 = NO,
       OnAccept = function()
         if DB and DB.ClearStatsPlayers then DB:ClearStatsPlayers() end
-        if DB and DB.ClearLastAttackers then DB:ClearLastAttackers() end
         local Stats = _G.KillOnSight_MidnightStats
         if Stats and Stats.OnResetStats then
           pcall(Stats.OnResetStats, Stats)
@@ -1623,16 +1647,12 @@ local factionLabel = "-"
         DB:AddHonor(name, classFile)
       end
       if GUI and GUI.RefreshAll then GUI:RefreshAll() end
-      if RefreshStatsList then RefreshStatsList() end
-      RefreshDetail(keyLower)
     end)
 
     btnGuildKos:SetScript("OnClick", function()
       if guildName == "" or not DB.AddGuild or (DB.HasGuild and DB:HasGuild(guildName)) then return end
       DB:AddGuild(guildName, L.GUILD_KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")))
       if GUI and GUI.RefreshAll then GUI:RefreshAll() end
-      if RefreshStatsList then RefreshStatsList() end
-      RefreshDetail(keyLower)
     end)
 
     btnAdd:SetScript("OnClick", function()
@@ -1640,8 +1660,6 @@ local factionLabel = "-"
         DB:AddPlayer(name, L.KOS, nil, ((_G.KillOnSight_Util and _G.KillOnSight_Util:UnitPlayerName("player")) or UnitName("player")), classFile)
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
         if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.ScheduleRefresh then _G.KillOnSight_Nearby:ScheduleRefresh(true) end
-        if RefreshStatsList then RefreshStatsList() end
-        RefreshDetail(keyLower)
       end
     end)
 
@@ -1650,8 +1668,6 @@ local factionLabel = "-"
         DB:RemovePlayer(name)
         if GUI and GUI.RefreshAll then GUI:RefreshAll() end
         if _G.KillOnSight_Nearby and _G.KillOnSight_Nearby.ScheduleRefresh then _G.KillOnSight_Nearby:ScheduleRefresh(true) end
-        if RefreshStatsList then RefreshStatsList() end
-        RefreshDetail(keyLower)
       end
     end)
   end
@@ -2068,9 +2084,56 @@ local factionLabel = "-"
   cTargeted:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
   cTargeted:SetChecked(prof.targetedAlert ~= false)
 
+  -- Dedicated enemy-targeting sound choice, saved separately for each profile.
+  local targetSoundNames = {
+    {"high-threat", L.UI_TARGET_SOUND_HIGH_THREAT or "High Threat (Default)"},
+    {"nearby", L.UI_TARGET_SOUND_NEARBY or "Nearby Detection"},
+    {"radar", L.UI_TARGET_SOUND_RADAR or "Radar Sweep"},
+    {"siren", L.UI_TARGET_SOUND_SIREN or "Warning Siren"},
+    {"pulse", L.UI_TARGET_SOUND_PULSE or "Double Pulse"},
+    {"chime", L.UI_TARGET_SOUND_CHIME or "Alert Chime"},
+  }
+  local targetSoundKeys, targetSoundLabels = {}, {}
+  for _, item in ipairs(targetSoundNames) do
+    targetSoundKeys[item[1]] = true
+    targetSoundLabels[item[1]] = item[2]
+  end
+  local targetSoundLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  targetSoundLabel:SetPoint("TOPLEFT", cTargeted, "BOTTOMLEFT", 20, -14)
+  targetSoundLabel:SetText(L.UI_TARGET_SOUND_SELECT or "Targeting sound")
+  local ddTargetSound = CreateFrame("Frame", "KillOnSightTargetSoundDropdown", opt, "UIDropDownMenuTemplate")
+  ddTargetSound:SetPoint("TOPLEFT", targetSoundLabel, "BOTTOMLEFT", -18, -2)
+  UIDropDownMenu_SetWidth(ddTargetSound, 170)
+  local function RefreshTargetSound()
+    local key = ActiveProfile().targetedSoundChoice or "high-threat"
+    if not targetSoundKeys[key] then key = "high-threat" end
+    UIDropDownMenu_SetSelectedValue(ddTargetSound, key)
+    UIDropDownMenu_SetText(ddTargetSound, targetSoundLabels[key])
+  end
+  UIDropDownMenu_Initialize(ddTargetSound, function(self, level)
+    for _, item in ipairs(targetSoundNames) do
+      local key, label = item[1], item[2]
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = label
+      info.value = key
+      info.checked = (ActiveProfile().targetedSoundChoice or "high-threat") == key
+      info.func = function()
+        ActiveProfile().targetedSoundChoice = key
+        RefreshTargetSound()
+      end
+      UIDropDownMenu_AddButton(info, level)
+    end
+  end)
+  RefreshTargetSound()
+  local previewTargetSound = MakeButton(opt, L.UI_TARGET_SOUND_PREVIEW or "Preview", 90, 22)
+  previewTargetSound:SetPoint("LEFT", ddTargetSound, "RIGHT", -6, 2)
+  previewTargetSound:SetScript("OnClick", function()
+    if _G.KillOnSight_AlertAudio then _G.KillOnSight_AlertAudio:Play("targeted") end
+  end)
+
   local cFlash = MakeCheck(opt, L.UI_FLASH)
   _W("cFlash", cFlash)
-  cFlash:SetPoint("TOPLEFT", cTargeted, "BOTTOMLEFT", 0, -8)
+  cFlash:SetPoint("TOPLEFT", ddTargetSound, "BOTTOMLEFT", 18, -10)
   cFlash:SetChecked(prof.enableScreenFlash)
 
   local sAlertVolume = MakeSlider(opt, L.UI_ALERT_VOLUME or "Alert Volume", 0, 100, 10)
@@ -2382,6 +2445,7 @@ end)
     -- Alerts
     if cSound and cSound.SetChecked then cSound:SetChecked(prof.enableSound) end
     if cTargeted then cTargeted:SetChecked(prof.targetedAlert ~= false) end
+    RefreshTargetSound()
     if cFlash and cFlash.SetChecked then cFlash:SetChecked(prof.enableScreenFlash) end
     if sAlertVolume then sAlertVolume:SetValue(prof.alertVolume or 100) end
 
@@ -2469,6 +2533,7 @@ end)
 
     if w.cSound and w.cSound.SetChecked then w.cSound:SetChecked(p.enableSound) end
     if w.cTargeted then w.cTargeted:SetChecked(p.targetedAlert ~= false) end
+    RefreshTargetSound()
     if w.cFlash and w.cFlash.SetChecked then w.cFlash:SetChecked(p.enableScreenFlash) end
     if w.cNearby and w.cNearby.SetChecked then w.cNearby:SetChecked(p.showNearbyFrame ~= false) end
 
@@ -2532,14 +2597,17 @@ end
   frame._seenPanel = pSeen
   frame._attackersPanel = pAtk
   frame._statsPanel = pStats
+  frame._kosPanelsReady = true
 end
 
 
 
 
 function GUI:RefreshAll()
-  if not frame then return end
-  if frame._honorPanel and frame._honorPanel._list then
+  if not frame or not frame:IsShown() then return end
+  local activeTab = frame.activeTab or 1
+
+  if activeTab == 6 and frame._honorPanel and frame._honorPanel._list then
     local out = {}
     local data = DB:GetData()
     for key, e in pairs(data.honorPlayers or {}) do
@@ -2549,23 +2617,23 @@ function GUI:RefreshAll()
     end
     SortNewestEntries(out)
     frame._honorPanel._list:SetData(out)
-  end
-  if frame._playersPanel and frame._playersPanel._list then
+  elseif activeTab == 1 and frame._playersPanel and frame._playersPanel._list then
     frame._playersPanel._list:SetData(BuildPlayers())
-  end
-  if frame._guildsPanel and frame._guildsPanel._list then
+  elseif activeTab == 2 and frame._guildsPanel and frame._guildsPanel._list then
     frame._guildsPanel._list:SetData(BuildGuilds())
+  elseif activeTab == 4 and frame._statsPanel and frame._statsPanel._list then
+    -- The Stats panel refresh owns its search, sort, list data, and detail
+    -- selection. Building a default list first duplicates the full table pass.
+    if frame._statsPanel._Refresh then
+      frame._statsPanel:_Refresh()
+    else
+      frame._statsPanel._list:SetData(BuildStats())
+    end
   end
-  if frame._seenPanel and frame._seenPanel._list then
-    frame._seenPanel._list:SetData(BuildLastSeen())
-  end
-  if frame._attackersPanel and frame._attackersPanel._list then
+
+  if activeTab == 3 and frame._attackersPanel and frame._attackersPanel._list then
     frame._attackersPanel._list:SetData(BuildLastAttackers())
     if frame._attackersPanel._UpdateButtons then frame._attackersPanel:_UpdateButtons() end
-  end
-  if frame._statsPanel and frame._statsPanel._list then
-    frame._statsPanel._list:SetData(BuildStats())
-    if frame._statsPanel._Refresh then frame._statsPanel:_Refresh() end
   end
 end
 

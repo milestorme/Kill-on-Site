@@ -85,7 +85,7 @@ end
 -- Encounter tracking
 -- --------------------------------------------------
 
-function Stats:TouchEncounter(guid, name, classFile, guild)
+function Stats:TouchEncounter(guid, name, classFile, guild, metadataHandled)
   if Disabled() then return end
   guid = PublicGUID(guid)
   if not guid or guid == "" then return end
@@ -98,10 +98,10 @@ function Stats:TouchEncounter(guid, name, classFile, guild)
   local DB = GetDB()
   if not DB then return end
 
-  -- Keep metadata fresh (do not increment seenCount here)
-  if DB.NoteEnemySeen then
-    local full = name or cn
-    DB:NoteEnemySeen(full, classFile, guild, guid)
+  -- Detector owns metadata writes for ordinary observations. Other entry
+  -- points (such as a resolved combat outcome) keep this fallback write.
+  if not metadataHandled and DB.NoteEnemySeen then
+    DB:NoteEnemySeen(name or cn, classFile, guild, guid)
   end
 
   local now = time()

@@ -1,14 +1,12 @@
 -- Locale/koKR.lua
 local ADDON_NAME = ...
 KillOnSight_L_data = KillOnSight_L_data or {}
-KillOnSight_L_used = KillOnSight_L_used or {}
 KillOnSight_L = KillOnSight_L or {}
 
 if not KillOnSight_L.__kos_proxy then
   KillOnSight_L.__kos_proxy = true
   setmetatable(KillOnSight_L, {
     __index = function(_, k)
-      KillOnSight_L_used[k] = true
       local v = KillOnSight_L_data[k]
       if v == nil then
         return k -- fallback so missing keys are obvious
@@ -205,3 +203,21 @@ L.UI_HON_TAG = "Hon"
 
 L.UI_TARGETED_ALERT = "적 플레이어가 나를 대상으로 지정"
 L.UI_TARGETED_WARNING = "적이 나를 대상으로 지정: %s"
+
+-- Enemy-targeting sound selector (English fallback where translation is pending).
+L.UI_TARGET_SOUND_SELECT = L.UI_TARGET_SOUND_SELECT or 'Targeting sound'
+L.UI_TARGET_SOUND_PREVIEW = L.UI_TARGET_SOUND_PREVIEW or 'Preview'
+L.UI_TARGET_SOUND_HIGH_THREAT = L.UI_TARGET_SOUND_HIGH_THREAT or 'High Threat (Default)'
+L.UI_TARGET_SOUND_NEARBY = L.UI_TARGET_SOUND_NEARBY or 'Nearby Detection'
+L.UI_TARGET_SOUND_RADAR = L.UI_TARGET_SOUND_RADAR or 'Radar Sweep'
+L.UI_TARGET_SOUND_SIREN = L.UI_TARGET_SOUND_SIREN or 'Warning Siren'
+L.UI_TARGET_SOUND_PULSE = L.UI_TARGET_SOUND_PULSE or 'Double Pulse'
+L.UI_TARGET_SOUND_CHIME = L.UI_TARGET_SOUND_CHIME or 'Alert Chime'
+
+-- Profile actions and Guild-KoS removal labels.
+L.UI_PROFILE_EDIT = '편집'
+L.UI_PROFILE_RENAME = '프로필 이름 변경:'
+L.UI_PROFILE_ERR_EMPTY = '이름은 비워 둘 수 없습니다.'
+L.UI_PROFILE_ERR_EXISTS = '같은 이름의 프로필이 이미 있습니다.'
+L.UI_PROFILE_ERR_INVALID = '이 이름은 사용할 수 없습니다.'
+L.UI_REMOVE_GUILD_KOS = 'KoS 목록에서 길드 제거'

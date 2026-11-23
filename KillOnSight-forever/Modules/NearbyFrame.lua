@@ -2245,14 +2245,14 @@ end
 
 function Nearby:RescanVisibleUnits()
   local Detector = _G.KillOnSight_Detector
-  if not (Detector and Detector.CheckUnit) then return end
+  if not (Detector and Detector.ObserveUnit) then return end
 
   -- Prefer explicit unit tokens first.
   local tokens = { "target", "mouseover", "focus" }
   for i = 1, #tokens do
     local u = tokens[i]
     if UnitExists and UnitExists(u) then
-      pcall(function() Detector:CheckUnit(u, true) end)
+      pcall(function() Detector:ObserveUnit(u, true, "explicit_rescan") end)
     end
   end
 
@@ -2264,7 +2264,7 @@ function Nearby:RescanVisibleUnits()
         local plate = plates[i]
         local unit = plate and (plate.namePlateUnitToken or (plate.unitFrame and plate.unitFrame.unit))
         if unit and UnitExists and UnitExists(unit) then
-          pcall(function() Detector:CheckUnit(unit, true) end)
+          pcall(function() Detector:ObserveUnit(unit, true, "explicit_rescan") end)
         end
       end
     end
@@ -2275,7 +2275,7 @@ function Nearby:RescanVisibleUnits()
     for i = 1, 40 do
       local u = "nameplate" .. i
       if UnitExists(u) then
-        pcall(function() Detector:CheckUnit(u, true) end)
+        pcall(function() Detector:ObserveUnit(u, true, "explicit_rescan") end)
       end
     end
   end
@@ -2881,7 +2881,7 @@ end
 
 -- =============================================
 
-function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit)
+function Nearby:Seen(name, classFile, guild, kosType, level, guid, unit, statsMetadataHandled)
   if not name or name == "" then return end
   if not self.frame then self:Create() end
 
@@ -3048,7 +3048,7 @@ if unit and UnitFactionGroup then
   if fg and fg ~= "" then
     e.factionGroup = fg
     local DB = GetDB and GetDB()
-    if DB and DB.NoteEnemySeen then
+    if not statsMetadataHandled and DB and DB.NoteEnemySeen then
       pcall(function() DB:NoteEnemySeen(rawName or name, classFile, guild, playerGuid, fg) end)
     end
   end

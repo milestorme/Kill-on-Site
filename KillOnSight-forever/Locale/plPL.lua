@@ -1,14 +1,12 @@
 -- Locale/plPL.lua
 local ADDON_NAME = ...
 KillOnSight_L_data = KillOnSight_L_data or {}
-KillOnSight_L_used = KillOnSight_L_used or {}
 KillOnSight_L = KillOnSight_L or {}
 
 if not KillOnSight_L.__kos_proxy then
   KillOnSight_L.__kos_proxy = true
   setmetatable(KillOnSight_L, {
     __index = function(_, k)
-      KillOnSight_L_used[k] = true
       local v = KillOnSight_L_data[k]
       if v == nil then
         return k -- fallback so missing keys are obvious
@@ -176,3 +174,21 @@ L.UI_HON_TAG = "Hon"
 
 L.UI_TARGETED_ALERT = "Wróg bierze cię na cel"
 L.UI_TARGETED_WARNING = "WRÓG BIERZE CIĘ NA CEL: %s"
+
+-- Enemy-targeting sound selector (English fallback where translation is pending).
+L.UI_TARGET_SOUND_SELECT = L.UI_TARGET_SOUND_SELECT or 'Targeting sound'
+L.UI_TARGET_SOUND_PREVIEW = L.UI_TARGET_SOUND_PREVIEW or 'Preview'
+L.UI_TARGET_SOUND_HIGH_THREAT = L.UI_TARGET_SOUND_HIGH_THREAT or 'High Threat (Default)'
+L.UI_TARGET_SOUND_NEARBY = L.UI_TARGET_SOUND_NEARBY or 'Nearby Detection'
+L.UI_TARGET_SOUND_RADAR = L.UI_TARGET_SOUND_RADAR or 'Radar Sweep'
+L.UI_TARGET_SOUND_SIREN = L.UI_TARGET_SOUND_SIREN or 'Warning Siren'
+L.UI_TARGET_SOUND_PULSE = L.UI_TARGET_SOUND_PULSE or 'Double Pulse'
+L.UI_TARGET_SOUND_CHIME = L.UI_TARGET_SOUND_CHIME or 'Alert Chime'
+
+-- Profile actions and Guild-KoS removal labels.
+L.UI_PROFILE_EDIT = 'Edytuj'
+L.UI_PROFILE_RENAME = 'Zmień nazwę profilu:'
+L.UI_PROFILE_ERR_EMPTY = 'Nazwa nie może być pusta.'
+L.UI_PROFILE_ERR_EXISTS = 'Profil o tej nazwie już istnieje.'
+L.UI_PROFILE_ERR_INVALID = 'Tej nazwy nie można użyć.'
+L.UI_REMOVE_GUILD_KOS = 'Usuń gildię z listy KoS'

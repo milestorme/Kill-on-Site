@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Kill on Sight: Forever
-## Notes: Midnight & Forever fork (WPVP focused)
+## Title: Kill on Sight: Forever (4.0.0)
+## Notes: PvP awareness for WoW Forever 1.60.1
 ## Author: Milestorme
-## Version: 3.6.5
+## Version: 4.0.0
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
@@ -30,6 +30,7 @@ Locale\plPL.lua
 
 Midnight_Init.lua
 
+Modules\PlayerIdentity.lua
 Modules\Util.lua
 Modules\Database.lua
 Modules\AlertAudio.lua
@@ -44,3 +45,4 @@ Modules\Portrait.lua
 Modules\SpyImport.lua
 Modules\Midnight_Stats.lua
 Modules\Core.lua
+
