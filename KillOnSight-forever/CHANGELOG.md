@@ -1,3 +1,19 @@
+## 4.0.1 - Options menu cleanup
+
+### Improved
+- Reorganized the Options tab into clearer sections for KoS / Guild alerts, Target Alerts, and Nearby settings.
+- Moved the enemy-targeting toggle and sound selector out of the KoS / Guild alert controls.
+- Added a localized Target Alerts section heading across all 16 included locales.
+
+### Fixed
+- Run legacy per-realm data migration once so saved deletions and Stats resets are not re-imported on later loads.
+- Use full Forever player identities for Stats row search and KoS / Honor actions.
+- Keep Nearby row labels and secure targeting actions bound to the same player during combat.
+- Attribute PvP wins to the exact player victim reported by PARTY_KILL instead of the most recently observed enemy.
+- Fix adding the current target to Honor when the name field is empty.
+- Restore Forever aura-based stealth detection and recognize Shadowmeld spellcasts.
+- Ignore duplicate guild additions without replacing the saved guild entry or note.
+
 ## 4.0.0 - WoW Forever architecture rebuild
 
 ### Changed

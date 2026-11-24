@@ -399,28 +399,31 @@ function DB:Init()
   KillOnSightDB.global = KillOnSightDB.global or {}
   local realmDB = KillOnSightDB.global
 
-  -- One-time migration: if older builds stored per-realm DBs, merge them into the global DB.
-  if KillOnSightDB.realms and type(KillOnSightDB.realms) == "table" then
-    for _, old in pairs(KillOnSightDB.realms) do
-      if type(old) == "table" then
-        -- Merge profiles + assignments first
-        if type(old.profiles) == "table" then
-          realmDB.profiles = realmDB.profiles or {}
-          _MergeInto(realmDB.profiles, old.profiles)
-        end
-        if type(old.profileNameByChar) == "table" then
-          realmDB.profileNameByChar = realmDB.profileNameByChar or {}
-          _MergeInto(realmDB.profileNameByChar, old.profileNameByChar)
-        end
-        -- Merge main data tables (players/guilds/stats)
-        if type(old.data) == "table" then
-          realmDB.data = realmDB.data or {}
-          _MergeInto(realmDB.data, DEFAULTS.data) -- ensure structure
-          local sourceData = _PrepareRealmDataForMerge(old.data)
-          _MergeData(realmDB.data, sourceData)
+  -- One-time migration: older builds retained the source tables after merging.
+  -- Repeating the merge on every load resurrected deleted entries and reset Stats.
+  -- An existing global data table indicates a prior build already initialized it.
+  if not realmDB.legacyRealmMigrationComplete then
+    if type(realmDB.data) ~= "table" and type(KillOnSightDB.realms) == "table" then
+      for _, old in pairs(KillOnSightDB.realms) do
+        if type(old) == "table" then
+          if type(old.profiles) == "table" then
+            realmDB.profiles = realmDB.profiles or {}
+            _MergeInto(realmDB.profiles, old.profiles)
+          end
+          if type(old.profileNameByChar) == "table" then
+            realmDB.profileNameByChar = realmDB.profileNameByChar or {}
+            _MergeInto(realmDB.profileNameByChar, old.profileNameByChar)
+          end
+          if type(old.data) == "table" then
+            realmDB.data = realmDB.data or {}
+            _MergeInto(realmDB.data, DEFAULTS.data)
+            local sourceData = _PrepareRealmDataForMerge(old.data)
+            _MergeData(realmDB.data, sourceData)
+          end
         end
       end
     end
+    realmDB.legacyRealmMigrationComplete = true
   end
 
   -- Ensure defaults exist on the global DB
@@ -676,9 +679,21 @@ function DB:AddGuild(guild, listType, reason, addedBy)
   guild = norm(guild); if not guild then return false end
   local key = guild:lower()
   local d = self:GetData()
-  local existing = d.guilds[key]
-  local entry = MakeGuildEntry(guild, listType, reason, addedBy, existing)
-  if not existing then entry.addedOrder = NextListOrder(d) end
+  local existing
+  for storedKey, entry in pairs(d.guilds) do
+    if type(entry) == "table" then
+      local storedGuild = norm(entry.guild)
+      if (storedGuild and storedGuild:lower() == key) or (type(storedKey) == "string" and storedKey:lower() == key) then
+        existing = entry
+        break
+      end
+    end
+  end
+  -- Treat Add as idempotent. In particular, do not replace an existing
+  -- guild record with a blank reason when the Add button is clicked again.
+  if existing then return false end
+  local entry = MakeGuildEntry(guild, listType, reason, addedBy, nil)
+  entry.addedOrder = NextListOrder(d)
   d.guilds[key] = entry
   local N = _G.KillOnSight_Nearby
   if N and N.OnListChanged then pcall(function() N:OnListChanged("G", key) end) end

@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Kill on Sight: Forever (4.0.0)
-## Notes: PvP awareness for WoW Forever 1.60.1
+## Title: Kill on Sight: Forever
+## Notes: W-PvP awareness for WoW Forever 1.60.1
 ## Author: Milestorme
-## Version: 4.0.0
+## Version: 4.0.1
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB

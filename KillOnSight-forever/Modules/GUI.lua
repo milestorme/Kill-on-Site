@@ -781,17 +781,16 @@ local function BuildStats(opts)
       local displayName = name
       local util = _G.KillOnSight_Util
       if util and util.IsForeverNames and util:IsForeverNames() then
-        -- Forever's legacy realm is the surname, but migrated name may
-        -- already contain it. Prefer the canonical two-part database key.
-        displayName = tostring(k):gsub("%s*%-%s*", " ")
-        if not displayName:find(" ", 1, true) then
-          local full = e.fullName or name
-          full = tostring(full):gsub("%s*%-%s*", " ")
-          if not full:find(" ", 1, true) and e.realm and e.realm ~= "" then
-            full = full .. " " .. e.realm
-          end
-          displayName = full
+        -- Use the same full identity for display, search, and list actions.
+        local full = type(e.fullName) == "string" and e.fullName or ""
+        if not full:find(" ", 1, true) and e.realm and e.realm ~= "" then
+          local first = (e.name or name):match("^([^%s%-]+)") or (e.name or name)
+          full = first .. " " .. e.realm
         end
+        if not full:find(" ", 1, true) and type(k) == "string" and k:find(" ", 1, true) then
+          full = k:gsub("%s*%-%s*", " ")
+        end
+        displayName = full ~= "" and full or name
       elseif e.realm and e.realm ~= "" then
         displayName = name .. "-" .. e.realm
       elseif e.fullName and e.fullName:find("-", 1, true) then
@@ -802,8 +801,9 @@ local function BuildStats(opts)
       local ok = true
       if q and q ~= "" then
         local nl = (name or ""):lower()
+        local dl = (displayName or ""):lower()
         local gl = (guild or ""):lower()
-        ok = (nl:find(q, 1, true) ~= nil) or (gl:find(q, 1, true) ~= nil)
+        ok = (nl:find(q, 1, true) ~= nil) or (dl:find(q, 1, true) ~= nil) or (gl:find(q, 1, true) ~= nil)
       end
 
       if ok then
@@ -1236,7 +1236,8 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     local name = (honorBox:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
     local class
     if name == "" and UnitExists("target") and UnitIsPlayer("target") and UnitIsEnemy("player", "target") then
-      name = (GetUnitName and Get_G.KillOnSight_Util:UnitPlayerName("target")) or _G.KillOnSight_Util:UnitPlayerName("target") or ""
+      local util = _G.KillOnSight_Util
+      name = (util and util.UnitPlayerName and util:UnitPlayerName("target")) or ""
       class = select(2, UnitClass("target"))
     end
     if name == "" then return end
@@ -1580,6 +1581,17 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
 
     local name = e.name or keyLower
+    local identityUtil = _G.KillOnSight_Util
+    if identityUtil and identityUtil.IsForeverNames and identityUtil:IsForeverNames() then
+      if type(e.fullName) == "string" and e.fullName:find(" ", 1, true) then
+        name = e.fullName
+      elseif type(e.realm) == "string" and e.realm ~= "" then
+        local first = (e.name or keyLower):match("^([^%s%-]+)") or (e.name or keyLower)
+        name = first .. " " .. e.realm
+      elseif type(keyLower) == "string" and keyLower:find(" ", 1, true) then
+        name = keyLower
+      end
+    end
     local classFile = _NormalizeClass(e.classFile) or _GuessClassFor(name, nil)
     dName:SetText(_ColorizeName(name, classFile))
     local classLabel = "-"
@@ -2081,7 +2093,6 @@ local factionLabel = "-"
 
   local cTargeted = MakeCheck(opt, L.UI_TARGETED_ALERT)
   _W("cTargeted", cTargeted)
-  cTargeted:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
   cTargeted:SetChecked(prof.targetedAlert ~= false)
 
   -- Dedicated enemy-targeting sound choice, saved separately for each profile.
@@ -2099,7 +2110,7 @@ local factionLabel = "-"
     targetSoundLabels[item[1]] = item[2]
   end
   local targetSoundLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  targetSoundLabel:SetPoint("TOPLEFT", cTargeted, "BOTTOMLEFT", 20, -14)
+  targetSoundLabel:SetPoint("TOPLEFT", cTargeted, "BOTTOMLEFT", 20, -12)
   targetSoundLabel:SetText(L.UI_TARGET_SOUND_SELECT or "Targeting sound")
   local ddTargetSound = CreateFrame("Frame", "KillOnSightTargetSoundDropdown", opt, "UIDropDownMenuTemplate")
   ddTargetSound:SetPoint("TOPLEFT", targetSoundLabel, "BOTTOMLEFT", -18, -2)
@@ -2133,7 +2144,7 @@ local factionLabel = "-"
 
   local cFlash = MakeCheck(opt, L.UI_FLASH)
   _W("cFlash", cFlash)
-  cFlash:SetPoint("TOPLEFT", ddTargetSound, "BOTTOMLEFT", 18, -10)
+  cFlash:SetPoint("TOPLEFT", cSound, "BOTTOMLEFT", 0, -8)
   cFlash:SetChecked(prof.enableScreenFlash)
 
   local sAlertVolume = MakeSlider(opt, L.UI_ALERT_VOLUME or "Alert Volume", 0, 100, 10)
@@ -2146,12 +2157,20 @@ local factionLabel = "-"
   end)
   _G[sAlertVolume:GetName().."Text"]:SetText((L.UI_ALERT_VOLUME or "Alert Volume") .. ": " .. (prof.alertVolume or 100) .. "%")
 
+  -- Target alerts have their own enable toggle and sound selector, separate from KoS/Guild alerts.
+  local tTargetAlerts = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  tTargetAlerts:SetPoint("TOPLEFT", sAlertVolume, "BOTTOMLEFT", -8, -28)
+  tTargetAlerts:SetText(L.UI_TARGETED_ALERTS_HEADING or "Target Alerts")
+
+  cTargeted:ClearAllPoints()
+  cTargeted:SetPoint("TOPLEFT", tTargetAlerts, "BOTTOMLEFT", 0, -10)
+
 
 
 
   -- Nearby
   local tNearby = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  tNearby:SetPoint("TOPLEFT", sAlertVolume, "BOTTOMLEFT", -8, -28)
+  tNearby:SetPoint("TOPLEFT", ddTargetSound, "BOTTOMLEFT", -2, -24)
   tNearby:SetText(L.UI_NEARBY_HEADING or "Nearby")
 
   -- Nearby window options

@@ -177,13 +177,25 @@ local function PopEngagementForName(name)
   return nil
 end
 
-local function TouchOutcome(kind, nameHint, maxAge)
+local function TouchOutcome(kind, nameHint, maxAge, guidHint)
   if Disabled() then return end
   local DB = GetDB()
   if not DB then return end
 
   local name, classFile, guild, guid
-  if nameHint and nameHint ~= "" then
+  if guidHint and guidHint ~= "" then
+    guid = PublicGUID(guidHint)
+    if not guid or not IsPlayerGUID(guid) then return end
+    local Detector = _G.KillOnSight_Detector
+    if Detector and Detector.PopEngagementForGUID then
+      name, classFile, guild, guid = Detector:PopEngagementForGUID(guid)
+    end
+    if not name then
+      local encounter = activeEncounters[guid]
+      name = (encounter and encounter.name) or nameHint
+      guid = guid or guidHint
+    end
+  elseif nameHint and nameHint ~= "" then
     name, classFile, guild, guid = PopEngagementForName(nameHint)
   else
     name, classFile, guild, guid = PopMostRecentEngagement(maxAge)
@@ -226,8 +238,9 @@ end
 function Stats:OnEvent(event, ...)
   if Disabled() then return end
   if event == "PLAYER_PVP_KILLS_CHANGED" then
+    -- This event does not identify the victim. Keep the timestamp only to
+    -- suppress a duplicate pet-death heuristic; PARTY_KILL credits the win.
     recentPlayerWins[#recentPlayerWins + 1] = Clock()
-    TouchOutcome("win")
     return
   end
 
@@ -268,8 +281,16 @@ petFrame:SetScript("OnEvent", function(_, event, ...)
   end
   local a, b = ...
   if event == "PARTY_KILL" then
+    local playerGUID = SafeGUID("player")
+    local killer = PublicGUID(a)
     local victim = PublicGUID(b)
     if victim then confirmedKills[victim] = Clock() end
+    -- PARTY_KILL supplies attacker and victim GUIDs. Only credit the player's
+    -- own kill, and resolve the exact victim rather than a recent engagement.
+    if playerGUID and killer == playerGUID and IsPlayerGUID(victim) then
+      TouchOutcome("win", nil, nil, victim)
+      recentPlayerWins[#recentPlayerWins + 1] = Clock()
+    end
     return
   end
   if event ~= "UNIT_DIED" then return end

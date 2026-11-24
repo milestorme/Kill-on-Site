@@ -1754,6 +1754,20 @@ end
 
 
 local function UpdateScroll(self)
+  -- Secure macro attributes cannot be changed during combat. Freeze the row
+  -- bindings and labels together so expiry or scrolling cannot make a row
+  -- display one player while its click action still targets another.
+  if InCombatLockdown and InCombatLockdown() then
+    if not self._combatRowsRefreshQueued then
+      self._combatRowsRefreshQueued = true
+      self:_RunOrDefer(function()
+        self._combatRowsRefreshQueued = false
+        UpdateScroll(self)
+      end)
+    end
+    return
+  end
+
   local list = self:GetSortedList()
   local total = #list
   local offset = FauxScrollFrame_GetOffset(self.scroll)

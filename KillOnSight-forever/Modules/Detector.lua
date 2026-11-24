@@ -96,11 +96,19 @@ end
 local function UnitHasStealthAura(unit)
   if not unit or unit == "" then return false end
 
-  if C_UnitAuras and C_UnitAuras.GetAuraDataBySpellID then
+  local auraLookup = C_UnitAuras and (C_UnitAuras.GetAuraDataBySpellID or C_UnitAuras.GetUnitAuraBySpellID)
+  -- WoW Forever exposes GetUnitAuraBySpellID; other clients use
+  -- C_UnitAuras.GetAuraDataBySpellID. Accept the global form as well for
+  -- client builds that publish the Forever API outside the namespace.
+  if not auraLookup and type(_G.GetUnitAuraBySpellID) == "function" then
+    auraLookup = _G.GetUnitAuraBySpellID
+  end
+
+  if type(auraLookup) == "function" then
     for i = 1, #STEALTH_AURA_SPELLIDS do
       local id = STEALTH_AURA_SPELLIDS[i]
-      local aura = C_UnitAuras.GetAuraDataBySpellID(unit, id)
-      if aura then
+      local ok, aura = pcall(auraLookup, unit, id)
+      if ok and aura then
         return true, (aura.name or (GetSpellInfo and GetSpellInfo(id))) or "Stealth"
       end
     end
@@ -323,13 +331,14 @@ local STEALTH_CAST_IDS = {
   [1784] = "Stealth", [1785] = "Stealth", [1786] = "Stealth", [1787] = "Stealth",
   [1856] = "Vanish", [1857] = "Vanish",
   [5215] = "Prowl", [6783] = "Prowl", [9913] = "Prowl",
+  [58984] = "Shadowmeld",
 }
 local function StealthCastName(spellID)
   local kind = STEALTH_CAST_IDS[spellID]
   if kind then return kind end
   if C_Spell and C_Spell.GetSpellName then
     local ok, name = pcall(C_Spell.GetSpellName, spellID)
-    if ok and type(name) == "string" and (name == "Stealth" or name == "Prowl" or name == "Vanish") then
+    if ok and type(name) == "string" and (name == "Stealth" or name == "Prowl" or name == "Vanish" or name == "Shadowmeld") then
       return name
     end
   end
@@ -440,6 +449,16 @@ function Detector:PopEngagementForName(name)
 
   recentEngagements[key] = nil
   return (e.name or clean), e.classFile, e.guild, e.guid
+end
+
+function Detector:PopEngagementForGUID(guid)
+  if type(guid) ~= "string" or guid == "" then return nil end
+  for key, e in pairs(recentEngagements) do
+    if type(e) == "table" and e.guid == guid then
+      recentEngagements[key] = nil
+      return (e.name or key), e.classFile, e.guild, e.guid
+    end
+  end
 end
 
 -- Clear the engagement queue (used for best-effort win/loss attribution).
