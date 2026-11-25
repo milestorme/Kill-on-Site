@@ -1,3 +1,9 @@
+## 4.0.2 - Complete stealth rank detection
+
+### Fixed
+- Detect all Rogue Stealth ranks, both Rogue Vanish ranks and their stealth auras, and all three Druid Prowl ranks.
+- Restore aura-based Hidden alerts when an enemy player is using a higher-rank Stealth, Vanish, or Prowl aura.
+
 ## 4.0.1 - Options menu cleanup
 
 ### Improved

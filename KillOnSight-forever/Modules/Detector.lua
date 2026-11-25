@@ -36,10 +36,18 @@ end
 -- Stealth/vanish detection via UNIT_AURA on target/mouseover/nameplates.
 -- We use spellIDs to avoid localization issues.
 local STEALTH_AURA_SPELLIDS = {
-  1784,   -- Rogue: Stealth
+  1784,   -- Rogue: Stealth rank 1
+  1785,   -- Rogue: Stealth rank 2
+  1786,   -- Rogue: Stealth rank 3
+  1787,   -- Rogue: Stealth rank 4
+  1788,   -- Rogue: Stealth rank 5 (client/variant compatibility)
   1856,   -- Rogue: Vanish (often grants/refreshes Stealth)
+  1857,   -- Rogue: Vanish rank 2
   11327,  -- Rogue: Vanish (older/alternate aura id seen on some clients)
+  11329,  -- Rogue: Vanish rank 2 aura
   5215,   -- Druid: Prowl
+  6783,   -- Druid: Prowl rank 2
+  9913,   -- Druid: Prowl rank 3
   58984,  -- Night Elf: Shadowmeld
 }
 
@@ -328,7 +336,7 @@ local goneNameplates = {}
 local recentStealthCasts = {}
 local lastCastCleanupAt = 0
 local STEALTH_CAST_IDS = {
-  [1784] = "Stealth", [1785] = "Stealth", [1786] = "Stealth", [1787] = "Stealth",
+  [1784] = "Stealth", [1785] = "Stealth", [1786] = "Stealth", [1787] = "Stealth", [1788] = "Stealth",
   [1856] = "Vanish", [1857] = "Vanish",
   [5215] = "Prowl", [6783] = "Prowl", [9913] = "Prowl",
   [58984] = "Shadowmeld",
