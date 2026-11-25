@@ -193,3 +193,4 @@ L.UI_PROFILE_ERR_EMPTY = 'Nazwa nie może być pusta.'
 L.UI_PROFILE_ERR_EXISTS = 'Profil o tej nazwie już istnieje.'
 L.UI_PROFILE_ERR_INVALID = 'Tej nazwy nie można użyć.'
 L.UI_REMOVE_GUILD_KOS = 'Usuń gildię z listy KoS'
+L.UI_NEARBY_LAST_NAMES = "Pokazuj nazwiska w Nearby"

@@ -222,3 +222,4 @@ L.UI_PROFILE_ERR_EMPTY = '名称不能为空。'
 L.UI_PROFILE_ERR_EXISTS = '已存在同名配置。'
 L.UI_PROFILE_ERR_INVALID = '无法使用此名称。'
 L.UI_REMOVE_GUILD_KOS = '从 KoS 名单移除公会'
+L.UI_NEARBY_LAST_NAMES = "在附近列表中显示姓氏"

@@ -193,3 +193,4 @@ L.UI_PROFILE_ERR_EMPTY = 'Il nome non può essere vuoto.'
 L.UI_PROFILE_ERR_EXISTS = 'Esiste già un profilo con questo nome.'
 L.UI_PROFILE_ERR_INVALID = 'Questo nome non può essere usato.'
 L.UI_REMOVE_GUILD_KOS = 'Rimuovi la gilda dalla lista KoS'
+L.UI_NEARBY_LAST_NAMES = "Mostra i cognomi in Nearby"

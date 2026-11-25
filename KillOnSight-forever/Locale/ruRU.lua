@@ -222,3 +222,4 @@ L.UI_PROFILE_ERR_EMPTY = 'Имя не может быть пустым.'
 L.UI_PROFILE_ERR_EXISTS = 'Профиль с таким именем уже существует.'
 L.UI_PROFILE_ERR_INVALID = 'Это имя нельзя использовать.'
 L.UI_REMOVE_GUILD_KOS = 'Удалить гильдию из списка KoS'
+L.UI_NEARBY_LAST_NAMES = "Показывать фамилии в Nearby"

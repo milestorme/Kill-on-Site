@@ -225,3 +225,4 @@ L.UI_PROFILE_ERR_EMPTY = 'Der Name darf nicht leer sein.'
 L.UI_PROFILE_ERR_EXISTS = 'Ein Profil mit diesem Namen existiert bereits.'
 L.UI_PROFILE_ERR_INVALID = 'Dieser Name kann nicht verwendet werden.'
 L.UI_REMOVE_GUILD_KOS = 'Gilde aus KoS entfernen'
+L.UI_NEARBY_LAST_NAMES = "Nachnamen in Nearby anzeigen"

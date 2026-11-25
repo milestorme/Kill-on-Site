@@ -193,3 +193,4 @@ L.UI_PROFILE_ERR_EMPTY = 'O nome não pode estar vazio.'
 L.UI_PROFILE_ERR_EXISTS = 'Já existe um perfil com esse nome.'
 L.UI_PROFILE_ERR_INVALID = 'Este nome não pode ser utilizado.'
 L.UI_REMOVE_GUILD_KOS = 'Remover guilda da lista KoS'
+L.UI_NEARBY_LAST_NAMES = "Mostrar apelidos no Nearby"

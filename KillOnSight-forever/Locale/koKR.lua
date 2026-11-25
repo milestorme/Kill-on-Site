@@ -222,3 +222,4 @@ L.UI_PROFILE_ERR_EMPTY = '이름은 비워 둘 수 없습니다.'
 L.UI_PROFILE_ERR_EXISTS = '같은 이름의 프로필이 이미 있습니다.'
 L.UI_PROFILE_ERR_INVALID = '이 이름은 사용할 수 없습니다.'
 L.UI_REMOVE_GUILD_KOS = 'KoS 목록에서 길드 제거'
+L.UI_NEARBY_LAST_NAMES = "Nearby에 성 표시"

@@ -2,7 +2,7 @@
 ## Title: Kill on Sight: Forever
 ## Notes: W-PvP awareness for WoW Forever 1.60.1
 ## Author: Milestorme
-## Version: 4.0.2
+## Version: 4.0.3
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB

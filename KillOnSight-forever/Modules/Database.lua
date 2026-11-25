@@ -78,6 +78,8 @@ local DEFAULTS = {
     -- Spy-style sound when a non-KoS enemy is first added to the nearby list.
     -- (Separate from KoS alerts and separate from stealth-detection sounds.)
     nearbySound = true,
+    -- Show full WoW Forever First Last names in Nearby by default.
+    nearbyShowLastNames = true,
     -- Nearby window is always ultra-minimal (no toggle)
     nearbyMinimal = true,
     nearbyRowIcons = true,

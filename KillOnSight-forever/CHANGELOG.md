@@ -1,3 +1,9 @@
+## 4.0.3 - Nearby surname display option
+
+### Added
+- Added an option to hide surnames in the Nearby window while keeping full character names for tracking and targeting.
+- Adjusted Nearby auto-width sizing so the minimal window can shrink to fit shorter displayed names.
+
 ## 4.0.2 - Complete stealth rank detection
 
 ### Fixed

@@ -193,3 +193,4 @@ L.UI_PROFILE_ERR_EMPTY = '名前を空欄にはできません。'
 L.UI_PROFILE_ERR_EXISTS = '同じ名前のプロフィールが既に存在します。'
 L.UI_PROFILE_ERR_INVALID = 'この名前は使用できません。'
 L.UI_REMOVE_GUILD_KOS = 'KoSリストからギルドを削除'
+L.UI_NEARBY_LAST_NAMES = "Nearbyに姓を表示"

@@ -1299,12 +1299,14 @@ function Nearby:_ApplyRowWidths(frameWidth)
   end
 end
 
-function Nearby:_SetWidthTarget(target)
+function Nearby:_SetWidthTarget(target, immediate)
   if not (self.frame and self.frame.SetWidth) then return end
 
   local DB = GetDB()
   local prof = DB and DB:GetProfile() or {}
-  local minW = prof.nearbyMinWidth or 216
+  -- The original frame width is only the startup size. Keep a modest floor
+  -- for the row icon and padding, but allow short visible names to shrink it.
+  local minW = prof.nearbyMinWidth or 120
   local maxW = prof.nearbyMaxWidth or 450
 
   target = Clamp(target or minW, minW, maxW)
@@ -1314,6 +1316,12 @@ function Nearby:_SetWidthTarget(target)
   -- In combat on Retail/BGs, SetWidth can be protected/taint; defer to PLAYER_REGEN_ENABLED.
   if InCombatLockdown and InCombatLockdown() then
     self._widthTarget = target
+    SafeSetWidth(self, target)
+    return
+  end
+  if immediate then
+    self._widthAnimating = false
+    self.frame:SetScript("OnUpdate", nil)
     SafeSetWidth(self, target)
     return
   end
@@ -1357,7 +1365,7 @@ function Nearby:_SetWidthTarget(target)
   end)
 end
 
-function Nearby:UpdateDynamicWidth()
+function Nearby:UpdateDynamicWidth(immediate)
   if not (self.frame and self.frame.IsShown and self.frame:IsShown()) then return end
 
   local DB = GetDB()
@@ -1385,12 +1393,20 @@ function Nearby:UpdateDynamicWidth()
 
   -- Text padding: left inset (18) + right inset (10) + frame padding (24)
   local desired = math.floor(maxText + 18 + 10 + 24 + 0.5)
-  self:_SetWidthTarget(desired)
+  self:_SetWidthTarget(desired, immediate == true)
 end
 
-local function RowLabel(e, tNow)
+local function RowLabel(e, tNow, showLastNames)
   local c = ClassColorHex(e.class)
   local lvl = (e.level and e.level > 0) and tostring(e.level) or "??"
+  local displayName = e.name or ""
+
+  -- WoW Forever character names are stored and targeted as "First Last".
+  -- This setting changes only the label drawn in Nearby; e.name/fullName stay
+  -- untouched for persistence, matching, announcements and target clicks.
+  if showLastNames == false and IsRegionalUniqueNamesEnabled() then
+    displayName = displayName:match("^(%S+)") or displayName
+  end
 
   -- Hidden (stealth/prowl/vanish) is a state separate from KoS/Guild tagging.
   -- We render it as a small icon inline with the text to avoid overlapping
@@ -1415,7 +1431,7 @@ local function RowLabel(e, tNow)
 
   local line = ("%s%s|r |cffbbbbbbLv%s|r%s%s"):format(
     c,
-    e.name,
+    displayName,
     lvl,
     tag,
     zone
@@ -1778,6 +1794,11 @@ local function UpdateScroll(self)
     self.countFS:SetText(string.format(L.UI_NEARBY_COUNT, total))
   end
 
+  -- Read the active profile before composing row labels. Besides controlling
+  -- icons, this carries display-only Nearby preferences into every row.
+  local DB = GetDB()
+  local prof = DB and DB:GetProfile()
+
   for i = 1, visible do
     local idx = offset + i
     local row = self.rows[i]
@@ -1802,7 +1823,7 @@ local function UpdateScroll(self)
         end
       end
 
-      local label = RowLabel(e, tNow)
+      local label = RowLabel(e, tNow, not (prof and prof.nearbyShowLastNames == false))
       ApplyRowNameFontForText(self, row, label)
       row.text:SetText(label)
 
@@ -1811,9 +1832,6 @@ local function UpdateScroll(self)
         row._desiredTextWidth = row.text:GetStringWidth() or 0
       end
 
-
-      local DB = GetDB()
-      local prof = DB and DB:GetProfile()
 
       -- Row icons (class + skull for KoS/Guild)
       if prof and prof.nearbyRowIcons ~= false and row.icon then

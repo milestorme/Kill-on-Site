@@ -228,3 +228,4 @@ L.UI_PROFILE_ERR_EMPTY = 'Navnet må ikke være tomt.'
 L.UI_PROFILE_ERR_EXISTS = 'Der findes allerede en profil med det navn.'
 L.UI_PROFILE_ERR_INVALID = 'Dette navn kan ikke bruges.'
 L.UI_REMOVE_GUILD_KOS = 'Fjern guild fra KoS'
+L.UI_NEARBY_LAST_NAMES = "Vis efternavne i Nearby"

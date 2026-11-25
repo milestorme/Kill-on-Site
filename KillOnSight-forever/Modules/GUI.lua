@@ -2218,7 +2218,23 @@ cAutoHide:SetScript("OnClick", function(self)
   end
 end)
 
-local anchorBelowAutoHide = cAutoHide
+local cNearbyLastNames = MakeCheck(opt, L.UI_NEARBY_LAST_NAMES or "Show last names in Nearby")
+cNearbyLastNames:SetPoint("TOPLEFT", cAutoHide, "BOTTOMLEFT", 0, -10)
+cNearbyLastNames:SetChecked(prof.nearbyShowLastNames ~= false)
+cNearbyLastNames:SetScript("OnClick", function(self)
+  local p = ActiveProfile()
+  p.nearbyShowLastNames = self:GetChecked()
+  if KillOnSight_Nearby and KillOnSight_Nearby.Refresh then
+    KillOnSight_Nearby:Refresh()
+    -- The row labels have now changed. Re-measure and apply the corresponding
+    -- width immediately so hiding surnames also lets the window shrink.
+    if KillOnSight_Nearby.UpdateDynamicWidth then
+      KillOnSight_Nearby:UpdateDynamicWidth(true)
+    end
+  end
+end)
+
+local anchorBelowAutoHide = cNearbyLastNames
 local anchorOffset = -10
 
 
@@ -2473,6 +2489,9 @@ end)
     if cNearbySound and cNearbySound.SetChecked then cNearbySound:SetChecked(prof.nearbySound ~= false) end
     if cNearbyLock and cNearbyLock.SetChecked then cNearbyLock:SetChecked(prof.nearbyFrameLocked == true) end
     if cAutoHide and cAutoHide.SetChecked then cAutoHide:SetChecked(prof.nearbyAutoHide ~= false) end
+    if cNearbyLastNames and cNearbyLastNames.SetChecked then
+      cNearbyLastNames:SetChecked(prof.nearbyShowLastNames ~= false)
+    end
 
     -- Scale
     prof.nearbyFrame = prof.nearbyFrame or {}
