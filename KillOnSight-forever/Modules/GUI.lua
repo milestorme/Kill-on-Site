@@ -64,6 +64,11 @@ local function MakeEditBox(parent, w)
   return e
 end
 
+local function OpenShare(kind, names)
+  local share = _G.KillOnSight_Share
+  if share and share.Open then share:Open(kind, names) end
+end
+
 -------------------------------------------------
 -- KoS Notes (reason) column + editor
 -------------------------------------------------
@@ -1109,8 +1114,20 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   local remBtn = MakeButton(pPlayers, L.UI_REMOVE, 80, 22)
   remBtn:SetPoint("TOPRIGHT", pPlayers, "TOPRIGHT", -10, -10)
 
+  local sharePlayers = MakeButton(pPlayers, L.UI_SHARE or "Share", 70, 22)
+  sharePlayers:SetPoint("RIGHT", remBtn, "LEFT", -6, 0)
+  sharePlayers:Disable()
+
   addBtn = MakeButton(pPlayers, L.UI_ADD, 80, 22)
-  addBtn:SetPoint("RIGHT", remBtn, "LEFT", -6, 0)
+  addBtn:SetPoint("RIGHT", sharePlayers, "LEFT", -6, 0)
+  sharePlayers:SetScript("OnClick", function()
+    local key = pPlayers._selected or (pPlayers._list and pPlayers._list.selectedKey)
+    local data = DB:GetData()
+    local entry = key and data.players and data.players[key]
+    if not entry or (entry.type and entry.type ~= L.KOS) then return end
+    local _, displayName = _StatsForKoS(data, entry.name)
+    OpenShare("KOS", {displayName or entry.name})
+  end)
 
   local nameLabel = pPlayers:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   nameLabel:SetTextColor(1, 0.82, 0)
@@ -1138,6 +1155,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   pPlayers._selected = nil
   list.onSelect = function(k)
     pPlayers._selected = k
+    sharePlayers:Enable()
     local e = DB:GetData().players[k]
     if e and e.name then nameBox:SetText(e.name) end
   end
@@ -1195,6 +1213,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
     pPlayers._selected = nil
     if pPlayers._list then pPlayers._list.selectedKey = nil end
+    sharePlayers:Disable()
     nameBox:SetText("")
     GUI:RefreshAll()
     UpdateAddState()
@@ -1210,8 +1229,16 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   frame.tabPanels[6] = pHonor
   local honorRemove = MakeButton(pHonor, L.UI_REMOVE, 80, 22)
   honorRemove:SetPoint("TOPRIGHT", pHonor, "TOPRIGHT", -10, -10)
+  local honorShare = MakeButton(pHonor, L.UI_SHARE or "Share", 70, 22)
+  honorShare:SetPoint("RIGHT", honorRemove, "LEFT", -6, 0)
+  honorShare:Disable()
   local honorAdd = MakeButton(pHonor, L.UI_ADD, 80, 22)
-  honorAdd:SetPoint("RIGHT", honorRemove, "LEFT", -6, 0)
+  honorAdd:SetPoint("RIGHT", honorShare, "LEFT", -6, 0)
+  honorShare:SetScript("OnClick", function()
+    local key = pHonor._selected or (pHonor._list and pHonor._list.selectedKey)
+    local entry = key and (DB:GetData().honorPlayers or {})[key]
+    if entry and entry.name then OpenShare("HONOR", {entry.name}) end
+  end)
   local honorLabel = pHonor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   honorLabel:SetText(L.UI_NAME)
   honorLabel:SetPoint("TOPLEFT", pHonor, "TOPLEFT", 90, -14)
@@ -1229,6 +1256,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   pHonor._list = honorList
   honorList.onSelect = function(key)
     pHonor._selected = key
+    honorShare:Enable()
     local entry = (DB:GetData().honorPlayers or {})[key]
     if entry then honorBox:SetText(entry.name) end
   end
@@ -1251,6 +1279,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     DB:RemoveHonor(entry and entry.name or honorBox:GetText())
     pHonor._selected = nil
     honorList.selectedKey = nil
+    honorShare:Disable()
     honorBox:SetText("")
     GUI:RefreshAll()
   end)
@@ -1265,8 +1294,17 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   local gRemBtn = MakeButton(pGuilds, L.UI_REMOVE, 80, 22)
   gRemBtn:SetPoint("TOPRIGHT", pGuilds, "TOPRIGHT", -10, -10)
 
+  local gShareBtn = MakeButton(pGuilds, L.UI_SHARE or "Share", 70, 22)
+  gShareBtn:SetPoint("RIGHT", gRemBtn, "LEFT", -6, 0)
+  gShareBtn:Disable()
+
   local gAddBtn = MakeButton(pGuilds, L.UI_ADD, 80, 22)
-  gAddBtn:SetPoint("RIGHT", gRemBtn, "LEFT", -6, 0)
+  gAddBtn:SetPoint("RIGHT", gShareBtn, "LEFT", -6, 0)
+  gShareBtn:SetScript("OnClick", function()
+    local key = pGuilds._selected or (pGuilds._list and pGuilds._list.selectedKey)
+    local entry = key and (DB:GetData().guilds or {})[key]
+    if entry and entry.guild then OpenShare("GUILD", {entry.guild}) end
+  end)
 
   local guildLabel = pGuilds:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   guildLabel:SetTextColor(1, 0.82, 0)
@@ -1293,6 +1331,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   pGuilds._selected = nil
   gList.onSelect = function(k)
     pGuilds._selected = k
+    gShareBtn:Enable()
     local e = DB:GetData().guilds[k]
     if e and e.guild then guildBox:SetText(e.guild) end
   end
@@ -1314,6 +1353,7 @@ local pPlayers = CreateFrame("Frame", nil, frame)
     end
     pGuilds._selected = nil
     if pGuilds._list then pGuilds._list.selectedKey = nil end
+    gShareBtn:Disable()
     guildBox:SetText("")
     GUI:RefreshAll()
   end)
@@ -1557,6 +1597,30 @@ local pPlayers = CreateFrame("Frame", nil, frame)
   local btnGuildKos = MakeButton(dPane, (L.UI_ADD_GUILD_KOS), 170, 22)
   btnGuildKos:SetPoint("BOTTOM", dPane, "BOTTOM", 0, 96)
 
+  local btnShareStats = MakeButton(dPane, L.UI_SHARE or "Share", 170, 22)
+  btnShareStats:SetPoint("BOTTOM", dPane, "BOTTOM", 0, 122)
+  btnShareStats:Disable()
+  btnShareStats:SetScript("OnClick", function()
+    local key = pStats._selected or (pStats._list and pStats._list.selectedKey)
+    local entry = key and (DB:GetData().statsPlayers or {})[key]
+    if not entry then
+      Print("Select a Stats entry to share.")
+      return
+    end
+    local name = entry.fullName or entry.name or key
+    if _G.KillOnSight_Util and _G.KillOnSight_Util.IsForeverNames and _G.KillOnSight_Util:IsForeverNames() then
+      if not name:find(" ", 1, true) and entry.realm and entry.realm ~= "" then
+        local first = (entry.name or key):match("^([^%s%-]+)") or (entry.name or key)
+        name = first .. " " .. entry.realm
+      elseif not name:find(" ", 1, true) and type(key) == "string" and key:find(" ", 1, true) then
+        name = key
+      end
+    elseif entry.realm and entry.realm ~= "" and not name:find("-", 1, true) then
+      name = name .. "-" .. entry.realm
+    end
+    OpenShare("STATS", {name})
+  end)
+
   -- Forward-declared so the Add/Remove buttons can force a list refresh.
   local RefreshStatsList
 
@@ -1577,8 +1641,11 @@ local pPlayers = CreateFrame("Frame", nil, frame)
       btnRem:Disable()
       btnHonor:Disable()
       btnGuildKos:Disable()
+      btnShareStats:Disable()
       return
     end
+
+    btnShareStats:Enable()
 
     local name = e.name or keyLower
     local identityUtil = _G.KillOnSight_Util

@@ -1,3 +1,24 @@
+## 4.0.6 - Share selected entries
+
+### Added
+- Add one-entry sharing from KoS, Guild KoS, Honor, Stats, and Nearby player menus.
+- Prepare readable chat messages and show the shared name in a local clickable import link across supported chat channels.
+- Require review and confirmation before importing a shared entry.
+- Translate the new Share actions, dialogs, import prompts, and feedback across all 16 included locales.
+
+## 4.0.5 - Crowd-control callouts
+
+### Added
+- Automatically say “Sapped!”, “Sheeped!”, or “Banished!” when Sap, Polymorph, or Banish is applied to you in the open world.
+- Include Polymorph’s sheep, turtle, and pig forms.
+- Keep these callouts disabled in battlegrounds, arenas, dungeons, and raids, following KillOnSight’s instance restrictions.
+
+## 4.0.4 - Alert banner overlap fix
+
+### Fixed
+- Prevented the targeted-player and stealth notification banners from overlapping when both appear at the same time.
+- Recentered the remaining banner after the other alert closes.
+
 ## 4.0.3 - Nearby surname display option
 
 ### Added

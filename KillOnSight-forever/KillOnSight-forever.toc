@@ -2,7 +2,7 @@
 ## Title: Kill on Sight: Forever
 ## Notes: W-PvP awareness for WoW Forever 1.60.1
 ## Author: Milestorme
-## Version: 4.0.3
+## Version: 4.0.6
 ## Category: Combat
 ## IconTexture: Interface/AddOns/KillOnSight/icon.tga
 ## SavedVariables: KillOnSightDB
@@ -33,8 +33,10 @@ Midnight_Init.lua
 Modules\PlayerIdentity.lua
 Modules\Util.lua
 Modules\Database.lua
+Modules\Share.lua
 Modules\AlertAudio.lua
 Modules\TargetAlert.lua
+Modules\ControlAlerts.lua
 Modules\Notifier.lua
 Modules\NearbyFrame.lua
 Modules\Detector.lua

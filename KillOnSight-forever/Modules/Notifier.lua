@@ -145,6 +145,24 @@ local function EnsureFlashFrame()
 end
 
 
+local function RepositionAlertWindows()
+  local targeted = Notifier._targetAlertWindow
+  local stealth = Notifier._spyAlertWindow
+  local showTargeted = targeted and targeted:IsShown()
+
+  -- Keep both alert banners centered, stacking them when they are visible at
+  -- the same time. Reflow on hide so a remaining alert returns to the usual
+  -- single-banner position.
+  if targeted then
+    targeted:ClearAllPoints()
+    targeted:SetPoint("TOP", UIParent, "TOP", 0, -215)
+  end
+  if stealth then
+    stealth:ClearAllPoints()
+    stealth:SetPoint("TOP", UIParent, "TOP", 0, showTargeted and -263 or -215)
+  end
+end
+
 local function EnsureSpyAlertWindow(targeted)
   local field = targeted and "_targetAlertWindow" or "_spyAlertWindow"
   if Notifier[field] then return Notifier[field] end
@@ -155,6 +173,7 @@ local function EnsureSpyAlertWindow(targeted)
   f:SetClampedToScreen(true)
   f:SetHeight(42)
   f:Hide()
+  f:SetScript("OnHide", RepositionAlertWindows)
 
   f:SetBackdrop({
     bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16,
@@ -269,6 +288,7 @@ function Notifier:ShowSpyStealthAlert(name, classFile, targeted)
   -- Show + animate (hold then fade)
   f:Show()
   f:SetAlpha(1)
+  RepositionAlertWindows()
 
   local hold, fade = 6.0, 1.2
   if not targeted and self.GetStealthTiming then
