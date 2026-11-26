@@ -19,7 +19,7 @@ Kill on Sight is a PvP awareness addon for WoW Forever. It records hostile playe
 - **Notes:** Save notes for KoS players, tracked guilds, and Honor players. Note icons in the relevant lists show the note on hover and open the editor when clicked.
 - **Share entries:** Share one selected KoS target, guild, Honor entry, or Stats player at a time. The Share window selects a ready-to-copy message; paste it into chat to send. Non-users see readable text, while KillOnSight users can click the link to review and import the entry. Shares include the name only; notes remain local.
 - **Supported chat:** Share links work in guild and officer, party and raid, instance and battleground, whisper (including Battle.net whisper), say, yell, community, and custom channel messages.
-- **What's New popup:** On the first login after an addon version changes, show a Blizzard-style note with that version's changelog highlights. The version is saved after the note appears, so it will not show again on later logins or `/reload`.
+- **What's New popup:** On the first login after an addon version changes, show a Blizzard-style note containing the complete latest changelog section. The version is saved after the note appears, so it will not show again on later logins or `/reload`.
 - **Peer version checking:** Exchange installed versions with guild and party/raid members, and show a chat notice when a newer version is received.
 - **Minimap button:** Left-click to open the main window. Right-click to add your current player target to KoS. Its position and visibility are managed by the minimap button library.
 - **Profiles:** Create, copy, rename, reset, and delete settings profiles. Nearby layout and alert options are saved per profile.
@@ -66,6 +66,10 @@ Only Spy KoS entries are imported. Existing KillOnSight entries are not duplicat
 ## Version checking
 
 KillOnSight sends its installed version to guild members on login and to party/raid members on login or when joining a group. If it receives a newer version from another KillOnSight user, it prints an update notice once for that version. This is a peer check: it does not query the web, so it learns about a newer build only after a member running that build announces it. Use `/kos version` to see your installed version.
+
+## Building the What's New popup
+
+The game cannot read `CHANGELOG.md` directly. Before packaging a release, update the top changelog section and the TOC version, then run `python Tools/generate_whats_new.py` from the addon directory. The script checks that both versions match and compiles every heading and bullet from that newest changelog section into `Modules/WhatsNew.lua`, which the game loads for the popup.
 
 ## Installation
 

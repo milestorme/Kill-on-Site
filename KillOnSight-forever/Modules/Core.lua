@@ -6,7 +6,7 @@ local Core = CreateFrame("Frame")
 
 local function ShowWhatsNewOnce()
   local db = _G.KillOnSight_DB
-  if not db or not db.realmDB or not StaticPopupDialogs or not StaticPopup_Show then return end
+  if not db or not db.realmDB or not CreateFrame or not UIParent then return end
 
   local getMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
   local version = getMetadata and getMetadata(ADDON_NAME, "Version")
@@ -15,27 +15,66 @@ local function ShowWhatsNewOnce()
   local saved = db.realmDB
   if saved.whatsNewSeenVersion == version then return end
 
-  local dialogKey = "KILLONSIGHT_WHATS_NEW"
-  if not StaticPopupDialogs[dialogKey] then
-    StaticPopupDialogs[dialogKey] = {
-      text = "%s\n\n%s",
-      button1 = L.UI_CLOSE,
-      timeout = 0,
-      whileDead = true,
-      hideOnEscape = true,
-      preferredIndex = 3,
-    }
-  end
-
   local title = string.format(L.UI_WHATS_NEW_TITLE, version)
-  local body = L["UI_WHATS_NEW_" .. version:gsub("%.", "_")]
-  if not body then return end
+  local changelog = _G.KillOnSight_WhatsNew
+  if not changelog or changelog.version ~= version or not changelog.body then return end
+  local body = changelog.body
 
-  local dialog = StaticPopup_Show(dialogKey, title, body)
-  if dialog then
-    -- Save at display time: relogs and /reload won't repeat this version's notice.
-    saved.whatsNewSeenVersion = version
+  local dialog = _G.KillOnSight_WhatsNewFrame
+  if not dialog then
+    dialog = CreateFrame("Frame", "KillOnSight_WhatsNewFrame", UIParent, "BackdropTemplate")
+    dialog:SetSize(570, 420)
+    dialog:SetPoint("CENTER")
+    dialog:SetFrameStrata("DIALOG")
+    dialog:SetClampedToScreen(true)
+    dialog:SetMovable(true)
+    dialog:EnableMouse(true)
+    if dialog.SetBackdrop then
+      dialog:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 },
+      })
+    end
+
+    local titleBar = CreateFrame("Frame", nil, dialog)
+    titleBar:SetPoint("TOPLEFT", 12, -8)
+    titleBar:SetPoint("TOPRIGHT", -12, -8)
+    titleBar:SetHeight(38)
+    titleBar:EnableMouse(true)
+    titleBar:RegisterForDrag("LeftButton")
+    titleBar:SetScript("OnDragStart", function() dialog:StartMoving() end)
+    titleBar:SetScript("OnDragStop", function() dialog:StopMovingOrSizing() end)
+
+    dialog.title = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    dialog.title:SetPoint("CENTER")
+
+    dialog.scroll = CreateFrame("ScrollFrame", nil, dialog, "UIPanelScrollFrameTemplate")
+    dialog.scroll:SetPoint("TOPLEFT", 22, -54)
+    dialog.scroll:SetPoint("BOTTOMRIGHT", -38, 52)
+    dialog.content = CreateFrame("Frame", nil, dialog.scroll)
+    dialog.content:SetWidth(486)
+    dialog.scroll:SetScrollChild(dialog.content)
+    dialog.body = dialog.content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    dialog.body:SetPoint("TOPLEFT", 8, -6)
+    dialog.body:SetWidth(462)
+    dialog.body:SetJustifyH("LEFT")
+    dialog.body:SetJustifyV("TOP")
+
+    dialog.close = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+    dialog.close:SetSize(120, 24)
+    dialog.close:SetPoint("BOTTOM", 0, 16)
+    dialog.close:SetText(L.UI_CLOSE)
+    dialog.close:SetScript("OnClick", function() dialog:Hide() end)
   end
+
+  dialog.title:SetText(title)
+  dialog.body:SetText(body)
+  dialog.content:SetHeight(math.max(dialog.body:GetStringHeight() + 14, dialog.scroll:GetHeight()))
+  dialog:Show()
+  -- Save at display time: relogs and /reload won't repeat this version's notice.
+  saved.whatsNewSeenVersion = version
 end
 
 -- Midnight: instances can return protected 'secret values' for unit data.

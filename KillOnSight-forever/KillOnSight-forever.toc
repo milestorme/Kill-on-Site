@@ -33,6 +33,7 @@ Midnight_Init.lua
 Modules\PlayerIdentity.lua
 Modules\Util.lua
 Modules\Database.lua
+Modules\WhatsNew.lua
 Modules\Share.lua
 Modules\AlertAudio.lua
 Modules\TargetAlert.lua

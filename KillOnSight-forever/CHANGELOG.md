@@ -6,6 +6,7 @@
 - Show a Blizzard-style What's New popup on the first login after each addon version change, with a saved version marker to prevent repeats on later logins or reloads.
 - Exchange versions with guild and party/raid members, and show a chat warning once for each newer version received. Add `/kos version` to display the installed version.
 - Add localized sharing, What's New, version-check, and command text across all 16 included locales.
+- Generate the in-game What's New text from every heading and bullet in the newest changelog section, keeping the popup aligned with the release notes.
 
 ## 4.0.5 - Crowd-control callouts
 
