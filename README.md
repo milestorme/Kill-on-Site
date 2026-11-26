@@ -1,82 +1,75 @@
-# Kill on Sight (KoS)
+<p align="center">
+  <img src="assets/killonsight-banner.png" alt="Kill on Sight — PvP Awareness for World of Warcraft" width="100%">
+</p>
 
-**Author:** Milestorme
+<h1 align="center">Kill on Sight</h1>
 
-Kill on Sight is a lightweight PvP awareness addon that tracks hostile players you’ve marked as **KoS** (Kill on Sight) and optionally highlights enemies from **tracked guilds**. It provides a Spy-like nearby list, alerts, and optional stealth detection support across multiple game versions.
+<p align="center"><strong>Know who is nearby. Remember who matters.</strong></p>
 
-## Features
+Kill on Sight (KoS) is a PvP awareness addon that tracks hostile players and guilds, records encounters, and helps you recognize threats nearby. This repository contains separate packages for several WoW clients; features vary by client because their APIs differ.
 
-- **KoS list**: Add/remove players and get alerts when they’re seen nearby.
-- **Guild tracking**: Track hostile players belonging to specific guilds ("Guild-KoS").
-- **Nearby window**
-  - Sorts by most recent **Last seen**
-  - Optional row icons (class/skull), per-row fade timers, scaling, transparency
-  - Auto-hide when empty
-  - One-click actions (Add KoS / Add Guild) with visual tags
-- **Notifications**
-  - Chat message, screen flash, and optional sound
-  - Separate stealth detection banner + sound (when enabled)
-  - Throttling to prevent spam
-- **Attackers / Stats UI**
-  - Attackers list
-  - Enemy statistics: first seen, last seen, seen count, wins/losses
-  - Sorting and reset controls
-- **Sync**
-  - Sync KoS/Guild entries with guild (when available)
-  - Changelog pruning to reduce SavedVariables bloat
+## Choose the package for your game
 
-- **Notes (KoS)**
-  - Optional per-player note icon on the KoS tab
-  - Mouseover shows the full note text; click to create/edit/clear
+| WoW client | Repository folder | Notes |
+|---|---|---|
+| Retail before Midnight (11.x) | `KillOnSight/` | Uses the Retail API branch. Stealth and attacker tracking depend on events available in that client version. |
+| Midnight / Retail 12.x | `KillOnSight-midnight/` | Nearby detection uses enemy nameplates because the client restricts combat-log data. Some classic features, including the Attackers list and stealth alerts, are unavailable or limited in this branch. |
+| Classic Era and TBC Anniversary | `KillOnSight/` | Classic feature set includes stealth detection and the Attackers list; guild Sync is available in supported Classic/TBC builds. |
+| WoW Forever 1.60.1 | `KillOnSight-forever/` | Uses First Last character names without realm names. Includes one-entry chat sharing, clickable import links, a version-specific What's New note, and peer version checking. This package does not use Guild Sync. |
 
-## Spy KoS Import
+Use the package that matches your client. Do not combine files from different package folders.
 
-KillOnSight can import KoS entries from **Spy** if Spy has been enabled at least once.
+## Core features
 
-### How to Import
-1. Enable **Spy**
-2. Log in once (or `/reload`) so Spy’s SavedVariables load
-3. Run:
-   ```
-   /kos importspy
-   ```
-4. (Optional) Disable Spy afterwards
+- **KoS and Guild KoS:** Keep player and guild threat lists, with notes and nearby identification.
+- **Nearby:** Review detected enemies, their class and guild when known, recent sightings, and KoS/Honor status. Right-click a player for available actions.
+- **Alerts:** Configure chat notices, sound, screen flash, and enemy-targeting alerts where supported by the client.
+- **Enemy Statistics:** Track sightings, first and last seen, class, guild, faction, and PvP outcomes where supported.
+- **Honor list:** Keep a separate list of respected players, with notes and visual tags.
+- **Spy import:** Import KoS entries from Spy after its SavedVariables have been created.
 
-### Notes
-- Only **KoS entries** are imported
-- Existing KillOnSight entries are **not duplicated**
-- If Spy has no KoS entries, nothing is imported and a chat message is shown
-- Imported notes/reasons from Spy are stored safely and ignored by core KoS logic
-- KillOnSight behavior and detection logic are unchanged
+## WoW Forever sharing and update features
+
+These features are currently in the WoW Forever package:
+
+- Share one selected KoS target, guild, Honor entry, or Stats player; Nearby also has a Share action.
+- Copy a readable message into supported chats, including guild, party/raid, whispers, and `/say`. Non-users see the name and share type as text. KillOnSight users can click the link, review the entry, and confirm an import.
+- Shares include the selected name only. Notes remain local and are not sent.
+- The What's New popup shows the complete changelog section for the installed version once on first login after updating. It remembers the version shown, so it does not repeat on `/reload` or later logins.
+- The peer version checker exchanges addon versions with guild and group members and reports a newer version when one is announced. It does not check CurseForge or the web. Use `/kos version` to see the installed version.
 
 ## Commands
 
-- `/kos show` — Toggle the main window
-- `/kos help` — Print command help
-- `/kos add <name>` — Add a player to KoS
-- `/kos remove <name>` — Remove a player from KoS
-- `/kos addguild <guild>` — Add a guild to Guild-KoS
-- `/kos removeguild <guild>` — Remove a guild from Guild-KoS
-- `/kos list` — List current entries
-- `/kos sync` — Trigger a sync
-- `/kos importspy` — Import KoS entries from Spy
+Common commands (availability may vary by package):
 
-## Installation
+- `/kos` or `/kos show` — Toggle the main window.
+- `/kos help` — Show command help.
+- `/kos add <name>` and `/kos remove <name>` — Manage a KoS player.
+- `/kos addguild <guild>` and `/kos removeguild <guild>` — Manage a Guild KoS entry.
+- `/kos list` — List entries.
+- `/kos importspy` — Import KoS entries from Spy.
+- `/kos sync` — Trigger Guild Sync in supported Classic/TBC builds only; not available in the WoW Forever package.
+- `/kos version` — Show the installed version in WoW Forever.
 
-1. Download the addon from [Curseforge](https://www.curseforge.com/wow/addons/kill-on-sight).
-2. Extract into your WoW AddOns folder:
-   - Retail: `World of Warcraft/_retail_/Interface/AddOns/`
-   - Classic-era variants: <br>`World of Warcraft/_classic_/Interface/AddOns/` <br>
-                           `World of Warcraft/_classic_era_/Interface/AddOns/`<br>
-                           `World of Warcraft/_anniversary_/Interface/AddOns/` <br>
-3. Ensure the folder is **exactly**: `Interface/AddOns/KillOnSight/`
-4. Restart WoW (or `/reload`).
+## Manual installation
+
+1. Download or open the repository and choose the package folder for your WoW client.
+2. Copy the addon's `KillOnSight` folder (the one containing its `.toc` file) into that client's `Interface/AddOns/` directory.
+3. Confirm the final path is `.../Interface/AddOns/KillOnSight/`, then restart WoW or run `/reload`.
+
+Typical AddOns locations:
+
+- **Retail and Midnight:** `World of Warcraft/_retail_/Interface/AddOns/`
+- **Classic Era:** `World of Warcraft/_classic_era_/Interface/AddOns/`
+- **Classic Anniversary / TBC Anniversary:** `World of Warcraft/_anniversary_/Interface/AddOns/`
+- **WoW Forever:** `World of Warcraft/_forever_/Interface/AddOns/`
+
+If you install from a downloaded ZIP, extract the matching package and place its addon folder at the path above. Do not copy the outer repository package directory as the addon folder unless that directory itself contains the `.toc` file.
 
 ## Localization
 
-Included locales (major languages):
+The included packages support multiple locales. Coverage differs by package; check its locale files for the languages included in that build.
 
-- enUS, deDE, frFR, esES, esMX, itIT, ptBR, ptPT, ruRU, koKR, zhCN, zhTW, jaJP, nlNL, daDK, plPL
+## License
 
-If a translation is missing for a key, the addon falls back to showing the key name (so gaps are obvious).
-
+MIT
