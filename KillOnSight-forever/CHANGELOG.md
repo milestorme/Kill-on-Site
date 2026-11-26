@@ -1,10 +1,11 @@
-## 4.0.6 - Share selected entries
+## 4.0.6 - Sharing and update awareness
 
 ### Added
-- Add one-entry sharing from KoS, Guild KoS, Honor, Stats, and Nearby player menus.
-- Prepare readable chat messages and show the shared name in a local clickable import link across supported chat channels.
-- Require review and confirmation before importing a shared entry.
-- Translate the new Share actions, dialogs, import prompts, and feedback across all 16 included locales.
+- Share one selected KoS target, Guild KoS entry, Honor entry, or Stats player from its list or context menu. The Nearby player menu also offers Share.
+- Copy a readable name-share message into guild, officer, group, raid, instance, battleground, whisper, Battle.net whisper, say, yell, community, emote, or custom channel chat. KillOnSight users see a clickable link to review and import the single entry; notes are not included.
+- Show a Blizzard-style What's New popup on the first login after each addon version change, with a saved version marker to prevent repeats on later logins or reloads.
+- Exchange versions with guild and party/raid members, and show a chat warning once for each newer version received. Add `/kos version` to display the installed version.
+- Add localized sharing, What's New, version-check, and command text across all 16 included locales.
 
 ## 4.0.5 - Crowd-control callouts
 

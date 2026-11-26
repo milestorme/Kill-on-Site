@@ -25,6 +25,7 @@ L.ADDED_GUILD = "%s에 길드 추가: %s"
 L.ADDED_PLAYER = "%s에 플레이어 추가: %s"
 L.ADDON_PREFIX = "KILLONSIGHT"
 L.CMD_HELP = "명령어: /kos help | show | add [이름] | remove <이름> | addguild <길드> | removeguild <길드> | list | statsprune"
+L.CMD_VERSION = '/kos version - 설치된 애드온 버전 표시.'
 L.GUILD_KOS = "길드-KoS"
 L.HIDDEN = "은신"
 L.KOS = "KoS"
@@ -41,6 +42,8 @@ L.UI_ALERT_NEW = "Alert on new nearby enemy"
 L.UI_ATTACKED_AT = "공격 받음"
 L.UI_CLEAR = "지우기"
 L.UI_CLOSE = "닫기"
+L.UI_WHATS_NEW_TITLE = "KillOnSight %s 새로운 기능"
+L.UI_WHATS_NEW_4_0_6 = "• 선택한 KoS, 길드 KoS, 명예 또는 통계 항목 하나를 공유합니다.\n• 주변 목록의 플레이어를 공유합니다.\n• KillOnSight 사용자는 공유 항목을 확인하고 가져올 수 있습니다."
 L.UI_SHARE = "공유"
 L.UI_SHARE_DIALOG_TITLE = "선택한 항목 공유"
 L.UI_SHARE_COPY_HINT = "Ctrl+C를 눌러 복사한 뒤 채팅에 붙여넣고 Enter를 누르세요."
@@ -114,6 +117,10 @@ L.UI_LIST_GUILDS = "길드: %s"
 
 
 L.MSG_LOADED = "로드됨. /kos show 입력"
+L.MSG_NEWER_VERSION = '더 새로운 KillOnSight 버전을 확인했습니다: %s'
+L.MSG_CURRENT_VERSION = '현재 버전: %s'
+L.MSG_UPDATE_HINT = '평소 이용하는 애드온 배포처에서 업데이트하세요.'
+L.MSG_VERSION = 'KillOnSight 버전: %s'
 L.UI_NEARBY_HEADER = "이름 / 레벨 / 시간"
 
 

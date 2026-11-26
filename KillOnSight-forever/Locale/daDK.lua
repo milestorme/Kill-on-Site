@@ -25,6 +25,7 @@ L.ADDED_GUILD = "Guild tilføjet til %s: %s"
 L.ADDED_PLAYER = "Spiller tilføjet til %s: %s"
 L.ADDON_PREFIX = "KILLONSIGHT"
 L.CMD_HELP = "Kommandoer: /kos help | show | add [navn] | remove <navn> | addguild <guild> | removeguild <guild> | list | statsprune"
+L.CMD_VERSION = '/kos version - Vis den installerede addonversion.'
 L.GUILD_KOS = "Guild-KoS"
 L.HIDDEN = "Skjult"
 L.KOS = "KoS"
@@ -41,6 +42,8 @@ L.UI_ALERT_NEW = "Alert on new nearby enemy"
 L.UI_ATTACKED_AT = "Angrebet"
 L.UI_CLEAR = "Ryd"
 L.UI_CLOSE = "Luk"
+L.UI_WHATS_NEW_TITLE = "Nyt i KillOnSight %s"
+L.UI_WHATS_NEW_4_0_6 = "• Del én valgt KoS-, guild-KoS-, æres- eller statistikpost.\n• Del en spiller fra listen over spillere i nærheden.\n• KillOnSight-brugere kan gennemgå og importere den delte post."
 L.UI_SHARE = "Del"
 L.UI_SHARE_DIALOG_TITLE = "Del valgt post"
 L.UI_SHARE_COPY_HINT = "Tryk Ctrl+C for at kopiere beskeden, indsæt den i chatten, og tryk Enter."
@@ -114,6 +117,10 @@ L.UI_LIST_GUILDS = "Guilds: %s"
 
 
 L.MSG_LOADED = "Indlæst. Skriv /kos show"
+L.MSG_NEWER_VERSION = 'En nyere KillOnSight-version blev fundet: %s'
+L.MSG_CURRENT_VERSION = 'Din version: %s'
+L.MSG_UPDATE_HINT = 'Opdater via din sædvanlige addon-downloadkilde.'
+L.MSG_VERSION = 'KillOnSight-version: %s'
 L.UI_NEARBY_HEADER = "Navn / Level / Tid"
 
 

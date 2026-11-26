@@ -25,6 +25,7 @@ L.ADDED_GUILD = "已将公会加入 %s：%s"
 L.ADDED_PLAYER = "已将玩家加入 %s：%s"
 L.ADDON_PREFIX = "KILLONSIGHT"
 L.CMD_HELP = "命令：/kos help | show | add [名字] | remove <名字> | addguild <公会> | removeguild <公会> | list | statsprune"
+L.CMD_VERSION = '/kos version - 显示已安装的插件版本。'
 L.GUILD_KOS = "公会-KoS"
 L.HIDDEN = "潜行"
 L.KOS = "KoS"
@@ -41,6 +42,8 @@ L.UI_ALERT_NEW = "Alert on new nearby enemy"
 L.UI_ATTACKED_AT = "被攻击"
 L.UI_CLEAR = "清除"
 L.UI_CLOSE = "关闭"
+L.UI_WHATS_NEW_TITLE = "KillOnSight %s 更新内容"
+L.UI_WHATS_NEW_4_0_6 = "• 分享一个选中的 KoS、公会 KoS、荣誉或统计条目。\n• 分享附近列表中的玩家。\n• KillOnSight 用户可以查看并导入分享的条目。"
 L.UI_SHARE = "分享"
 L.UI_SHARE_DIALOG_TITLE = "分享所选条目"
 L.UI_SHARE_COPY_HINT = "按 Ctrl+C 复制此消息，然后粘贴到聊天框并按 Enter。"
@@ -114,6 +117,10 @@ L.UI_LIST_GUILDS = "公会：%s"
 
 
 L.MSG_LOADED = "已加载。输入 /kos show"
+L.MSG_NEWER_VERSION = '检测到更新的 KillOnSight 版本：%s'
+L.MSG_CURRENT_VERSION = '当前版本：%s'
+L.MSG_UPDATE_HINT = '请通过你常用的插件下载渠道更新。'
+L.MSG_VERSION = 'KillOnSight 版本：%s'
 L.UI_NEARBY_HEADER = "名字 / 等级 / 时间"
 
 

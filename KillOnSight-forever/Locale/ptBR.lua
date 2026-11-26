@@ -25,6 +25,7 @@ L.ADDED_GUILD = "Guilda adicionada a %s: %s"
 L.ADDED_PLAYER = "Jogador adicionado a %s: %s"
 L.ADDON_PREFIX = "KILLONSIGHT"
 L.CMD_HELP = "Comandos: /kos help | show | add [nome] | remove <nome> | addguild <guilda> | removeguild <guilda> | list | statsprune"
+L.CMD_VERSION = '/kos version - Mostrar a versão instalada do addon.'
 L.GUILD_KOS = "KoS-Guilda"
 L.HIDDEN = "Oculto"
 L.KOS = "KoS"
@@ -41,6 +42,8 @@ L.UI_ALERT_NEW = "Alert on new nearby enemy"
 L.UI_ATTACKED_AT = "Atacado"
 L.UI_CLEAR = "Limpar"
 L.UI_CLOSE = "Fechar"
+L.UI_WHATS_NEW_TITLE = "Novidades do KillOnSight %s"
+L.UI_WHATS_NEW_4_0_6 = "• Compartilhe uma entrada selecionada de KoS, KoS de guilda, Honra ou Estatísticas.\n• Compartilhe um jogador da lista de próximos.\n• Usuários do KillOnSight podem revisar e importar a entrada compartilhada."
 L.UI_SHARE = "Compartilhar"
 L.UI_SHARE_DIALOG_TITLE = "Compartilhar entrada selecionada"
 L.UI_SHARE_COPY_HINT = "Pressione Ctrl+C para copiar a mensagem, cole no chat e pressione Enter."
@@ -114,6 +117,10 @@ L.UI_LIST_GUILDS = "Guildas: %s"
 
 
 L.MSG_LOADED = "Carregado. Digite /kos show"
+L.MSG_NEWER_VERSION = 'Foi detectada uma versão mais recente do KillOnSight: %s'
+L.MSG_CURRENT_VERSION = 'Sua versão: %s'
+L.MSG_UPDATE_HINT = 'Atualize pela sua fonte habitual de addons.'
+L.MSG_VERSION = 'Versão do KillOnSight: %s'
 L.UI_NEARBY_HEADER = "Nome / Nível / Hora"
 
 

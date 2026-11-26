@@ -4,6 +4,40 @@ local L = KillOnSight_L
 
 local Core = CreateFrame("Frame")
 
+local function ShowWhatsNewOnce()
+  local db = _G.KillOnSight_DB
+  if not db or not db.realmDB or not StaticPopupDialogs or not StaticPopup_Show then return end
+
+  local getMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+  local version = getMetadata and getMetadata(ADDON_NAME, "Version")
+  if not version or version == "" then return end
+
+  local saved = db.realmDB
+  if saved.whatsNewSeenVersion == version then return end
+
+  local dialogKey = "KILLONSIGHT_WHATS_NEW"
+  if not StaticPopupDialogs[dialogKey] then
+    StaticPopupDialogs[dialogKey] = {
+      text = "%s\n\n%s",
+      button1 = L.UI_CLOSE,
+      timeout = 0,
+      whileDead = true,
+      hideOnEscape = true,
+      preferredIndex = 3,
+    }
+  end
+
+  local title = string.format(L.UI_WHATS_NEW_TITLE, version)
+  local body = L["UI_WHATS_NEW_" .. version:gsub("%.", "_")]
+  if not body then return end
+
+  local dialog = StaticPopup_Show(dialogKey, title, body)
+  if dialog then
+    -- Save at display time: relogs and /reload won't repeat this version's notice.
+    saved.whatsNewSeenVersion = version
+  end
+end
+
 -- Midnight: instances can return protected 'secret values' for unit data.
 -- We hard-disable Nearby/Detector processing inside PvP and PvE instances.
 
@@ -157,6 +191,83 @@ local function Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage("|cff00d0ff"..L.ADDON_PREFIX..":|r "..msg)
 end
 
+local VERSION_PREFIX = "KOS_VERSION"
+local getAddonMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+local ADDON_VERSION = tostring((getAddonMetadata and getAddonMetadata(ADDON_NAME, "Version")) or "0")
+local sentVersionThisGroup = false
+local sentVersionToGuild = nil
+
+local function VersionParts(version)
+  if type(version) ~= "string" or not version:match("^%d+%.%d+%.?%d*$") then return nil end
+  local parts = {}
+  for part in version:gmatch("%d+") do
+    parts[#parts + 1] = tonumber(part) or 0
+  end
+  return parts
+end
+
+local function IsNewerVersion(remoteVersion)
+  local remoteParts = VersionParts(tostring(remoteVersion or ""))
+  local localParts = VersionParts(ADDON_VERSION)
+  if not remoteParts or not localParts then return false end
+  for i = 1, math.max(#remoteParts, #localParts) do
+    local remotePart, localPart = remoteParts[i] or 0, localParts[i] or 0
+    if remotePart ~= localPart then return remotePart > localPart end
+  end
+  return false
+end
+
+local registerAddonMessagePrefix = (C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix) or RegisterAddonMessagePrefix
+local sendAddonMessage = (C_ChatInfo and C_ChatInfo.SendAddonMessage) or SendAddonMessage
+if type(registerAddonMessagePrefix) == "function" then
+  pcall(registerAddonMessagePrefix, VERSION_PREFIX)
+end
+
+local function AnnounceVersionToGuild()
+  local guildName = GetGuildInfo and GetGuildInfo("player")
+  if not guildName then
+    sentVersionToGuild = nil
+    return
+  end
+  if sentVersionToGuild == guildName or type(sendAddonMessage) ~= "function" then return end
+  sendAddonMessage(VERSION_PREFIX, ADDON_VERSION, "GUILD")
+  sentVersionToGuild = guildName
+end
+
+local function AnnounceVersionToGroup()
+  local grouped = (IsInRaid and IsInRaid()) or (IsInGroup and IsInGroup())
+  if not grouped then
+    sentVersionThisGroup = false
+    return
+  end
+  if sentVersionThisGroup or type(sendAddonMessage) ~= "function" then return end
+  sendAddonMessage(VERSION_PREFIX, ADDON_VERSION, (IsInRaid and IsInRaid()) and "RAID" or "PARTY")
+  sentVersionThisGroup = true
+end
+
+local function AnnounceVersion()
+  AnnounceVersionToGuild()
+  AnnounceVersionToGroup()
+end
+
+local function CheckPeerVersion(remoteVersion)
+  remoteVersion = tostring(remoteVersion or "")
+  if not IsNewerVersion(remoteVersion) then return end
+  local db = _G.KillOnSight_DB
+  local saved = db and db.realmDB
+  if not saved then return end
+  saved.newerVersionsSeen = saved.newerVersionsSeen or {}
+  if saved.newerVersionsSeen[remoteVersion] then return end
+  saved.newerVersionsSeen[remoteVersion] = true
+  Print(string.format(L.MSG_NEWER_VERSION, remoteVersion))
+  Print(string.format(L.MSG_CURRENT_VERSION, ADDON_VERSION))
+  Print(L.MSG_UPDATE_HINT)
+end
+
+local function ShowAddonVersion()
+  Print(string.format(L.MSG_VERSION, ADDON_VERSION))
+end
+
 -- Nearby list population relies heavily on enemy nameplates (NAME_PLATE_* events / C_NamePlate).
 -- If enemy nameplates are disabled, we can only see players when you target/mouseover them.
 local function EnemyNameplatesEnabled()
@@ -211,6 +322,7 @@ end
 
 local function Help()
   Print(L.CMD_HELP)
+  Print(L.CMD_VERSION)
   Print("Pruning policy (Stats): /kos statsprune on|off|maxdays N|maxentries N|now")
   Print("Tip: /kos statsprune   (with no args) prints current status")
   Print("Import from Spy: /kos importspy")
@@ -313,6 +425,7 @@ SlashCmdList["KILLONSIGHT"] = function(msg)
   end
 
   if cmd == "help" then return Help() end
+  if cmd == "version" or cmd == "ver" then return ShowAddonVersion() end
   if cmd == "add" then return AddPlayer(rest) end
   if cmd == "remove" or cmd == "del" then return RemovePlayer(rest) end
   if cmd == "addguild" then return AddGuild(rest) end
@@ -517,6 +630,28 @@ Core:SetScript("OnEvent", function(self, event, ...)
     return
   end
 
+  if event == "PLAYER_LOGIN" then
+    ShowWhatsNewOnce()
+    AnnounceVersion()
+    return
+  end
+
+  if event == "GROUP_ROSTER_UPDATE" then
+    AnnounceVersionToGroup()
+    return
+  end
+
+  if event == "GUILD_ROSTER_UPDATE" then
+    AnnounceVersionToGuild()
+    return
+  end
+
+  if event == "CHAT_MSG_ADDON" then
+    local prefix, message = ...
+    if prefix == VERSION_PREFIX then CheckPeerVersion(message) end
+    return
+  end
+
 
   if event == "PLAYER_ENTERING_WORLD" then
     ApplyPvPInstanceDisableState(IsInPvPInstance())
@@ -636,6 +771,10 @@ local function SafeRegisterEvent(event)
 end
 
 SafeRegisterEvent("ADDON_LOADED")
+SafeRegisterEvent("PLAYER_LOGIN")
+SafeRegisterEvent("CHAT_MSG_ADDON")
+SafeRegisterEvent("GROUP_ROSTER_UPDATE")
+SafeRegisterEvent("GUILD_ROSTER_UPDATE")
 SafeRegisterEvent("PLAYER_ENTERING_WORLD")
 SafeRegisterEvent("PLAYER_TARGET_CHANGED")
 SafeRegisterEvent("UPDATE_MOUSEOVER_UNIT")
